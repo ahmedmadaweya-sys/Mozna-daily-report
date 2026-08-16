@@ -16,7 +16,6 @@
         .dashboard { display: none; }
         #statusMessage { margin-top: 15px; font-weight: bold; color: #333; min-height: 20px;}
         #liveTimer { font-size: 24px; font-weight: bold; color: #007bff; margin: 10px 0; }
-        .admin-message { background: #e9ecef; padding: 15px; border-radius: 8px; color: #333; }
     </style>
 </head>
 <body>
@@ -42,12 +41,6 @@
             <div id="liveTimer">00:00:00</div>
             <button id="toggleBtn" class="btn-secondary" onclick="toggleAttendance()">تسجيل حضور (Time In)</button>
             <div id="statusMessage"></div>
-        </div>
-
-        <!-- واجهة المدير -->
-        <div id="adminView" class="admin-message" style="display: none;">
-            <p>أنت مسجل كمدير للنظام (Admin).</p>
-            <p>لا يوجد عليك تسجيل حضور أو انصراف.</p>
         </div>
 
         <br>
@@ -111,11 +104,11 @@
                 
                 // التفريق بين المدير والموظف
                 if (currentUser.role === 'admin') {
+                    // المدير: نقفل واجهة الموظف بالكامل، ومفيش أي رسالة تظهر
                     document.getElementById('employeeView').style.display = 'none';
-                    document.getElementById('adminView').style.display = 'block';
                 } else {
+                    // الموظف: نظهرله واجهة الحضور
                     document.getElementById('employeeView').style.display = 'block';
-                    document.getElementById('adminView').style.display = 'none';
                     resetTimerUI();
                 }
                 
@@ -178,7 +171,6 @@
             const checkOutTime = now;
             const diffMs = checkOutTime - checkInTime;
             
-            // حساب الساعات والدقايق
             const hours = Math.floor(diffMs / 3600000);
             const minutes = Math.floor((diffMs % 3600000) / 60000);
             const totalWorked = `${hours} ساعة و ${minutes} دقيقة`;
@@ -189,7 +181,7 @@
             });
 
             stopTimer();
-            statusMessage.innerText = `👋 تم تسجيل انصرافك. إجمالي工作时间: ${totalWorked}`;
+            statusMessage.innerText = `👋 تم تسجيل انصرافك. إجمالي وقت العمل: ${totalWorked}`;
             statusMessage.style.color = "blue";
         } catch (e) { 
             alert("خطأ في الحفظ") 
@@ -202,7 +194,7 @@
     checkInTime = startTime;
     const toggleBtn = document.getElementById('toggleBtn');
     toggleBtn.innerText = "تسجيل انصراف (Time Out)";
-    toggleBtn.className = "btn-danger"; // تغيير لون الزرار للأحمر
+    toggleBtn.className = "btn-danger";
     
     timerInterval = setInterval(() => {
         const now = new Date();
@@ -225,7 +217,7 @@
   function resetTimerUI() {
     const toggleBtn = document.getElementById('toggleBtn');
     toggleBtn.innerText = "تسجيل حضور (Time In)";
-    toggleBtn.className = "btn-secondary"; // تغيير لون الزرار للأزرق
+    toggleBtn.className = "btn-secondary";
     document.getElementById('liveTimer').innerText = "00:00:00";
   }
 
