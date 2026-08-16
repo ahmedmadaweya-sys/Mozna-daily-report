@@ -16,15 +16,13 @@
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .sidebar { min-height: 100vh; background-color: #343a40; color: white; }
         .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
-        .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
+        .sidebar a:hover, .sidebar a.active { background-color: #007bff !important; color: white !important; }
         .table th { background-color: #e9ecef; }
-        .stat-card { border-right: 5px solid; border-radius: 8px; overflow: hidden; }
         .timer-display { font-size: 48px; font-weight: bold; color: #007bff; margin: 20px 0; }
         .btn-att { padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; color: white; }
     </style>
 </head>
 <body>
-
 
     <!-- شاشة تسجيل الدخول -->
     <div id="loginSection" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
@@ -58,7 +56,7 @@
             <!-- المحتوى -->
             <div class="p-4 w-100">
                 
-                <!-- لوحة الإحصائيات (الرئيسية) -->
+                <!-- لوحة الإحصائيات -->
                 <div id="dashboardSection">
                     <h2 class="mb-4">لوحة الإحصائيات</h2>
                     <div class="row">
@@ -108,11 +106,11 @@
                         </div>
                     </div>
                     <div class="mt-4 alert alert-info">
-                        <i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة من مزنة. By Love done by Madawey (Daily Resport).
+                        <i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة من مزنة.
                     </div>
                 </div>
 
-                <!-- قسم الحضور والانصراف (جديد) -->
+                <!-- قسم الحضور والانصراف -->
                 <div id="attendanceSection" style="display: none;">
                     <h2 class="mb-4">تسجيل الحضور والانصراف</h2>
                     <div class="card shadow-sm p-4 text-center">
@@ -235,7 +233,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    // 1. إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
             authDomain: "daily-report-7196f.firebaseapp.com",
@@ -253,16 +250,12 @@
 
         let currentDelete = { id: '', type: '' };
         let currentAdd = { type: '' };
-        let currentResetUserId = '';
         let currentEdit = { id: '', type: '' };
-
-        // متغيرات الحضور
         let currentUserData = null;
         let isCheckedIn = false;
         let checkInTime = null;
         let timerInterval = null;
 
-        // 2. دوال تسجيل الدخول
         function doLogin() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -276,45 +269,37 @@
             if (timerInterval) clearInterval(timerInterval);
         }
 
-        // مراقبة حالة تسجيل الدخول
         auth.onAuthStateChanged(async user => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
             if (user) {
                 loginSec.classList.remove('d-flex');
                 loginSec.classList.add('d-none');
-                appSec.classList.remove('d-none');
                 appSec.style.display = 'block';
-                loadData();
                 
-                // جلب بيانات المستخدم من قاعدة البيانات لمعرفة صلاحياته
-                const userSnap = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
-                if (userSnap.exists()) {
-                    userSnap.forEach(child => {
-                        currentUserData = { id: child.key, ...child.val() };
-                    });
-                }
+                // جلب بيانات المستخدم لمعرفة صلاحياته
+                const userSnap = await db.ref('users').once('value');
+                let foundUser = null;
+                userSnap.forEach(child => {
+                    if (child.val().email === user.email) {
+                        foundUser = { id: child.key, ...child.val() };
+                    }
+                });
+                currentUserData = foundUser;
 
-                // التفريق بين المدير والموظف
                 if (currentUserData && currentUserData.role === 'admin') {
-                    // المدير: نفتحله الداشبورد ونخفي زرار الحضور
-                    document.getElementById('navAttendance').style.display = 'none';
                     showSection('dashboard', document.querySelector('.sidebar a'));
                 } else {
-                    // الموظف: نفتحله الحضور ونخفي باقي الأقسام
-                    document.getElementById('navUsers').style.display = 'none';
-                    document.getElementById('navDepts').style.display = 'none';
-                    document.getElementById('navTasks').style.display = 'none';
                     showSection('attendance', document.getElementById('navAttendance'));
                 }
+                loadData();
             } else {
                 loginSec.classList.remove('d-none');
                 loginSec.classList.add('d-flex');
-                appSec.classList.add('d-none');
+                appSec.style.display = 'none';
             }
         });
 
-        // 3. التنقل بين الأقسام
         function showSection(section, element) {
             document.getElementById('dashboardSection').style.display = 'none';
             document.getElementById('usersSection').style.display = 'none';
@@ -332,7 +317,6 @@
             if(element) element.classList.add('active');
         }
 
-        // 4. دوال الحضور والانصراف
         async function toggleAttendance() {
             if (!currentUserData) return alert("خطأ في بيانات المستخدم");
             
@@ -342,9 +326,8 @@
             const toggleBtn = document.getElementById('toggleBtn');
 
             if (!isCheckedIn) {
-                // === تسجيل حضور ===
                 const hour = now.getHours();
-                if (hour >= 8 && hour < 12) { // تسجيل مسموح من 8 لـ 12
+                if (hour >= 8 && hour < 12) {
                     const status = (hour >= 10) ? "تأخير" : "حضور طبيعي";
                     await db.ref(`attendance/${currentUserData.id}/${today}`).set({
                         checkIn: now.toLocaleTimeString('ar-EG'),
@@ -363,7 +346,6 @@
                     statusMsg.innerText = "عذراً، انتهى وقت تسجيل الحضور. تواصل مع الإدارة";
                 }
             } else {
-                // === تسجيل انصراف ===
                 const diffMs = now - checkInTime;
                 const hours = Math.floor(diffMs / 3600000);
                 const minutes = Math.floor((diffMs % 3600000) / 60000);
@@ -401,11 +383,9 @@
             document.getElementById('liveTimer').innerText = "00:00:00";
         }
 
-        // 5. تحميل البيانات من Firebase
         function loadData() {
-            // المستخدمين
             db.ref('users').on('value', snap => {
-                document.getElementById('statUsers').innerText = snap.numChildren(); // تحديث الإحصائية
+                document.getElementById('statUsers').innerText = snap.numChildren();
                 let html = '';
                 snap.forEach(child => {
                     const u = child.val();
@@ -419,9 +399,8 @@
                 document.getElementById('usersTbody').innerHTML = html;
             });
 
-            // الأقسام
             db.ref('departments').on('value', snap => {
-                document.getElementById('statDepts').innerText = snap.numChildren(); // تحديث الإحصائية
+                document.getElementById('statDepts').innerText = snap.numChildren();
                 let html = '';
                 snap.forEach(child => {
                     const d = child.val();
@@ -434,14 +413,13 @@
                 document.getElementById('departmentsTbody').innerHTML = html;
             });
 
-            // المهام
             db.ref('tasks').on('value', snap => {
-                document.getElementById('statTasks').innerText = snap.numChildren(); // تحديث الإحصائية
+                document.getElementById('statTasks').innerText = snap.numChildren();
                 let completedTasks = 0;
                 let html = '';
                 snap.forEach(child => {
                     const t = child.val();
-                    if (t.status === 'مكتملة') completedTasks++; // حساب المهام المكتملة
+                    if (t.status === 'مكتملة') completedTasks++;
                     html += `<tr>
                         <td>${t.title}</td>
                         <td>${t.userName || 'غير محدد'}</td>
@@ -452,12 +430,11 @@
                             <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
                         </td></tr>`;
                 });
-                document.getElementById('statCompleted').innerText = completedTasks; // تحديث الإحصائية
+                document.getElementById('statCompleted').innerText = completedTasks;
                 document.getElementById('tasksTbody').innerHTML = html;
             });
         }
 
-        // 6. مودالات الإضافة
         function openAddModal(type) {
             currentAdd.type = type;
             const body = document.getElementById('addModalBody');
@@ -506,18 +483,11 @@
 
         function confirmAdd() {
             if (currentAdd.type === 'user') {
-                // إنشاء مستخدم في Firebase Auth
-                const email = document.getElementById('newEmail').value;
-                const password = document.getElementById('newPassword').value;
-                
-                // لازم نعمل مؤقت auth للمدير عشان نضيف مستخدم جديد
-                // ودي طريقة بديلة بسيطة: نضيفه في الداتابيز وهو يسجل نفسه
-                // بس عشان الكود ميفضلش معقد، هنضيفه في الداتابيز مباشرة
                 db.ref('users').push({
                     name: document.getElementById('newName').value,
-                    email: email,
+                    email: document.getElementById('newEmail').value,
                     role: document.getElementById('newRole').value,
-                    password: password // ملاحظة: تخزين الباسورد كده مش آمن 100% بس زي ما إنت عامله
+                    password: document.getElementById('newPassword').value
                 }).then(() => {
                     bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
                 }).catch(err => alert('خطأ في الإضافة: ' + err.message));
@@ -543,7 +513,6 @@
             }
         }
 
-        // 7. مودال الحذف
         function openDeleteModal(id, type) {
             currentDelete = { id, type };
             new bootstrap.Modal(document.getElementById('deleteModal')).show();
@@ -555,7 +524,6 @@
                 .catch(err => alert('خطأ في الحذف: ' + err.message));
         }
 
-        // 8. مودال التعديل
         function openEditModal(type, id) {
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody');
@@ -635,7 +603,6 @@
                 }).catch(err => alert('خطأ في التعديل: ' + err.message));
         }
 
-        // 9. تصدير إلى Excel
         function exportToExcel(tableId, fileName) {
             const table = document.getElementById(tableId);
             const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
