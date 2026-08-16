@@ -8,12 +8,15 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; text-align: center; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .btn-primary { background-color: #28a745; color: white; }
         .btn-danger { background-color: #dc3545; color: white; }
         .btn-secondary { background-color: #007bff; color: white; }
+        .btn-logout { background-color: #6c757d; color: white; }
         .dashboard { display: none; }
-        #statusMessage { margin-top: 15px; font-weight: bold; color: #333; }
+        #statusMessage { margin-top: 15px; font-weight: bold; color: #333; min-height: 20px;}
+        #liveTimer { font-size: 24px; font-weight: bold; color: #007bff; margin: 10px 0; }
+        .admin-message { background: #e9ecef; padding: 15px; border-radius: 8px; color: #333; }
     </style>
 </head>
 <body>
@@ -21,7 +24,7 @@
 <div class="container">
     <!-- شاشة تسجيل الدخول -->
     <div id="loginSection">
-        <h2>تسجيل دخول الموظف</h2>
+        <h2>تسجيل دخول النظام</h2>
         <input type="email" id="email" placeholder="البريد الإلكتروني">
         <input type="password" id="password" placeholder="كلمة المرور">
         <button class="btn-primary" onclick="login()">دخول</button>
@@ -31,13 +34,24 @@
     <!-- لوحة الحضور والانصراف -->
     <div id="dashboardSection" class="dashboard">
         <h2>أهلاً، <span id="userName"></span></h2>
-        <p id="currentTime"></p>
+        <p id="currentTime" style="color: #666; font-size: 14px;"></p>
         <hr>
-        <button class="btn-secondary" onclick="checkIn()">تسجيل حضور</button>
-        <button class="btn-danger" onclick="checkOut()">تسجيل انصراف</button>
-        <div id="statusMessage"></div>
+        
+        <!-- واجهة الموظف -->
+        <div id="employeeView">
+            <div id="liveTimer">00:00:00</div>
+            <button id="toggleBtn" class="btn-secondary" onclick="toggleAttendance()">تسجيل حضور (Time In)</button>
+            <div id="statusMessage"></div>
+        </div>
+
+        <!-- واجهة المدير -->
+        <div id="adminView" class="admin-message" style="display: none;">
+            <p>أنت مسجل كمدير للنظام (Admin).</p>
+            <p>لا يوجد عليك تسجيل حضور أو انصراف.</p>
+        </div>
+
         <br>
-        <button style="background: #6c757d; color: white;" onclick="logout()">خروج</button>
+        <button class="btn-logout" onclick="logout()">تسجيل خروج من الحساب</button>
     </div>
 </div>
 
@@ -46,7 +60,6 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, child, get, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  // الكود اللي بعتهولي
   const firebaseConfig = {
     apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
     authDomain: "daily-report-7196f.firebaseapp.com",
@@ -61,10 +74,11 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   
-  // تخزين بيانات المستخدم الحالي
   let currentUser = null;
+  let isCheckedIn = false;
+  let checkInTime = null;
+  let timerInterval = null;
 
-  // ربط الدوال بالنافذة عشان تشتغل من أزرار HTML
   window.login = async function() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -77,7 +91,6 @@
     }
 
     try {
-        // جلب كل المستخدمين من قاعدة البيانات
         const snapshot = await get(child(ref(db), 'users'));
         if (snapshot.exists()) {
             let found = false;
@@ -85,7 +98,6 @@
                 const userData = childSnapshot.val();
                 const userId = childSnapshot.key;
                 
-                // التحقق من الإيميل والباسورد
                 if (userData.email === email && userData.password === password) {
                     found = true;
                     currentUser = { id: userId, name: userData.name, role: userData.role };
@@ -96,6 +108,17 @@
                 document.getElementById('loginSection').style.display = 'none';
                 document.getElementById('dashboardSection').style.display = 'block';
                 document.getElementById('userName').innerText = currentUser.name;
+                
+                // التفريق بين المدير والموظف
+                if (currentUser.role === 'admin') {
+                    document.getElementById('employeeView').style.display = 'none';
+                    document.getElementById('adminView').style.display = 'block';
+                } else {
+                    document.getElementById('employeeView').style.display = 'block';
+                    document.getElementById('adminView').style.display = 'none';
+                    resetTimerUI();
+                }
+                
                 updateTime();
             } else {
                 errorDiv.innerText = "بيانات الدخول غير صحيحة";
@@ -105,69 +128,111 @@
         }
     } catch (error) {
         console.error(error);
-        errorDiv.innerText = "حدث خطأ، حاول مرة أخرى";
+        errorDiv.innerText = "حدث خطأ في الاتصال بقاعدة البيانات";
     }
   }
 
-  window.checkIn = async function() {
-    if (!currentUser) return;
-    const now = new Date();
-    const hour = now.getHours();
-    const statusMessage = document.getElementById('statusMessage');
-
-    // تنسيق التاريخ (YYYY-MM-DD)
-    const today = now.toISOString().split('T')[0];
-
-    // التحقق من وقت التسجيل (من 8 لـ 10 صباحاً)
-    if (hour >= 8 && hour < 10) {
-        try {
-            // حفظ في جدول attendance -> رقم الموظف -> تاريخ اليوم
-            await set(ref(db, 'attendance/' + currentUser.id + '/' + today), {
-                checkIn: now.toLocaleTimeString(),
-                status: "حضور طبيعي"
-            });
-            statusMessage.innerText = "✅ تم تسجيل حضورك بنجاح في الوقت المحدد";
-            statusMessage.style.color = "green";
-        } catch (e) { alert("خطأ في الحفظ") }
-    } 
-    else if (hour >= 10 && hour < 12) {
-        try {
-            await set(ref(db, 'attendance/' + currentUser.id + '/' + today), {
-                checkIn: now.toLocaleTimeString(),
-                status: "تأخير"
-            });
-            statusMessage.innerText = "⚠️ تم تسجيل حضورك، ولكن تم تسجيل تأخير!";
-            statusMessage.style.color = "orange";
-        } catch (e) { alert("خطأ في الحفظ") }
-    }
-    else if (hour < 8) {
-        statusMessage.innerText = "الوقت مبكر جداً، ميعاد التسجيل من 8 صباحاً";
-        statusMessage.style.color = "red";
-    }
-    else {
-        statusMessage.innerText = "عذراً، انتهى وقت تسجيل الحضور. تواصل مع الإدارة";
-        statusMessage.style.color = "red";
-    }
-  }
-
-  window.checkOut = async function() {
+  window.toggleAttendance = async function() {
     if (!currentUser) return;
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const statusMessage = document.getElementById('statusMessage');
 
-    try {
-        // تحديث وقت الانصراف
-        await update(ref(db, 'attendance/' + currentUser.id + '/' + today), {
-            checkOut: now.toLocaleTimeString()
-        });
-        statusMessage.innerText = "👋 تم تسجيل انصرافك بنجاح";
-        statusMessage.style.color = "blue";
-    } catch (e) { alert("خطأ في الحفظ") }
+    if (!isCheckedIn) {
+        // === تسجيل حضور ===
+        const hour = now.getHours();
+
+        if (hour >= 8 && hour < 10) {
+            try {
+                await set(ref(db, 'attendance/' + currentUser.id + '/' + today), {
+                    checkIn: now.toLocaleTimeString('ar-EG'),
+                    status: "حضور طبيعي"
+                });
+                startTimer(now);
+                statusMessage.innerText = "✅ تم تسجيل حضورك بنجاح";
+                statusMessage.style.color = "green";
+            } catch (e) { alert("خطأ في الحفظ") }
+        } 
+        else if (hour >= 10 && hour < 12) {
+            try {
+                await set(ref(db, 'attendance/' + currentUser.id + '/' + today), {
+                    checkIn: now.toLocaleTimeString('ar-EG'),
+                    status: "تأخير"
+                });
+                startTimer(now);
+                statusMessage.innerText = "⚠️ تم تسجيل حضورك، ولكن تم تسجيل تأخير!";
+                statusMessage.style.color = "orange";
+            } catch (e) { alert("خطأ في الحفظ") }
+        }
+        else if (hour < 8) {
+            statusMessage.innerText = "الوقت مبكر جداً، ميعاد التسجيل من 8 صباحاً";
+            statusMessage.style.color = "red";
+        }
+        else {
+            statusMessage.innerText = "عذراً، انتهى وقت تسجيل الحضور. تواصل مع الإدارة";
+            statusMessage.style.color = "red";
+        }
+    } else {
+        // === تسجيل انصراف ===
+        try {
+            const checkOutTime = now;
+            const diffMs = checkOutTime - checkInTime;
+            
+            // حساب الساعات والدقايق
+            const hours = Math.floor(diffMs / 3600000);
+            const minutes = Math.floor((diffMs % 3600000) / 60000);
+            const totalWorked = `${hours} ساعة و ${minutes} دقيقة`;
+
+            await update(ref(db, 'attendance/' + currentUser.id + '/' + today), {
+                checkOut: checkOutTime.toLocaleTimeString('ar-EG'),
+                totalHours: totalWorked
+            });
+
+            stopTimer();
+            statusMessage.innerText = `👋 تم تسجيل انصرافك. إجمالي工作时间: ${totalWorked}`;
+            statusMessage.style.color = "blue";
+        } catch (e) { 
+            alert("خطأ في الحفظ") 
+        }
+    }
+  }
+
+  function startTimer(startTime) {
+    isCheckedIn = true;
+    checkInTime = startTime;
+    const toggleBtn = document.getElementById('toggleBtn');
+    toggleBtn.innerText = "تسجيل انصراف (Time Out)";
+    toggleBtn.className = "btn-danger"; // تغيير لون الزرار للأحمر
+    
+    timerInterval = setInterval(() => {
+        const now = new Date();
+        const diff = now - checkInTime;
+        
+        const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        
+        document.getElementById('liveTimer').innerText = `${h}:${m}:${s}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    isCheckedIn = false;
+    clearInterval(timerInterval);
+    resetTimerUI();
+  }
+
+  function resetTimerUI() {
+    const toggleBtn = document.getElementById('toggleBtn');
+    toggleBtn.innerText = "تسجيل حضور (Time In)";
+    toggleBtn.className = "btn-secondary"; // تغيير لون الزرار للأزرق
+    document.getElementById('liveTimer').innerText = "00:00:00";
   }
 
   window.logout = function() {
     currentUser = null;
+    isCheckedIn = false;
+    if(timerInterval) clearInterval(timerInterval);
     document.getElementById('loginSection').style.display = 'block';
     document.getElementById('dashboardSection').style.display = 'none';
     document.getElementById('email').value = '';
