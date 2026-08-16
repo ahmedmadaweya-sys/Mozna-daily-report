@@ -1,309 +1,646 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة موزنا</title>
+    <title>نظام الإدارة المتكامل</title>
+    
+    <!-- مكتبات التصميم -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبة تصدير Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }
-        .navbar { background-color: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .navbar h2 { margin: 0; }
-        .nav-links button { background: none; border: none; color: #ecf0f1; padding: 10px 15px; cursor: pointer; font-size: 16px; border-radius: 5px; transition: 0.3s; }
-        .nav-links button:hover, .nav-links button.active { background-color: #34495e; }
-        .content { padding: 20px; max-width: 1000px; margin: 20px auto; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
-        th { background-color: #f8f9fa; }
-        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .btn-primary { background-color: #28a745; color: white; width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        .btn-logout { background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; }
+        .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
+        .table th { background-color: #e9ecef; }
+        .stat-card { border-right: 5px solid; border-radius: 8px; overflow: hidden; }
+        .timer-display { font-size: 48px; font-weight: bold; color: #007bff; margin: 20px 0; }
+        .btn-att { padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; color: white; }
     </style>
 </head>
 <body>
 
-<!-- شاشة تسجيل الدخول -->
-<div id="loginSection" class="login-container">
-    <div class="login-box">
-        <h2>تسجيل دخول النظام</h2>
-        <input type="email" id="email" placeholder="البريد الإلكتروني">
-        <input type="password" id="password" placeholder="كلمة المرور">
-        <button class="btn-primary" onclick="login()">دخول</button>
-        <div id="loginError" style="color: red; margin-top: 10px;"></div>
-    </div>
-</div>
 
-<!-- لوحة تحكم النظام -->
-<div id="dashboardSection" style="display: none;">
-    <div class="navbar">
-        <h2>أهلاً، <span id="userName"></span></h2>
-        <div class="nav-links">
-            <button id="btn-departments" onclick="showSection('departments')">الأقسام</button>
-            <button id="btn-tasks" onclick="showSection('tasks')">المهام</button>
-            <button id="btn-users" onclick="showSection('users')">المستخدمين</button>
-            <button id="btn-attendance" onclick="showSection('attendance')">الحضور</button>
-            <button class="btn-logout" onclick="logout()">خروج</button>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginSection" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card p-4 shadow" style="width: 400px;">
+            <h3 class="text-center mb-4"><i class="fas fa-lock"></i> تسجيل الدخول</h3>
+            <div class="mb-3">
+                <input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني">
+            </div>
+            <div class="mb-3">
+                <input type="password" id="password" class="form-control" placeholder="كلمة المرور">
+            </div>
+            <button onclick="doLogin()" class="btn btn-primary w-100">دخول</button>
+            <div id="loginError" class="text-danger text-center mt-3"></div>
         </div>
     </div>
 
-    <div class="content">
-        <!-- قسم الأقسام -->
-        <div id="departmentsView" class="card">
-            <h3>الأقسام</h3>
-            <table>
-                <tr><th>اسم القسم</th></tr>
-                <tbody id="departmentsTable"></tbody>
-            </table>
-        </div>
+    <!-- لوحة التحكم الرئيسية -->
+    <div id="appSection" style="display: none;">
+        <div class="d-flex">
+            <!-- القائمة الجانبية -->
+            <div class="sidebar" style="width: 250px;">
+                <h4 class="p-3 text-center border-bottom">لوحة التحكم</h4>
+                <a href="#" onclick="showSection('dashboard', this)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
+                <a href="#" id="navUsers" onclick="showSection('users', this)"><i class="fas fa-users"></i> المستخدمين</a>
+                <a href="#" id="navDepts" onclick="showSection('departments', this)"><i class="fas fa-building"></i> الأقسام</a>
+                <a href="#" id="navTasks" onclick="showSection('tasks', this)"><i class="fas fa-tasks"></i> المهام</a>
+                <a href="#" id="navAttendance" onclick="showSection('attendance', this)"><i class="fas fa-clock"></i> الحضور والانصراف</a>
+                <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
+            </div>
 
-        <!-- قسم المهام -->
-        <div id="tasksView" class="card" style="display: none;">
-            <h3>المهام</h3>
-            <table>
-                <tr><th>اسم المهمة</th></tr>
-                <tbody id="tasksTable"></tbody>
-            </table>
-        </div>
-
-        <!-- قسم المستخدمين -->
-        <div id="usersView" class="card" style="display: none;">
-            <h3>المستخدمين</h3>
-            <table>
-                <tr><th>الاسم</th><th>الإيميل</th><th>الوظيفة</th></tr>
-                <tbody id="usersTable"></tbody>
-            </table>
-        </div>
-
-        <!-- قسم الحضور -->
-        <div id="attendanceView" class="card" style="display: none;">
-            <h3>تسجيل الحضور والانصراف</h3>
-            <div id="liveTimer" style="font-size: 30px; font-weight: bold; color: #007bff; margin: 10px 0;">00:00:00</div>
-            <button id="toggleBtn" style="background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;" onclick="toggleAttendance()">تسجيل حضور (Time In)</button>
-            <div id="statusMessage" style="margin-top: 15px; font-weight: bold; color: #333;"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Firebase SDKs -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getDatabase, ref, child, get, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
-    authDomain: "daily-report-7196f.firebaseapp.com",
-    databaseURL: "https://daily-report-7196f-default-rtdb.firebaseio.com",
-    projectId: "daily-report-7196f",
-    storageBucket: "daily-report-7196f.firebasestorage.app",
-    messagingSenderId: "760687344646",
-    appId: "1:760687344646:web:03f6739ce3649bbdec1787",
-    measurementId: "G-9FM68J9DHV"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  
-  let currentUser = null;
-  let isCheckedIn = false;
-  let checkInTime = null;
-  let timerInterval = null;
-
-  // تسجيل الدخول
-  window.login = async function() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('loginError');
-    errorDiv.innerText = "";
-
-    if (!email || !password) { errorDiv.innerText = "من فضلك أدخل البيانات"; return; }
-
-    try {
-        const snapshot = await get(child(ref(db), 'users'));
-        if (snapshot.exists()) {
-            let found = false;
-            snapshot.forEach((childSnapshot) => {
-                const userData = childSnapshot.val();
-                if (userData.email === email && userData.password === password) {
-                    found = true;
-                    currentUser = { id: childSnapshot.key, name: userData.name, role: userData.role };
-                }
-            });
-
-            if (found) {
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('dashboardSection').style.display = 'block';
-                document.getElementById('userName').innerText = currentUser.name;
+            <!-- المحتوى -->
+            <div class="p-4 w-100">
                 
-                // لو المدير: نفتحله الأقسام على طول
-                if (currentUser.role === 'admin') {
-                    showSection('departments');
-                    loadDepartments(); // نسحب بيانات الأقسام
+                <!-- لوحة الإحصائيات (الرئيسية) -->
+                <div id="dashboardSection">
+                    <h2 class="mb-4">لوحة الإحصائيات</h2>
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-primary shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">المستخدمين</h5>
+                                        <h2 id="statUsers" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-users fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-success shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">الأقسام</h5>
+                                        <h2 id="statDepts" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-building fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-warning shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">إجمالي المهام</h5>
+                                        <h2 id="statTasks" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-tasks fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-info shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">مهام مكتملة</h5>
+                                        <h2 id="statCompleted" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 alert alert-info">
+                        <i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة من مزنة. By Love done by Madawey (Daily Resport).
+                    </div>
+                </div>
+
+                <!-- قسم الحضور والانصراف (جديد) -->
+                <div id="attendanceSection" style="display: none;">
+                    <h2 class="mb-4">تسجيل الحضور والانصراف</h2>
+                    <div class="card shadow-sm p-4 text-center">
+                        <div id="liveTimer" class="timer-display">00:00:00</div>
+                        <button id="toggleBtn" class="btn-att" style="background-color: #007bff;" onclick="toggleAttendance()">
+                            <i class="fas fa-sign-in-alt"></i> تسجيل حضور (Time In)
+                        </button>
+                        <div id="statusMessage" class="mt-3 alert" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- قسم المستخدمين -->
+                <div id="usersSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة المستخدمين</h2>
+                        <div>
+                            <button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('user')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مستخدم</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>إجراءات</th></tr></thead>
+                                <tbody id="usersTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الأقسام -->
+                <div id="departmentsSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة الأقسام</h2>
+                        <div>
+                            <button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('department')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة قسم</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="departmentsTable">
+                                <thead><tr><th>اسم القسم</th><th>الوصف</th><th>إجراءات</th></tr></thead>
+                                <tbody id="departmentsTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم المهام -->
+                <div id="tasksSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة المهام</h2>
+                        <div>
+                            <button onclick="exportToExcel('tasksTable', 'المهام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('task')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مهمة</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="tasksTable">
+                                <thead>
+                                    <tr>
+                                        <th>عنوان المهمة</th>
+                                        <th>الموظف المختص</th>
+                                        <th>القسم</th>
+                                        <th>الحالة</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasksTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال الإضافة العام -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="addModalTitle">إضافة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="addModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد الإضافة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تأكيد الحذف -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">تأكيد الحذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    // 1. إعدادات Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
+            authDomain: "daily-report-7196f.firebaseapp.com",
+            databaseURL: "https://daily-report-7196f-default-rtdb.firebaseio.com",
+            projectId: "daily-report-7196f",
+            storageBucket: "daily-report-7196f.firebasestorage.app",
+            messagingSenderId: "760687344646",
+            appId: "1:760687344646:web:03f6739ce3649bbdec1787",
+            measurementId: "G-9FM68J9DHV"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentDelete = { id: '', type: '' };
+        let currentAdd = { type: '' };
+        let currentResetUserId = '';
+        let currentEdit = { id: '', type: '' };
+
+        // متغيرات الحضور
+        let currentUserData = null;
+        let isCheckedIn = false;
+        let checkInTime = null;
+        let timerInterval = null;
+
+        // 2. دوال تسجيل الدخول
+        function doLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => { document.getElementById('loginError').innerText = ''; })
+                .catch(err => { document.getElementById('loginError').innerText = 'خطأ: ' + err.message; });
+        }
+
+        function logout() { 
+            auth.signOut(); 
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        // مراقبة حالة تسجيل الدخول
+        auth.onAuthStateChanged(async user => {
+            const loginSec = document.getElementById('loginSection');
+            const appSec = document.getElementById('appSection');
+            if (user) {
+                loginSec.classList.remove('d-flex');
+                loginSec.classList.add('d-none');
+                appSec.classList.remove('d-none');
+                appSec.style.display = 'block';
+                loadData();
+                
+                // جلب بيانات المستخدم من قاعدة البيانات لمعرفة صلاحياته
+                const userSnap = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
+                if (userSnap.exists()) {
+                    userSnap.forEach(child => {
+                        currentUserData = { id: child.key, ...child.val() };
+                    });
+                }
+
+                // التفريق بين المدير والموظف
+                if (currentUserData && currentUserData.role === 'admin') {
+                    // المدير: نفتحله الداشبورد ونخفي زرار الحضور
+                    document.getElementById('navAttendance').style.display = 'none';
+                    showSection('dashboard', document.querySelector('.sidebar a'));
                 } else {
-                    // لو موظف: نفتحله الحضور على طول
-                    showSection('attendance');
+                    // الموظف: نفتحله الحضور ونخفي باقي الأقسام
+                    document.getElementById('navUsers').style.display = 'none';
+                    document.getElementById('navDepts').style.display = 'none';
+                    document.getElementById('navTasks').style.display = 'none';
+                    showSection('attendance', document.getElementById('navAttendance'));
                 }
             } else {
-                errorDiv.innerText = "بيانات الدخول غير صحيحة";
+                loginSec.classList.remove('d-none');
+                loginSec.classList.add('d-flex');
+                appSec.classList.add('d-none');
+            }
+        });
+
+        // 3. التنقل بين الأقسام
+        function showSection(section, element) {
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('usersSection').style.display = 'none';
+            document.getElementById('departmentsSection').style.display = 'none';
+            document.getElementById('tasksSection').style.display = 'none';
+            document.getElementById('attendanceSection').style.display = 'none';
+            
+            if (document.getElementById(section + 'Section')) {
+                document.getElementById(section + 'Section').style.display = 'block';
+            }
+            
+            const links = document.querySelectorAll('.sidebar a');
+            links.forEach(link => link.classList.remove('active'));
+            
+            if(element) element.classList.add('active');
+        }
+
+        // 4. دوال الحضور والانصراف
+        async function toggleAttendance() {
+            if (!currentUserData) return alert("خطأ في بيانات المستخدم");
+            
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const statusMsg = document.getElementById('statusMessage');
+            const toggleBtn = document.getElementById('toggleBtn');
+
+            if (!isCheckedIn) {
+                // === تسجيل حضور ===
+                const hour = now.getHours();
+                if (hour >= 8 && hour < 12) { // تسجيل مسموح من 8 لـ 12
+                    const status = (hour >= 10) ? "تأخير" : "حضور طبيعي";
+                    await db.ref(`attendance/${currentUserData.id}/${today}`).set({
+                        checkIn: now.toLocaleTimeString('ar-EG'),
+                        status: status,
+                        timestamp: now.getTime()
+                    });
+                    startTimer(now);
+                    statusMsg.style.display = 'block';
+                    statusMsg.className = 'mt-3 alert alert-success';
+                    statusMsg.innerText = `✅ تم تسجيل الحضور (${status})`;
+                    toggleBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف (Time Out)';
+                    toggleBtn.style.backgroundColor = '#dc3545';
+                } else {
+                    statusMsg.style.display = 'block';
+                    statusMsg.className = 'mt-3 alert alert-danger';
+                    statusMsg.innerText = "عذراً، انتهى وقت تسجيل الحضور. تواصل مع الإدارة";
+                }
+            } else {
+                // === تسجيل انصراف ===
+                const diffMs = now - checkInTime;
+                const hours = Math.floor(diffMs / 3600000);
+                const minutes = Math.floor((diffMs % 3600000) / 60000);
+                const totalWorked = `${hours} ساعة و ${minutes} دقيقة`;
+
+                await db.ref(`attendance/${currentUserData.id}/${today}`).update({
+                    checkOut: now.toLocaleTimeString('ar-EG'),
+                    totalHours: totalWorked
+                });
+
+                stopTimer();
+                statusMsg.style.display = 'block';
+                statusMsg.className = 'mt-3 alert alert-info';
+                statusMsg.innerText = `👋 تم الانصراف. إجمالي وقت العمل: ${totalWorked}`;
+                toggleBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور (Time In)';
+                toggleBtn.style.backgroundColor = '#007bff';
             }
         }
-    } catch (error) { errorDiv.innerText = "خطأ في الاتصال"; }
-  }
 
-  // التنقل بين صفحات اللوحة
-  window.showSection = function(section) {
-    document.getElementById('departmentsView').style.display = 'none';
-    document.getElementById('tasksView').style.display = 'none';
-    document.getElementById('usersView').style.display = 'none';
-    document.getElementById('attendanceView').style.display = 'none';
-    
-    // تحديث الأزرار
-    document.getElementById('btn-departments').classList.remove('active');
-    document.getElementById('btn-tasks').classList.remove('active');
-    document.getElementById('btn-users').classList.remove('active');
-    document.getElementById('btn-attendance').classList.remove('active');
+        function startTimer(startTime) {
+            isCheckedIn = true;
+            checkInTime = startTime;
+            timerInterval = setInterval(() => {
+                const diff = new Date() - checkInTime;
+                const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+                const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+                const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+                document.getElementById('liveTimer').innerText = `${h}:${m}:${s}`;
+            }, 1000);
+        }
 
-    if (section === 'departments') {
-        document.getElementById('departmentsView').style.display = 'block';
-        document.getElementById('btn-departments').classList.add('active');
-        loadDepartments();
-    } else if (section === 'tasks') {
-        document.getElementById('tasksView').style.display = 'block';
-        document.getElementById('btn-tasks').classList.add('active');
-        loadTasks();
-    } else if (section === 'users') {
-        document.getElementById('usersView').style.display = 'block';
-        document.getElementById('btn-users').classList.add('active');
-        loadUsers();
-    } else if (section === 'attendance') {
-        document.getElementById('attendanceView').style.display = 'block';
-        document.getElementById('btn-attendance').classList.add('active');
-    }
-  }
+        function stopTimer() {
+            isCheckedIn = false;
+            clearInterval(timerInterval);
+            document.getElementById('liveTimer').innerText = "00:00:00";
+        }
 
-  // جلب بيانات الأقسام
-  async function loadDepartments() {
-    const tableBody = document.getElementById('departmentsTable');
-    tableBody.innerHTML = '<tr><td>جاري التحميل...</td></tr>';
-    try {
-        const snapshot = await get(child(ref(db), 'departments'));
-        tableBody.innerHTML = '';
-        if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const data = child.val();
-                tableBody.innerHTML += `<tr><td>${data.name || data.title || child.key}</td></tr>`;
+        // 5. تحميل البيانات من Firebase
+        function loadData() {
+            // المستخدمين
+            db.ref('users').on('value', snap => {
+                document.getElementById('statUsers').innerText = snap.numChildren(); // تحديث الإحصائية
+                let html = '';
+                snap.forEach(child => {
+                    const u = child.val();
+                    html += `<tr>
+                        <td>${u.name}</td><td>${u.email}</td><td>${u.role || 'مستخدم'}</td>
+                        <td>
+                            <button onclick="openEditModal('user', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>
+                            <button onclick="openDeleteModal('${child.key}', 'users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        </td></tr>`;
+                });
+                document.getElementById('usersTbody').innerHTML = html;
             });
-        } else {
-            tableBody.innerHTML = '<tr><td>لا توجد أقسام مضافة</td></tr>';
-        }
-    } catch (e) { tableBody.innerHTML = '<tr><td>خطأ في تحميل البيانات</td></tr>'; }
-  }
 
-  // جلب بيانات المهام
-  async function loadTasks() {
-    const tableBody = document.getElementById('tasksTable');
-    tableBody.innerHTML = '<tr><td>جاري التحميل...</td></tr>';
-    try {
-        const snapshot = await get(child(ref(db), 'tasks'));
-        tableBody.innerHTML = '';
-        if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const data = child.val();
-                tableBody.innerHTML += `<tr><td>${data.name || data.title || child.key}</td></tr>`;
+            // الأقسام
+            db.ref('departments').on('value', snap => {
+                document.getElementById('statDepts').innerText = snap.numChildren(); // تحديث الإحصائية
+                let html = '';
+                snap.forEach(child => {
+                    const d = child.val();
+                    html += `<tr><td>${d.name}</td><td>${d.desc || ''}</td>
+                        <td>
+                            <button onclick="openEditModal('department', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>
+                            <button onclick="openDeleteModal('${child.key}', 'departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        </td></tr>`;
+                });
+                document.getElementById('departmentsTbody').innerHTML = html;
             });
-        } else {
-            tableBody.innerHTML = '<tr><td>لا توجد مهام مضافة</td></tr>';
-        }
-    } catch (e) { tableBody.innerHTML = '<tr><td>خطأ في تحميل البيانات</td></tr>'; }
-  }
 
-  // جلب بيانات المستخدمين
-  async function loadUsers() {
-    const tableBody = document.getElementById('usersTable');
-    tableBody.innerHTML = '<tr><td colspan="3">جاري التحميل...</td></tr>';
-    try {
-        const snapshot = await get(child(ref(db), 'users'));
-        tableBody.innerHTML = '';
-        if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const data = child.val();
-                tableBody.innerHTML += `<tr><td>${data.name}</td><td>${data.email}</td><td>${data.role}</td></tr>`;
+            // المهام
+            db.ref('tasks').on('value', snap => {
+                document.getElementById('statTasks').innerText = snap.numChildren(); // تحديث الإحصائية
+                let completedTasks = 0;
+                let html = '';
+                snap.forEach(child => {
+                    const t = child.val();
+                    if (t.status === 'مكتملة') completedTasks++; // حساب المهام المكتملة
+                    html += `<tr>
+                        <td>${t.title}</td>
+                        <td>${t.userName || 'غير محدد'}</td>
+                        <td>${t.deptName || 'غير محدد'}</td>
+                        <td>${t.status || 'جديدة'}</td>
+                        <td>
+                            <button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>
+                            <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        </td></tr>`;
+                });
+                document.getElementById('statCompleted').innerText = completedTasks; // تحديث الإحصائية
+                document.getElementById('tasksTbody').innerHTML = html;
             });
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="3">لا يوجد مستخدمين</td></tr>';
         }
-    } catch (e) { tableBody.innerHTML = '<tr><td colspan="3">خطأ في تحميل البيانات</td></tr>'; }
-  }
 
-  // الحضور والانصراف (للموظفين)
-  window.toggleAttendance = async function() {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const statusMessage = document.getElementById('statusMessage');
+        // 6. مودالات الإضافة
+        function openAddModal(type) {
+            currentAdd.type = type;
+            const body = document.getElementById('addModalBody');
+            const title = document.getElementById('addModalTitle');
+            
+            if (type === 'user') {
+                title.innerText = 'إضافة مستخدم جديد';
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم">
+                                  <input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد">
+                                  <input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور">
+                                  <select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
+                document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
+                new bootstrap.Modal(document.getElementById('addModal')).show();
+            } else if (type === 'department') {
+                title.innerText = 'إضافة قسم';
+                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم">
+                                  <textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
+                document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
+                new bootstrap.Modal(document.getElementById('addModal')).show();
+            } else if (type === 'task') {
+                title.innerText = 'إضافة مهمة';
+                Promise.all([
+                    db.ref('users').once('value'),
+                    db.ref('departments').once('value')
+                ]).then(([usersSnap, depsSnap]) => {
+                    let userOptions = '<option value="">-- اختر الموظف --</option>';
+                    usersSnap.forEach(u => {
+                        userOptions += `<option value="${u.key}" data-name="${u.val().name}">${u.val().name}</option>`;
+                    });
 
-    if (!isCheckedIn) {
-        const hour = now.getHours();
-        if (hour >= 8 && hour < 12) { // خففت الشرط شوية عشان نقدر نجرب
-            try {
-                const status = (hour >= 10) ? "تأخير" : "حضور طبيعي";
-                await set(ref(db, 'attendance/' + currentUser.id + '/' + today), { checkIn: now.toLocaleTimeString('ar-EG'), status: status });
-                startTimer(now);
-                statusMessage.innerText = `✅ تم تسجيل الحضور (${status})`;
-                statusMessage.style.color = status === "تأخير" ? "orange" : "green";
-            } catch (e) { alert("خطأ") }
-        } else {
-            statusMessage.innerText = "الوقت غير مسموح للتسجيل";
-            statusMessage.style.color = "red";
+                    let depOptions = '<option value="">-- اختر القسم --</option>';
+                    depsSnap.forEach(d => {
+                        depOptions += `<option value="${d.key}" data-name="${d.val().name}">${d.val().name}</option>`;
+                    });
+
+                    body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة">
+                                      <select id="taskUser" class="form-control mb-2">${userOptions}</select>
+                                      <select id="taskDept" class="form-control mb-2">${depOptions}</select>
+                                      <select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
+                    
+                    document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
+                    new bootstrap.Modal(document.getElementById('addModal')).show();
+                });
+            }
         }
-    } else {
-        try {
-            const diffMs = now - checkInTime;
-            const hours = Math.floor(diffMs / 3600000);
-            const minutes = Math.floor((diffMs % 3600000) / 60000);
-            const totalWorked = `${hours} ساعة و ${minutes} دقيقة`;
 
-            await update(ref(db, 'attendance/' + currentUser.id + '/' + today), { checkOut: now.toLocaleTimeString('ar-EG'), totalHours: totalWorked });
-            stopTimer();
-            statusMessage.innerText = `👋 تم الانصراف. إجمالي الوقت: ${totalWorked}`;
-            statusMessage.style.color = "blue";
-        } catch (e) { alert("خطأ") }
-    }
-  }
+        function confirmAdd() {
+            if (currentAdd.type === 'user') {
+                // إنشاء مستخدم في Firebase Auth
+                const email = document.getElementById('newEmail').value;
+                const password = document.getElementById('newPassword').value;
+                
+                // لازم نعمل مؤقت auth للمدير عشان نضيف مستخدم جديد
+                // ودي طريقة بديلة بسيطة: نضيفه في الداتابيز وهو يسجل نفسه
+                // بس عشان الكود ميفضلش معقد، هنضيفه في الداتابيز مباشرة
+                db.ref('users').push({
+                    name: document.getElementById('newName').value,
+                    email: email,
+                    role: document.getElementById('newRole').value,
+                    password: password // ملاحظة: تخزين الباسورد كده مش آمن 100% بس زي ما إنت عامله
+                }).then(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                }).catch(err => alert('خطأ في الإضافة: ' + err.message));
+            } else if (currentAdd.type === 'department') {
+                db.ref('departments').push({
+                    name: document.getElementById('depName').value,
+                    desc: document.getElementById('depDesc').value
+                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide())
+                .catch(err => alert('خطأ في إضافة القسم: ' + err.message));
+            } else if (currentAdd.type === 'task') {
+                const userSelect = document.getElementById('taskUser');
+                const depSelect = document.getElementById('taskDept');
+                
+                db.ref('tasks').push({
+                    title: document.getElementById('taskTitle').value,
+                    userId: userSelect.value,
+                    userName: userSelect.options[userSelect.selectedIndex].text,
+                    deptId: depSelect.value,
+                    deptName: depSelect.options[depSelect.selectedIndex].text,
+                    status: document.getElementById('taskStatus').value
+                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide())
+                .catch(err => alert('خطأ في إضافة المهمة: ' + err.message));
+            }
+        }
 
-  function startTimer(startTime) {
-    isCheckedIn = true;
-    checkInTime = startTime;
-    const toggleBtn = document.getElementById('toggleBtn');
-    toggleBtn.innerText = "تسجيل انصراف (Time Out)";
-    toggleBtn.style.backgroundColor = "#dc3545";
-    
-    timerInterval = setInterval(() => {
-        const diff = new Date() - checkInTime;
-        const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
-        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-        document.getElementById('liveTimer').innerText = `${h}:${m}:${s}`;
-    }, 1000);
-  }
+        // 7. مودال الحذف
+        function openDeleteModal(id, type) {
+            currentDelete = { id, type };
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
 
-  function stopTimer() {
-    isCheckedIn = false;
-    clearInterval(timerInterval);
-    const toggleBtn = document.getElementById('toggleBtn');
-    toggleBtn.innerText = "تسجيل حضور (Time In)";
-    toggleBtn.style.backgroundColor = "#007bff";
-    document.getElementById('liveTimer').innerText = "00:00:00";
-  }
+        function confirmDelete() {
+            db.ref(currentDelete.type + '/' + currentDelete.id).remove()
+                .then(() => bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide())
+                .catch(err => alert('خطأ في الحذف: ' + err.message));
+        }
 
-  window.logout = function() {
-    currentUser = null;
-    if(timerInterval) clearInterval(timerInterval);
-    document.getElementById('loginSection').style.display = 'flex';
-    document.getElementById('dashboardSection').style.display = 'none';
-    document.getElementById('email').value = '';
-    document.getElementById('password').value = '';
-  }
-</script>
+        // 8. مودال التعديل
+        function openEditModal(type, id) {
+            currentEdit = { id, type: type + 's' };
+            const body = document.getElementById('addModalBody');
+            const title = document.getElementById('addModalTitle');
+            
+            db.ref(currentEdit.type + '/' + id).once('value').then(async snap => {
+                const data = snap.val();
+                if (type === 'user') {
+                    title.innerText = 'تعديل مستخدم';
+                    body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}" placeholder="الاسم">
+                                      <input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" placeholder="البريد">
+                                      <select id="newRole" class="form-control">
+                                          <option value="user" ${data.role === 'user' ? 'selected' : ''}>مستخدم</option>
+                                          <option value="admin" ${data.role === 'admin' ? 'selected' : ''}>مدير</option>
+                                      </select>`;
+                } else if (type === 'department') {
+                    title.innerText = 'تعديل قسم';
+                    body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}" placeholder="اسم القسم">
+                                      <textarea id="depDesc" class="form-control" placeholder="الوصف">${data.desc || ''}</textarea>`;
+                } else if (type === 'task') {
+                    title.innerText = 'تعديل مهمة';
+                    const [usersSnap, depsSnap] = await Promise.all([
+                        db.ref('users').once('value'),
+                        db.ref('departments').once('value')
+                    ]);
+
+                    let userOptions = '<option value="">-- اختر الموظف --</option>';
+                    usersSnap.forEach(u => {
+                        const sel = data.userId === u.key ? 'selected' : '';
+                        userOptions += `<option value="${u.key}" ${sel}>${u.val().name}</option>`;
+                    });
+
+                    let depOptions = '<option value="">-- اختر القسم --</option>';
+                    depsSnap.forEach(d => {
+                        const sel = data.deptId === d.key ? 'selected' : '';
+                        depOptions += `<option value="${d.key}" ${sel}>${d.val().name}</option>`;
+                    });
+
+                    body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}" placeholder="عنوان المهمة">
+                                      <select id="taskUser" class="form-control mb-2">${userOptions}</select>
+                                      <select id="taskDept" class="form-control mb-2">${depOptions}</select>
+                                      <select id="taskStatus" class="form-control">
+                                          <option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option>
+                                          <option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option>
+                                          <option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option>
+                                      </select>`;
+                }
+                document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
+                new bootstrap.Modal(document.getElementById('addModal')).show();
+            });
+        }
+
+        function confirmEdit() {
+            let updates = {};
+            if (currentEdit.type === 'users') {
+                updates['name'] = document.getElementById('newName').value;
+                updates['email'] = document.getElementById('newEmail').value;
+                updates['role'] = document.getElementById('newRole').value;
+            } else if (currentEdit.type === 'departments') {
+                updates['name'] = document.getElementById('depName').value;
+                updates['desc'] = document.getElementById('depDesc').value;
+            } else if (currentEdit.type === 'tasks') {
+                const userSelect = document.getElementById('taskUser');
+                const depSelect = document.getElementById('taskDept');
+                updates['title'] = document.getElementById('taskTitle').value;
+                updates['userId'] = userSelect.value;
+                updates['userName'] = userSelect.options[userSelect.selectedIndex].text;
+                updates['deptId'] = depSelect.value;
+                updates['deptName'] = depSelect.options[depSelect.selectedIndex].text;
+                updates['status'] = document.getElementById('taskStatus').value;
+            }
+
+            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates)
+                .then(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                    document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
+                }).catch(err => alert('خطأ في التعديل: ' + err.message));
+        }
+
+        // 9. تصدير إلى Excel
+        function exportToExcel(tableId, fileName) {
+            const table = document.getElementById(tableId);
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+            XLSX.writeFile(wb, fileName + ".xlsx");
+        }
+    </script>
 </body>
 </html>
