@@ -269,7 +269,7 @@
             if (timerInterval) clearInterval(timerInterval);
         }
 
-        auth.onAuthStateChanged(async user => {
+                auth.onAuthStateChanged(async user => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
             if (user) {
@@ -287,17 +287,24 @@
                 });
                 currentUserData = foundUser;
 
+                // إظهار وإخفاء التابات بناءً على الصلاحية
                 if (currentUserData && currentUserData.role === 'admin') {
+                    // المدير: نظهرله كل حاجة ونخفي الحضور
+                    document.getElementById('navUsers').style.display = 'block';
+                    document.getElementById('navDepts').style.display = 'block';
+                    document.getElementById('navTasks').style.display = 'block';
+                    document.getElementById('navAttendance').style.display = 'none';
                     showSection('dashboard', document.querySelector('.sidebar a'));
                 } else {
+                    // الموظف: نخفي كل حاجة ونظهرله الحضور بس
+                    document.getElementById('navUsers').style.display = 'none';
+                    document.getElementById('navDepts').style.display = 'none';
+                    document.getElementById('navTasks').style.display = 'none';
+                    document.getElementById('navAttendance').style.display = 'block';
                     showSection('attendance', document.getElementById('navAttendance'));
                 }
                 loadData();
             } else {
-                loginSec.classList.remove('d-none');
-                loginSec.classList.add('d-flex');
-                appSec.style.display = 'none';
-            }
         });
 
         function showSection(section, element) {
