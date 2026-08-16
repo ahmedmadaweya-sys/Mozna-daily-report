@@ -1,3 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الإدارة المتكامل</title>
+    
+    <!-- مكتبات التصميم -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبة تصدير Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; }
+        .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background-color: #007bff !important; color: white !important; }
+        .table th { background-color: #e9ecef; }
+        .timer-display { font-size: 48px; font-weight: bold; color: #007bff; margin: 20px 0; }
+        .btn-att { padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginSection" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card p-4 shadow" style="width: 400px;">
+            <h3 class="text-center mb-4"><i class="fas fa-lock"></i> تسجيل الدخول</h3>
+            <div class="mb-3">
+                <input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني">
+            </div>
+            <div class="mb-3">
+                <input type="password" id="password" class="form-control" placeholder="كلمة المرور">
+            </div>
+            <button onclick="doLogin()" class="btn btn-primary w-100">دخول</button>
+            <div id="loginError" class="text-danger text-center mt-3"></div>
+        </div>
+    </div>
+
+    <!-- لوحة التحكم الرئيسية -->
+    <div id="appSection" style="display: none;">
+        <div class="d-flex">
+            <!-- القائمة الجانبية -->
+            <div class="sidebar" style="width: 250px;">
+                <h4 class="p-3 text-center border-bottom">لوحة التحكم</h4>
+                <a href="#" onclick="showSection('dashboard', this)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
+                <a href="#" id="navUsers" onclick="showSection('users', this)"><i class="fas fa-users"></i> المستخدمين</a>
+                <a href="#" id="navDepts" onclick="showSection('departments', this)"><i class="fas fa-building"></i> الأقسام</a>
+                <a href="#" id="navTasks" onclick="showSection('tasks', this)"><i class="fas fa-tasks"></i> المهام</a>
+                <a href="#" id="navAttendance" onclick="showSection('attendance', this)"><i class="fas fa-clock"></i> الحضور والانصراف</a>
+                <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
+            </div>
+
+            <!-- المحتوى -->
+            <div class="p-4 w-100">
+                
+                <!-- لوحة الإحصائيات -->
+                <div id="dashboardSection">
+                    <h2 class="mb-4">لوحة الإحصائيات</h2>
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-primary shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">المستخدمين</h5>
+                                        <h2 id="statUsers" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-users fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-success shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">الأقسام</h5>
+                                        <h2 id="statDepts" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-building fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-warning shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">إجمالي المهام</h5>
+                                        <h2 id="statTasks" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-tasks fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-white bg-info shadow-sm h-100">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title">مهام مكتملة</h5>
+                                        <h2 id="statCompleted" class="display-4 mb-0">0</h2>
+                                    </div>
+                                    <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 alert alert-info">
+                        <i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة من مزنة.
+                    </div>
+                </div>
+
+                <!-- قسم الحضور والانصراف -->
+                <div id="attendanceSection" style="display: none;">
+                    <h2 class="mb-4">تسجيل الحضور والانصراف</h2>
+                    <div class="card shadow-sm p-4 text-center">
+                        <div id="liveTimer" class="timer-display">00:00:00</div>
+                        <button id="toggleBtn" class="btn-att" style="background-color: #007bff;" onclick="toggleAttendance()">
+                            <i class="fas fa-sign-in-alt"></i> تسجيل حضور (Time In)
+                        </button>
+                        <div id="statusMessage" class="mt-3 alert" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- قسم المستخدمين -->
+                <div id="usersSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة المستخدمين</h2>
+                        <div>
+                            <button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('user')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مستخدم</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>إجراءات</th></tr></thead>
+                                <tbody id="usersTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الأقسام -->
+                <div id="departmentsSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة الأقسام</h2>
+                        <div>
+                            <button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('department')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة قسم</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="departmentsTable">
+                                <thead><tr><th>اسم القسم</th><th>الوصف</th><th>إجراءات</th></tr></thead>
+                                <tbody id="departmentsTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم المهام -->
+                <div id="tasksSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>إدارة المهام</h2>
+                        <div>
+                            <button onclick="exportToExcel('tasksTable', 'المهام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                            <button onclick="openAddModal('task')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مهمة</button>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="tasksTable">
+                                <thead>
+                                    <tr>
+                                        <th>عنوان المهمة</th>
+                                        <th>الموظف المختص</th>
+                                        <th>القسم</th>
+                                        <th>الحالة</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasksTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال الإضافة العام -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="addModalTitle">إضافة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="addModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد الإضافة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تأكيد الحذف -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">تأكيد الحذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
             authDomain: "daily-report-7196f.firebaseapp.com",
@@ -106,7 +341,7 @@
             if (!isCheckedIn) {
                 // === تسجيل حضور ===
                 const hour = now.getHours();
-                if (hour >= 8 && hour < 12) { // مسموح من 8 لـ 12
+                if (hour >= 8 && hour < 12) {
                     const status = (hour >= 10) ? "تأخير" : "حضور طبيعي";
                     await db.ref(`attendance/${currentUserData.id}/${today}`).set({
                         checkIn: now.toLocaleTimeString('ar-EG'),
@@ -393,3 +628,6 @@
             const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
             XLSX.writeFile(wb, fileName + ".xlsx");
         }
+    </script>
+</body>
+</html>
