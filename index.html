@@ -271,13 +271,18 @@
         }
 
         // مراقبة حالة تسجيل الدخول
-        auth.onAuthStateChanged(async user => {
+               auth.onAuthStateChanged(user => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
             if (user) {
-                loginSec.classList.remove('d-flex');
-                loginSec.classList.add('d-none');
-                appSec.style.display = 'block';
+                loginSec.style.cssText = 'display: none !important;';
+                appSec.style.cssText = 'display: block !important;';
+                loadData();
+            } else {
+                loginSec.style.cssText = 'display: flex !important; min-height: 100vh; align-items: center; justify-content: center;';
+                appSec.style.cssText = 'display: none !important;';
+            }
+        });
                 
                 // جلب بيانات المستخدم لمعرفة صلاحياته
                 const userSnap = await db.ref('users').once('value');
