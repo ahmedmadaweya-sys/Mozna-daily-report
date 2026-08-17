@@ -13,6 +13,7 @@
         .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
         .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
         .table th { background-color: #e9ecef; }
+        .request-card { border-right: 5px solid #007bff; }
     </style>
 </head>
 <body>
@@ -35,6 +36,7 @@
                 <a href="#" onclick="showSection('users', this)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" onclick="showSection('departments', this)"><i class="fas fa-building"></i> الأقسام</a>
                 <a href="#" onclick="showSection('tasks', this)"><i class="fas fa-tasks"></i> المهام</a>
+                <a href="#" onclick="showSection('requests', this)"><i class="fas fa-cart-plus"></i> الطلبات والمشتريات</a>
                 <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
             </div>
 
@@ -45,9 +47,9 @@
                         <div class="col-md-3 mb-4"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>المستخدمين</h5><h2 id="statUsers" class="display-4 mb-0">0</h2></div><i class="fas fa-users fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>الأقسام</h5><h2 id="statDepts" class="display-4 mb-0">0</h2></div><i class="fas fa-building fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي المهام</h5><h2 id="statTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-3 mb-4"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>مهام مكتملة</h5><h2 id="statCompleted" class="display-4 mb-0">0</h2></div><i class="fas fa-check-circle fa-3x opacity-50"></i></div></div></div>
+                        <div class="col-md-3 mb-4"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات شراء</h5><h2 id="statRequests" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
                     </div>
-                    <div class="mt-4 alert alert-info"><i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة. يمكنك إدارة المستخدمين والأقسام والمهام من القائمة الجانبية.</div>
+                    <div class="mt-4 alert alert-info"><i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة. يمكنك إدارة كل شيء من القائمة الجانبية.</div>
                 </div>
 
                 <div id="usersSection" style="display: none;">
@@ -82,6 +84,19 @@
                     </div>
                     <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="tasksTable"><thead><tr><th>عنوان المهمة</th><th>الموظف المختص</th><th>القسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="tasksTbody"></tbody></table></div></div>
                 </div>
+
+                <!-- قسم الطلبات الجديد -->
+                <div id="requestsSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>الطلبات والمشتريات</h2>
+                        <div>
+                            <button onclick="exportRequestsToExcel()" class="btn btn-success"><i class="fas fa-file-excel"></i> سحب كل الطلبات Excel</button>
+                            <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
+                        </div>
+                    </div>
+                    <div id="requestsList" class="row"></div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -114,7 +129,7 @@
         let currentAdd = { type: '' };
         let currentResetUserId = '';
         let currentEdit = { id: '', type: '' };
-        let allUsers = []; // تخزين المستخدمين مؤقتاً لاستخدامهم في الأقسام
+        let allUsers = []; 
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -137,7 +152,7 @@
         });
 
         function showSection(section, element) {
-            ['dashboard', 'users', 'departments', 'tasks'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
+            ['dashboard', 'users', 'departments', 'tasks', 'requests'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             element.classList.add('active');
@@ -145,33 +160,22 @@
 
         function loadData() {
             db.ref('users').on('value', snap => {
-                allUsers = []; // تفريغ المصفوفة
+                allUsers = []; 
                 document.getElementById('statUsers').innerText = snap.numChildren();
                 let html = '';
                 snap.forEach(child => {
                     const u = child.val();
                     u.id = child.key;
-                    allUsers.push(u); // تخزين المستخدم
-                    
-                    html += `<tr>
-                        <td>${u.name}</td>
-                        <td>${u.email}</td>
-                        <td>${u.deptName || 'غير محدد'}</td>
-                        <td>${u.role || 'مستخدم'}</td>
-                        <td>
-                            <button onclick="openResetModal('${child.key}')" class="btn btn-sm btn-warning"><i class="fas fa-key"></i></button>
-                            <button onclick="openEditModal('user', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>
-                            <button onclick="openDeleteModal('${child.key}', 'users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
+                    allUsers.push(u); 
+                    html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.deptName || 'غير محدد'}</td><td>${u.role || 'مستخدم'}</td><td><button onclick="openResetModal('${child.key}')" class="btn btn-sm btn-warning"><i class="fas fa-key"></i></button> <button onclick="openEditModal('user', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
                 document.getElementById('usersTbody').innerHTML = html;
-                renderDepartments(); // تحديث عرض الأقسام كل ما يتغير المستخدمين
+                renderDepartments(); 
             });
 
             db.ref('departments').on('value', snap => {
                 document.getElementById('statDepts').innerText = snap.numChildren();
-                renderDepartments(); // تحديث عرض الأقسام
+                renderDepartments(); 
             });
 
             db.ref('tasks').on('value', snap => {
@@ -183,31 +187,52 @@
                     if (t.status === 'مكتملة') completed++;
                     html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'}</td><td><button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
-                document.getElementById('statCompleted').innerText = completed;
                 document.getElementById('tasksTbody').innerHTML = html;
+            });
+
+            // تحميل الطلبات الجديدة
+            db.ref('requests').on('value', snap => {
+                document.getElementById('statRequests').innerText = snap.numChildren();
+                let html = '';
+                snap.forEach(child => {
+                    const r = child.val();
+                    const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
+                    html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm request-card border-${statusColor}">
+                            <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                                <h6 class="mb-0">${r.item}</h6>
+                                <span class="badge bg-${statusColor}">${r.status || 'جديد'}</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-1"><i class="fas fa-user text-primary"></i> <b>الموظف:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
+                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty}</p>
+                                <p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>الغرض:</b> ${r.purpose}</p>
+                                <hr class="my-2">
+                                <label class="small text-muted">تعليق المشتريات / سبب الرفض:</label>
+                                <textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>
+                                <div class="d-flex gap-1 mt-2">
+                                    <button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i></button>
+                                    <button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i></button>
+                                    <button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i></button>
+                                    <button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('requestsList').innerHTML = html || '<div class="alert alert-info w-100">لا توجد طلبات حالياً.</div>';
             });
         }
 
-        // دالة مستقلة لعرض الأقسام عشان نقدر نستدعيها لما المستخدمين يتحددوا
         function renderDepartments() {
             db.ref('departments').once('value').then(snap => {
                 let html = '';
                 snap.forEach(child => {
                     const d = child.val();
-                    // جلب الموظفين التابعين للقسم
                     const deptUsers = allUsers.filter(u => u.deptId === child.key);
                     const usersList = deptUsers.map(u => `<span class="badge bg-info me-1">${u.name}</span>`).join(' ') || '<span class="text-muted">لا يوجد</span>';
-                    
-                    html += `<tr>
-                        <td>${d.name}</td>
-                        <td>${d.managerName || 'غير محدد'}</td>
-                        <td>${usersList}</td>
-                        <td>${d.desc || ''}</td>
-                        <td>
-                            <button onclick="openEditModal('department', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>
-                            <button onclick="openDeleteModal('${child.key}', 'departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
+                    html += `<tr><td>${d.name}</td><td>${d.managerName || 'غير محدد'}</td><td>${usersList}</td><td>${d.desc || ''}</td><td><button onclick="openEditModal('department', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
                 document.getElementById('departmentsTbody').innerHTML = html;
             });
@@ -223,21 +248,13 @@
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
-                
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم">
-                                  <input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد">
-                                  <input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور">
-                                  <select id="newDept" class="form-control mb-2">${depOpts}</select>
-                                  <select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${depOpts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
                 const usersSnap = await db.ref('users').once('value');
                 let userOpts = '<option value="">-- اختر مدير القسم --</option>';
                 usersSnap.forEach(u => userOpts += `<option value="${u.key}">${u.val().name}</option>`);
-
-                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم">
-                                  <select id="depManager" class="form-control mb-2">${userOpts}</select>
-                                  <textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
+                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
                 const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
@@ -246,36 +263,64 @@
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
+            } else if (type === 'request') {
+                title.innerText = 'تسجيل طلب شراء جديد';
+                const usersSnap = await db.ref('users').once('value');
+                let userOpts = '<option value="">-- اختر اسم الموظف --</option>';
+                usersSnap.forEach(u => userOpts += `<option value="${u.key}" data-dept="${u.val().deptName || ''}" data-name="${u.val().name}">${u.val().name}</option>`);
+                body.innerHTML = `
+                    <select id="reqUser" class="form-control mb-2" onchange="setReqDept()">${userOpts}</select>
+                    <input type="text" id="reqDept" class="form-control mb-2" placeholder="القسم التابع له" readonly>
+                    <input type="text" id="reqItem" class="form-control mb-2" placeholder="اسم الصنف / الطلب">
+                    <input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية">
+                    <textarea id="reqPurpose" class="form-control" placeholder="الغرض من الطلب / المواصفات"></textarea>
+                `;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
+        function setReqDept() {
+            const sel = document.getElementById('reqUser');
+            const opt = sel.options[sel.selectedIndex];
+            document.getElementById('reqDept').value = opt.getAttribute('data-dept') || '';
+        }
+
         function confirmAdd() {
             if (currentAdd.type === 'user') {
                 const deptSel = document.getElementById('newDept');
-                db.ref('users').push({ 
-                    name: document.getElementById('newName').value, 
-                    email: document.getElementById('newEmail').value, 
-                    role: document.getElementById('newRole').value, 
-                    password: document.getElementById('newPassword').value,
-                    deptId: deptSel.value,
-                    deptName: deptSel.options[deptSel.selectedIndex].text
-                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text })
+                .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'department') {
                 const managerSel = document.getElementById('depManager');
-                db.ref('departments').push({ 
-                    name: document.getElementById('depName').value, 
-                    desc: document.getElementById('depDesc').value,
-                    managerId: managerSel.value,
-                    managerName: managerSel.options[managerSel.selectedIndex].text
-                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text })
+                .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'task') {
                 const userSel = document.getElementById('taskUser');
                 const depSel = document.getElementById('taskDept');
                 db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value })
                 .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+            } else if (currentAdd.type === 'request') {
+                const userSel = document.getElementById('reqUser');
+                db.ref('requests').push({
+                    empId: userSel.value,
+                    empName: userSel.options[userSel.selectedIndex].getAttribute('data-name'),
+                    empDept: document.getElementById('reqDept').value,
+                    item: document.getElementById('reqItem').value,
+                    qty: document.getElementById('reqQty').value,
+                    purpose: document.getElementById('reqPurpose').value,
+                    status: 'جديد',
+                    comment: '',
+                    timestamp: new Date().toLocaleDateString()
+                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             }
+        }
+
+        function updateRequestStatus(id, status) {
+            const comment = document.getElementById('comment_' + id).value;
+            db.ref('requests/' + id).update({ status: status, comment: comment })
+                .then(() => alert('تم تحديث حالة الطلب إلى: ' + status))
+                .catch(err => alert(err.message));
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
@@ -336,8 +381,38 @@
         }
 
         function exportToExcel(tableId, fileName) {
-            const wb = XLSX.utils.table_to_book(document.getElementById(tableId), { sheet: "Sheet1" });
+            const table = document.getElementById(tableId);
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
             XLSX.writeFile(wb, fileName + ".xlsx");
+        }
+
+        // دالة تصدير الطلبات إلى إكسيل (لأنها كروات مش جدول)
+        async function exportRequestsToExcel() {
+            const snap = await db.ref('requests').once('value');
+            let data = [];
+            snap.forEach(child => {
+                const r = child.val();
+                data.push({
+                    "التاريخ": r.timestamp || '',
+                    "اسم الموظف": r.empName || '',
+                    "القسم": r.empDept || '',
+                    "الصنف المطلوب": r.item || '',
+                    "الكمية": r.qty || '',
+                    "الغرض": r.purpose || '',
+                    "الحالة": r.status || '',
+                    "تعليق المشتريات": r.comment || ''
+                });
+            });
+
+            if(data.length === 0) {
+                alert("لا توجد طلبات لتصديرها!");
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Requests");
+            XLSX.writeFile(wb, "Purchase_Requests.xlsx");
         }
     </script>
 </body>
