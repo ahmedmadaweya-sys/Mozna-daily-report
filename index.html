@@ -18,7 +18,7 @@
 </head>
 <body>
 
-    <div id="loginSection" style="display: flex; min-height: 100vh; align-items: center; justify-content: center;">
+    <div id="loginSection" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
         <div class="card p-4 shadow" style="width: 400px;">
             <h3 class="text-center mb-4"><i class="fas fa-lock"></i> تسجيل الدخول</h3>
             <div class="mb-3"><input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني"></div>
@@ -28,15 +28,15 @@
         </div>
     </div>
 
-    <div id="appSection" style="display: none !important;">
+    <div id="appSection" class="d-none">
         <div class="d-flex">
             <div class="sidebar" style="width: 250px;">
                 <h4 class="p-3 text-center border-bottom">لوحة التحكم</h4>
-                <a href="#" onclick="showSection('dashboard', this)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
-                <a href="#" onclick="showSection('users', this)"><i class="fas fa-users"></i> المستخدمين</a>
-                <a href="#" onclick="showSection('departments', this)"><i class="fas fa-building"></i> الأقسام</a>
-                <a href="#" onclick="showSection('tasks', this)"><i class="fas fa-tasks"></i> المهام</a>
-                <a href="#" onclick="showSection('requests', this)"><i class="fas fa-cart-plus"></i> الطلبات والمشتريات</a>
+                <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
+                <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
+                <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
+                <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
+                <a href="#" id="navRequests" onclick="showSection('requests', event)"><i class="fas fa-cart-plus"></i> الطلبات والمشتريات</a>
                 <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
             </div>
 
@@ -85,7 +85,6 @@
                     <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="tasksTable"><thead><tr><th>عنوان المهمة</th><th>الموظف المختص</th><th>القسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="tasksTbody"></tbody></table></div></div>
                 </div>
 
-                <!-- قسم الطلبات الجديد -->
                 <div id="requestsSection" style="display: none;">
                     <div class="d-flex justify-content-between mb-3">
                         <h2>الطلبات والمشتريات</h2>
@@ -130,6 +129,7 @@
         let currentResetUserId = '';
         let currentEdit = { id: '', type: '' };
         let allUsers = []; 
+        let currentUserData = null; 
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -138,24 +138,64 @@
         }
         function logout() { auth.signOut(); }
 
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async user => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
             if (user) {
-                loginSec.style.cssText = 'display: none !important;';
-                appSec.style.cssText = 'display: block !important;';
+                loginSec.classList.add('d-none');
+                loginSec.style.display = 'none';
+                appSec.classList.remove('d-none');
+                appSec.style.display = 'block';
+
+                const userSnap = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
+                if (userSnap.exists()) {
+                    userSnap.forEach(child => {
+                        currentUserData = child.val();
+                        currentUserData.id = child.key;
+                    });
+                    applyPermissions(); // تطبيق الصلاحيات
+                } else {
+                    console.log("المستخدم غير موجود في قاعدة البيانات");
+                }
+
                 loadData();
             } else {
-                loginSec.style.cssText = 'display: flex !important; min-height: 100vh; align-items: center; justify-content: center;';
-                appSec.style.cssText = 'display: none !important;';
+                loginSec.classList.remove('d-none');
+                loginSec.style.display = 'flex';
+                appSec.classList.add('d-none');
+                appSec.style.display = 'none';
+                currentUserData = null;
             }
         });
 
-        function showSection(section, element) {
+        function applyPermissions() {
+            const isAdmin = currentUserData && currentUserData.role === 'admin';
+            
+            // إظهار أو إخفاء القوائم بناءً على الصلاحية
+            document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
+            
+            // لو موظف عادي، نفتح له صفحة الطلبات مباشرة بدل الإحصائيات
+            if (!isAdmin) {
+                showSection('requests', null);
+                // إزالة Active من زرار الداشبورد لأنه مش هيراه
+                document.querySelector('#navDashboard').classList.remove('active');
+                document.querySelector('#navRequests').classList.add('active');
+            }
+        }
+
+        function showSection(section, evt) {
             ['dashboard', 'users', 'departments', 'tasks', 'requests'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
-            element.classList.add('active');
+            if(evt && evt.target.closest('a')) {
+                evt.target.closest('a').classList.add('active');
+            } else {
+                // لو فاتح من الكود، نظبط الـ active
+                const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1)));
+                if(navLink) navLink.classList.add('active');
+            }
         }
 
         function loadData() {
@@ -180,43 +220,53 @@
 
             db.ref('tasks').on('value', snap => {
                 document.getElementById('statTasks').innerText = snap.numChildren();
-                let completed = 0;
                 let html = '';
                 snap.forEach(child => {
                     const t = child.val();
-                    if (t.status === 'مكتملة') completed++;
                     html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'}</td><td><button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
                 document.getElementById('tasksTbody').innerHTML = html;
             });
 
-            // تحميل الطلبات الجديدة
             db.ref('requests').on('value', snap => {
                 document.getElementById('statRequests').innerText = snap.numChildren();
                 let html = '';
+                const isAdmin = currentUserData && currentUserData.role === 'admin';
+                
                 snap.forEach(child => {
                     const r = child.val();
                     const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
+                    
+                    // لو الموظف عادي، يشوف طلباته هو بس. الأدمن يشوف الكل
+                    if (!isAdmin && r.empId !== currentUserData.id) return;
+
+                    // أزرار التحكم تظهر للأدمن بس
+                    let adminButtons = isAdmin ? `
+                        <div class="d-flex gap-1 mt-2">
+                            <button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i> موافقة</button>
+                            <button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i> تأجيل</button>
+                            <button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i> رفض</button>
+                            <button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                        </div>
+                    ` : '';
+
+                    let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger ms-2">عاجل</span>` : '';
+
                     html += `
                     <div class="col-md-6 mb-3">
                         <div class="card shadow-sm request-card border-${statusColor}">
                             <div class="card-header d-flex justify-content-between align-items-center bg-light">
-                                <h6 class="mb-0">${r.item}</h6>
+                                <h6 class="mb-0">${r.item} ${priorityBadge}</h6>
                                 <span class="badge bg-${statusColor}">${r.status || 'جديد'}</span>
                             </div>
                             <div class="card-body">
                                 <p class="mb-1"><i class="fas fa-user text-primary"></i> <b>الموظف:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
-                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty}</p>
-                                <p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>الغرض:</b> ${r.purpose}</p>
+                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
+                                <p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل:</b> ${r.purpose || 'لا يوجد'}</p>
                                 <hr class="my-2">
                                 <label class="small text-muted">تعليق المشتريات / سبب الرفض:</label>
-                                <textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>
-                                <div class="d-flex gap-1 mt-2">
-                                    <button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i></button>
-                                    <button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i></button>
-                                    <button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i></button>
-                                    <button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </div>
+                                <textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" ${isAdmin ? '' : 'readonly'} placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>
+                                ${adminButtons}
                             </div>
                         </div>
                     </div>`;
@@ -265,25 +315,52 @@
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
             } else if (type === 'request') {
                 title.innerText = 'تسجيل طلب شراء جديد';
-                const usersSnap = await db.ref('users').once('value');
-                let userOpts = '<option value="">-- اختر اسم الموظف --</option>';
-                usersSnap.forEach(u => userOpts += `<option value="${u.key}" data-dept="${u.val().deptName || ''}" data-name="${u.val().name}">${u.val().name}</option>`);
+                let currentName = currentUserData ? currentUserData.name : '';
+                let currentDept = currentUserData ? (currentUserData.deptName || 'غير محدد') : '';
+                
                 body.innerHTML = `
-                    <select id="reqUser" class="form-control mb-2" onchange="setReqDept()">${userOpts}</select>
-                    <input type="text" id="reqDept" class="form-control mb-2" placeholder="القسم التابع له" readonly>
-                    <input type="text" id="reqItem" class="form-control mb-2" placeholder="اسم الصنف / الطلب">
-                    <input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية">
-                    <textarea id="reqPurpose" class="form-control" placeholder="الغرض من الطلب / المواصفات"></textarea>
+                    <div class="mb-2">
+                        <label class="small text-muted">اسم الموظف</label>
+                        <input type="text" id="reqUser" class="form-control" value="${currentName}" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small text-muted">القسم</label>
+                        <input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small text-muted">اسم الصنف المطلوب</label>
+                        <input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4">
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <label class="small text-muted">الكمية</label>
+                            <input type="number" id="reqQty" class="form-control" placeholder="العدد">
+                        </div>
+                        <div class="col-6">
+                            <label class="small text-muted">الوحدة</label>
+                            <select id="reqUnit" class="form-control">
+                                <option value="قطعة">قطعة</option>
+                                <option value="كرتونة">كرتونة</option>
+                                <option value="علبة">علبة</option>
+                                <option value="عبوة">عبوة</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small text-muted">الأولوية</label>
+                        <select id="reqPriority" class="form-control">
+                            <option value="عادية">عادية</option>
+                            <option value="عاجلة">عاجلة</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small text-muted">تفاصيل إضافية / الغرض</label>
+                        <textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea>
+                    </div>
                 `;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
-        }
-
-        function setReqDept() {
-            const sel = document.getElementById('reqUser');
-            const opt = sel.options[sel.selectedIndex];
-            document.getElementById('reqDept').value = opt.getAttribute('data-dept') || '';
         }
 
         function confirmAdd() {
@@ -301,13 +378,18 @@
                 db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value })
                 .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'request') {
-                const userSel = document.getElementById('reqUser');
+                let empId = currentUserData ? currentUserData.id : '';
+                let empName = currentUserData ? currentUserData.name : '';
+                let empDept = currentUserData ? (currentUserData.deptName || '') : '';
+
                 db.ref('requests').push({
-                    empId: userSel.value,
-                    empName: userSel.options[userSel.selectedIndex].getAttribute('data-name'),
-                    empDept: document.getElementById('reqDept').value,
+                    empId: empId,
+                    empName: empName,
+                    empDept: empDept,
                     item: document.getElementById('reqItem').value,
                     qty: document.getElementById('reqQty').value,
+                    unit: document.getElementById('reqUnit').value,
+                    priority: document.getElementById('reqPriority').value,
                     purpose: document.getElementById('reqPurpose').value,
                     status: 'جديد',
                     comment: '',
@@ -386,7 +468,6 @@
             XLSX.writeFile(wb, fileName + ".xlsx");
         }
 
-        // دالة تصدير الطلبات إلى إكسيل (لأنها كروات مش جدول)
         async function exportRequestsToExcel() {
             const snap = await db.ref('requests').once('value');
             let data = [];
@@ -398,7 +479,9 @@
                     "القسم": r.empDept || '',
                     "الصنف المطلوب": r.item || '',
                     "الكمية": r.qty || '',
-                    "الغرض": r.purpose || '',
+                    "الوحدة": r.unit || '',
+                    "الأولوية": r.priority || '',
+                    "التفاصيل": r.purpose || '',
                     "الحالة": r.status || '',
                     "تعليق المشتريات": r.comment || ''
                 });
