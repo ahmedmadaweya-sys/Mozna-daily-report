@@ -164,7 +164,7 @@
         let allUsers = []; 
         let currentUserData = null; 
         let currentUpdateTaskId = ''; 
-        let currentAttendanceRef = null; // لحفظ مسار حضور اليوم
+        let currentAttendanceRef = null; 
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -189,7 +189,7 @@
                         currentUserData.id = child.key;
                     });
                     applyPermissions();
-                    loadAttendanceStatus(); // تحميل حالة الحضور
+                    loadAttendanceStatus(); 
                 }
                 loadData();
             } else {
@@ -204,20 +204,15 @@
         function applyPermissions() {
             const isAdmin = currentUserData && currentUserData.role === 'admin';
             
-            document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'block'; // الكل يرى الرئيسية
+            document.getElementById('navDashboard').style.display = 'block'; 
             document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
-            // إظهار كارد الحضور للموظفين فقط
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             
-            if (!isAdmin) {
-                showSection('dashboard', null); // فتح الرئيسية للموظف
-                document.querySelector('#navDashboard').classList.add('active');
-            } else {
-                showSection('dashboard', null);
-            }
+            showSection('dashboard', null);
+            document.querySelector('#navDashboard').classList.add('active');
         }
 
         function showSection(section, evt) {
@@ -233,12 +228,23 @@
         }
 
         // ================= دوال الحضور والانصراف =================
+        
+        // دالة لتحويل الوقت لصيغة عربية مقروءة
+        function formatTime(timeStr) {
+            if (!timeStr || timeStr === '--:--') return '--:--';
+            const [h, m] = timeStr.split(':').map(Number);
+            const period = h >= 12 ? 'م' : 'ص';
+            let hours = h % 12;
+            if (hours === 0) hours = 12;
+            return `${hours}:${m.toString().padStart(2, '0')} ${period}`;
+        }
+
         function loadAttendanceStatus() {
             if (!currentUserData || currentUserData.role === 'admin') return;
 
             const now = new Date();
             const day = now.getDate();
-            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'); // صيغة 10-2023
+            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
 
             currentAttendanceRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
 
@@ -247,23 +253,20 @@
                 const btn = document.getElementById('attendanceBtn');
                 
                 if (data.checkIn && !data.checkOut) {
-                    // سجل حضور ولسه مسجلش انصراف
                     btn.className = 'btn btn-danger btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
                     btn.disabled = false;
-                    document.getElementById('checkInTime').innerText = data.checkIn;
+                    document.getElementById('checkInTime').innerText = formatTime(data.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
                     document.getElementById('dailyHours').innerText = 'في العمل حالياً';
                 } else if (data.checkIn && data.checkOut) {
-                    // سجل حضور وانصراف
                     btn.className = 'btn btn-secondary btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-check-circle"></i> تم تسجيل اليوم';
                     btn.disabled = true;
-                    document.getElementById('checkInTime').innerText = data.checkIn;
-                    document.getElementById('checkOutTime').innerText = data.checkOut;
+                    document.getElementById('checkInTime').innerText = formatTime(data.checkIn);
+                    document.getElementById('checkOutTime').innerText = formatTime(data.checkOut);
                     document.getElementById('dailyHours').innerText = `${data.workedHours} ساعة`;
                 } else {
-                    // مفيش سجل لليوم
                     btn.className = 'btn btn-success btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
                     btn.disabled = false;
@@ -273,7 +276,6 @@
                 }
             });
 
-            // حساب ساعات الشهر
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => {
                 let totalHours = 0;
                 snap.forEach(daySnap => {
@@ -292,20 +294,22 @@
             currentAttendanceRef.once('value').then(snap => {
                 const data = snap.val() || {};
                 const now = new Date();
-                const timeString = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                // حفظ الوقت بصيغة 24 ساعة (مثال: 14:30) لسهولة الحساب
+                const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
                 if (!data.checkIn) {
                     // تسجيل حضور
                     currentAttendanceRef.update({ checkIn: timeString });
-                    alert('تم تسجيل حضورك بنجاح في: ' + timeString);
+                    alert('تم تسجيل حضورك بنجاح في: ' + formatTime(timeString));
                 } else if (!data.checkOut) {
                     // تسجيل انصراف وحساب الساعات
-                    const checkInParts = data.checkIn.match(/(\d+):(\d+) (AM|PM)/);
+                    const [inHours, inMinutes] = data.checkIn.split(':').map(Number);
+                    
                     let checkInDate = new Date();
-                    checkInDate.setHours(checkInParts[3] === 'PM' ? parseInt(checkInParts[1]) + 12 : parseInt(checkInParts[1]), parseInt(checkInParts[2]), 0);
+                    checkInDate.setHours(inHours, inMinutes, 0, 0);
 
                     const diffMs = now - checkInDate;
-                    const diffHrs = Math.abs(diffMs / (1000 * 60 * 60));
+                    const diffHrs = diffMs / (1000 * 60 * 60);
                     
                     currentAttendanceRef.update({ 
                         checkOut: timeString, 
