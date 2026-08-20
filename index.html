@@ -43,7 +43,10 @@
 
             <div class="p-4 w-100">
                 <div id="dashboardSection">
-                    <h2 class="mb-4">الرئيسية</h2>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>الرئيسية</h2>
+                        <button id="adminReportBtn" onclick="openAttendanceReportModal()" class="btn btn-warning d-none"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</button>
+                    </div>
                     
                     <!-- كارد الحضور والانصراف (للموظفين) -->
                     <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
@@ -137,6 +140,37 @@
     <div class="modal fade" id="resetModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="password" id="newPass" class="form-control mb-2" placeholder="كلمة المرور الجديدة"><input type="password" id="confirmPass" class="form-control" placeholder="تأكيد كلمة المرور"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="confirmReset()">حفظ كلمة المرور</button></div></div></div></div>
     <div class="modal fade" id="taskUpdateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">الحالة الجديدة</label><select id="taskUpdateStatus" class="form-control mb-3"><option value="قيد التنفيذ">قيد التنفيذ</option><option value="مكتملة">مكتملة</option></select><label class="form-label">ملاحظات / سبب التحديث (إجباري)</label><textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button></div></div></div></div>
 
+    <!-- Modal تقارير الحضور -->
+    <div class="modal fade" id="attendanceReportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label fw-bold">اختر الموظفين:</label>
+                    <small class="d-block text-muted mb-2">(للاختيار المتعدد استمر بالضغط على Ctrl أو Shift)</small>
+                    <select id="reportEmployees" class="form-control mb-3" multiple size="5" style="height: 150px;"></select>
+                    
+                    <label class="form-label fw-bold">نوع التقرير:</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked>
+                        <label class="form-check-label" for="reportSummary">تقرير إجمالي الساعات (شيت واحد للكل)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed">
+                        <label class="form-check-label" for="reportDetailed">تقرير يومي تفصيلي (تبويب لكل موظف)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-warning" onclick="generateAttendanceReport()">سحب البيانات Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -210,6 +244,7 @@
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
+            document.getElementById('adminReportBtn').classList.toggle('d-none', !isAdmin);
             
             showSection('dashboard', null);
             document.querySelector('#navDashboard').classList.add('active');
@@ -227,8 +262,7 @@
             }
         }
 
-        // ================= دوال الحضور والانصراف (المعدلة) =================
-        
+        // ================= دوال الحضور والانصراف =================
         function formatTime(timeStr) {
             if (!timeStr || timeStr === '--:--') return '--:--';
             const [h, m] = timeStr.split(':').map(Number);
@@ -247,7 +281,6 @@
 
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
 
-            // الاستماع لتغييرات اليوم لحظياً
             currentDayRef.on('value', snap => {
                 const data = snap.val() || {};
                 const btn = document.getElementById('attendanceBtn');
@@ -256,21 +289,16 @@
                 document.getElementById('dailyHours').innerText = `${parseFloat(totalHours).toFixed(1)} ساعة`;
                 
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
-                    // الموظف في حالة حضور (في الداخل)
                     const activeSes = data.sessions[data.activeSession];
                     btn.className = 'btn btn-danger btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
                     btn.disabled = false;
-                    
                     document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
                 } else {
-                    // الموظف في حالة انصراف (في الخارج)
                     btn.className = 'btn btn-success btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
                     btn.disabled = false;
-                    
-                    // البحث عن آخر انصراف عشان نعرض وقته
                     let lastCheckOut = '--:--';
                     if (data.sessions) {
                         const sessionsArray = Object.values(data.sessions);
@@ -284,7 +312,6 @@
                 }
             });
 
-            // حساب ساعات الشهر
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => {
                 let totalMonthHours = 0;
                 snap.forEach(daySnap => {
@@ -299,24 +326,20 @@
 
         function toggleAttendance() {
             if (!currentDayRef) return;
-            
             currentDayRef.once('value').then(snap => {
                 const data = snap.val() || {};
                 const now = new Date();
                 const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
                 if (!data.activeSession) {
-                    // تسجيل حضور جديد
                     const newSessionRef = currentDayRef.child('sessions').push();
                     newSessionRef.set({ checkIn: timeString, checkOut: null, duration: 0 }).then(() => {
                         currentDayRef.update({ activeSession: newSessionRef.key });
                         alert('تم تسجيل حضورك بنجاح في: ' + formatTime(timeString));
                     });
                 } else {
-                    // تسجيل انصراف وحساب المدة
                     const activeSesId = data.activeSession;
                     const activeSesData = data.sessions[activeSesId];
-                    
                     const [inHours, inMinutes] = activeSesData.checkIn.split(':').map(Number);
                     let checkInDate = new Date();
                     checkInDate.setHours(inHours, inMinutes, 0, 0);
@@ -324,21 +347,120 @@
                     const diffMs = now - checkInDate;
                     const diffHrs = diffMs / (1000 * 60 * 60);
                     
-                    // تحديث الجلسة الحالية بوقت الخروج والمدة
                     currentDayRef.child(`sessions/${activeSesId}`).update({ 
                         checkOut: timeString, 
                         duration: diffHrs.toFixed(2) 
                     }).then(() => {
-                        // تفريغ الجلسة النشطة وإضافة المدة لإجمالي اليوم
                         const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
-                        currentDayRef.update({ 
-                            activeSession: null, 
-                            totalHours: newTotal 
-                        });
+                        currentDayRef.update({ activeSession: null, totalHours: newTotal });
                         alert('تم تسجيل انصرافك بنجاح. مدة هذه الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
                     });
                 }
             });
+        }
+
+        // ================= دوال تقارير الحضور للمدير =================
+        function openAttendanceReportModal() {
+            const select = document.getElementById('reportEmployees');
+            select.innerHTML = '';
+            allUsers.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.text = u.name;
+                select.appendChild(opt);
+            });
+            new bootstrap.Modal(document.getElementById('attendanceReportModal')).show();
+        }
+
+        async function generateAttendanceReport() {
+            const select = document.getElementById('reportEmployees');
+            const selectedUsers = Array.from(select.selectedOptions).map(opt => ({ id: opt.value, name: opt.text }));
+            const reportType = document.querySelector('input[name="reportType"]:checked').value;
+
+            if (selectedUsers.length === 0) {
+                alert('من فضلك اختر موظف واحد على الأقل!');
+                return;
+            }
+
+            const attSnap = await db.ref('attendance').once('value');
+            const allAttendance = attSnap.val() || {};
+            const wb = XLSX.utils.book_new();
+
+            if (reportType === 'summary') {
+                let summaryData = [];
+                selectedUsers.forEach(user => {
+                    const userAtt = allAttendance[user.id] || {};
+                    for (const monthYear in userAtt) {
+                        let monthTotal = 0;
+                        for (const day in userAtt[monthYear]) {
+                            if (userAtt[monthYear][day].totalHours) {
+                                monthTotal += parseFloat(userAtt[monthYear][day].totalHours);
+                            }
+                        }
+                        summaryData.push({
+                            "اسم الموظف": user.name,
+                            "الشهر": monthYear,
+                            "إجمالي الساعات": monthTotal.toFixed(2)
+                        });
+                    }
+                });
+
+                if (summaryData.length === 0) { alert("لا توجد بيانات حضور للموظفين المختارين."); return; }
+                const ws = XLSX.utils.json_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(wb, ws, "ملخص الحضور");
+                XLSX.writeFile(wb, "Attendance_Summary.xlsx");
+
+            } else {
+                let hasData = false;
+                selectedUsers.forEach(user => {
+                    const userAtt = allAttendance[user.id] || {};
+                    let userRows = [];
+                    let daysArray = [];
+
+                    for (const monthYear in userAtt) {
+                        for (const day in userAtt[monthYear]) {
+                            daysArray.push({ monthYear, day, data: userAtt[monthYear][day] });
+                        }
+                    }
+
+                    daysArray.sort((a, b) => {
+                        if (a.monthYear !== b.monthYear) return a.monthYear.localeCompare(b.monthYear);
+                        return parseInt(a.day) - parseInt(b.day);
+                    });
+
+                    daysArray.forEach(item => {
+                        const dateStr = `${item.day}-${item.monthYear}`;
+                        const dayData = item.data;
+                        const totalDayHours = dayData.totalHours ? parseFloat(dayData.totalHours).toFixed(2) : "0";
+                        
+                        if (dayData.sessions) {
+                            Object.values(dayData.sessions).forEach(ses => {
+                                userRows.push({
+                                    "التاريخ": dateStr,
+                                    "وقت الحضور": formatTime(ses.checkIn),
+                                    "وقت الانصراف": ses.checkOut ? formatTime(ses.checkOut) : "لم يسجل",
+                                    "مدة الجلسة (ساعات)": ses.duration ? parseFloat(ses.duration).toFixed(2) : "0",
+                                    "إجمالي ساعات اليوم": totalDayHours
+                                });
+                            });
+                        }
+                    });
+
+                    if (userRows.length > 0) {
+                        hasData = true;
+                        const ws = XLSX.utils.json_to_sheet(userRows);
+                        // تنظيف اسم الموظف عشان يبقى اسم التبويب صحيح في الإكسيل (بحد أقصى 31 حرف)
+                        let sheetName = user.name.replace(/[*?\/\\\[\]:]/g, '').substring(0, 31);
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employee");
+                    }
+                });
+
+                if (!hasData) { alert("لا توجد بيانات تفصيلية للموظفين المختارين."); return; }
+                XLSX.writeFile(wb, "Detailed_Attendance.xlsx");
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide();
+            alert("تم إنشاء التقرير بنجاح!");
         }
         // =========================================================
 
