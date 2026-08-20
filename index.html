@@ -14,6 +14,7 @@
         .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
         .table th { background-color: #e9ecef; }
         .request-card { border-right: 5px solid #007bff; }
+        .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
     </style>
 </head>
 <body>
@@ -42,7 +43,37 @@
 
             <div class="p-4 w-100">
                 <div id="dashboardSection">
-                    <h2 class="mb-4">لوحة الإحصائيات</h2>
+                    <h2 class="mb-4">الرئيسية</h2>
+                    
+                    <!-- كارد الحضور والانصراف (للموظفين) -->
+                    <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
+                        <div class="card-body text-center">
+                            <h4 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h4>
+                            <button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg w-50 mb-3">
+                                <i class="fas fa-sign-in-alt"></i> تسجيل حضور
+                            </button>
+                            <div class="row mt-3">
+                                <div class="col-md-4">
+                                    <h6>وقت الحضور اليوم</h6>
+                                    <p id="checkInTime" class="fw-bold text-success">--:--</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>وقت الانصراف اليوم</h6>
+                                    <p id="checkOutTime" class="fw-bold text-danger">--:--</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>ساعات عمل اليوم</h6>
+                                    <p id="dailyHours" class="fw-bold text-primary">0 ساعة</p>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="mt-2">
+                                <h6>إجمالي ساعات العمل هذا الشهر</h6>
+                                <p id="monthlyHours" class="fw-bold text-info fs-5">0 ساعة</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-3 mb-4"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>المستخدمين</h5><h2 id="statUsers" class="display-4 mb-0">0</h2></div><i class="fas fa-users fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>الأقسام</h5><h2 id="statDepts" class="display-4 mb-0">0</h2></div><i class="fas fa-building fa-3x opacity-50"></i></div></div></div>
@@ -100,37 +131,11 @@
         </div>
     </div>
 
-    <!-- Modal الإضافة والتعديل -->
+    <!-- Modals -->
     <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد الإضافة</button></div></div></div></div>
-    <!-- Modal الحذف -->
     <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">تأكيد الحذف</button></div></div></div></div>
-    <!-- Modal إعادة تعيين كلمة المرور -->
     <div class="modal fade" id="resetModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="password" id="newPass" class="form-control mb-2" placeholder="كلمة المرور الجديدة"><input type="password" id="confirmPass" class="form-control" placeholder="تأكيد كلمة المرور"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="confirmReset()">حفظ كلمة المرور</button></div></div></div></div>
-    
-    <!-- Modal تحديث حالة المهمة (للموظف) -->
-    <div class="modal fade" id="taskUpdateModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">الحالة الجديدة</label>
-                    <select id="taskUpdateStatus" class="form-control mb-3">
-                        <option value="قيد التنفيذ">قيد التنفيذ</option>
-                        <option value="مكتملة">مكتملة</option>
-                    </select>
-                    <label class="form-label">ملاحظات / سبب التحديث (إجباري)</label>
-                    <textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="modal fade" id="taskUpdateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">الحالة الجديدة</label><select id="taskUpdateStatus" class="form-control mb-3"><option value="قيد التنفيذ">قيد التنفيذ</option><option value="مكتملة">مكتملة</option></select><label class="form-label">ملاحظات / سبب التحديث (إجباري)</label><textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -159,6 +164,7 @@
         let allUsers = []; 
         let currentUserData = null; 
         let currentUpdateTaskId = ''; 
+        let currentAttendanceRef = null; // لحفظ مسار حضور اليوم
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -183,6 +189,7 @@
                         currentUserData.id = child.key;
                     });
                     applyPermissions();
+                    loadAttendanceStatus(); // تحميل حالة الحضور
                 }
                 loadData();
             } else {
@@ -197,15 +204,17 @@
         function applyPermissions() {
             const isAdmin = currentUserData && currentUserData.role === 'admin';
             
-            document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'block'; // الكل يرى الرئيسية
             document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
+            // إظهار كارد الحضور للموظفين فقط
+            document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
+            
             if (!isAdmin) {
-                showSection('requests', null);
-                document.querySelector('#navDashboard').classList.remove('active');
-                document.querySelector('#navRequests').classList.add('active');
+                showSection('dashboard', null); // فتح الرئيسية للموظف
+                document.querySelector('#navDashboard').classList.add('active');
             } else {
                 showSection('dashboard', null);
             }
@@ -222,6 +231,91 @@
                 if(navLink) navLink.classList.add('active');
             }
         }
+
+        // ================= دوال الحضور والانصراف =================
+        function loadAttendanceStatus() {
+            if (!currentUserData || currentUserData.role === 'admin') return;
+
+            const now = new Date();
+            const day = now.getDate();
+            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'); // صيغة 10-2023
+
+            currentAttendanceRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
+
+            currentAttendanceRef.on('value', snap => {
+                const data = snap.val() || {};
+                const btn = document.getElementById('attendanceBtn');
+                
+                if (data.checkIn && !data.checkOut) {
+                    // سجل حضور ولسه مسجلش انصراف
+                    btn.className = 'btn btn-danger btn-lg w-50 mb-3';
+                    btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
+                    btn.disabled = false;
+                    document.getElementById('checkInTime').innerText = data.checkIn;
+                    document.getElementById('checkOutTime').innerText = '--:--';
+                    document.getElementById('dailyHours').innerText = 'في العمل حالياً';
+                } else if (data.checkIn && data.checkOut) {
+                    // سجل حضور وانصراف
+                    btn.className = 'btn btn-secondary btn-lg w-50 mb-3';
+                    btn.innerHTML = '<i class="fas fa-check-circle"></i> تم تسجيل اليوم';
+                    btn.disabled = true;
+                    document.getElementById('checkInTime').innerText = data.checkIn;
+                    document.getElementById('checkOutTime').innerText = data.checkOut;
+                    document.getElementById('dailyHours').innerText = `${data.workedHours} ساعة`;
+                } else {
+                    // مفيش سجل لليوم
+                    btn.className = 'btn btn-success btn-lg w-50 mb-3';
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
+                    btn.disabled = false;
+                    document.getElementById('checkInTime').innerText = '--:--';
+                    document.getElementById('checkOutTime').innerText = '--:--';
+                    document.getElementById('dailyHours').innerText = '0 ساعة';
+                }
+            });
+
+            // حساب ساعات الشهر
+            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => {
+                let totalHours = 0;
+                snap.forEach(daySnap => {
+                    const dayData = daySnap.val();
+                    if (dayData.workedHours) {
+                        totalHours += parseFloat(dayData.workedHours);
+                    }
+                });
+                document.getElementById('monthlyHours').innerText = `${totalHours.toFixed(1)} ساعة`;
+            });
+        }
+
+        function toggleAttendance() {
+            if (!currentAttendanceRef) return;
+            
+            currentAttendanceRef.once('value').then(snap => {
+                const data = snap.val() || {};
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+                if (!data.checkIn) {
+                    // تسجيل حضور
+                    currentAttendanceRef.update({ checkIn: timeString });
+                    alert('تم تسجيل حضورك بنجاح في: ' + timeString);
+                } else if (!data.checkOut) {
+                    // تسجيل انصراف وحساب الساعات
+                    const checkInParts = data.checkIn.match(/(\d+):(\d+) (AM|PM)/);
+                    let checkInDate = new Date();
+                    checkInDate.setHours(checkInParts[3] === 'PM' ? parseInt(checkInParts[1]) + 12 : parseInt(checkInParts[1]), parseInt(checkInParts[2]), 0);
+
+                    const diffMs = now - checkInDate;
+                    const diffHrs = Math.abs(diffMs / (1000 * 60 * 60));
+                    
+                    currentAttendanceRef.update({ 
+                        checkOut: timeString, 
+                        workedHours: diffHrs.toFixed(2) 
+                    });
+                    alert('تم تسجيل انصرافك بنجاح. عدد ساعات عمل اليوم: ' + diffHrs.toFixed(2) + ' ساعة');
+                }
+            });
+        }
+        // =========================================================
 
         function loadData() {
             db.ref('users').on('value', snap => {
@@ -254,32 +348,17 @@
 
                     let actions = '';
                     if (isAdmin) {
-                        // المدير بس يقدر يعدل ويمسح
-                        actions = `
-                            <button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> 
-                            <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                        `;
+                        actions = `<button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
                     } else {
-                        // الموظف بس يقدر يستلم ويحدث
                         if (t.status === 'مكتملة') {
                             actions = `<span class="badge bg-success">تم الإنهاء</span>`;
                         } else {
-                            if (t.status === 'جديدة') {
-                                actions += `<button onclick="receiveTask('${child.key}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
-                            }
+                            if (t.status === 'جديدة') actions += `<button onclick="receiveTask('${child.key}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
                             actions += `<button onclick="openTaskUpdateModal('${child.key}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
                         }
                     }
-
                     let commentText = t.comment ? `<br><small class="text-muted fst-italic">ملاحظة: ${t.comment}</small>` : '';
-
-                    html += `<tr>
-                        <td>${t.title}</td>
-                        <td>${t.userName || 'غير محدد'}</td>
-                        <td>${t.deptName || 'غير محدد'}</td>
-                        <td>${t.status || 'جديدة'} ${commentText}</td>
-                        <td>${actions}</td>
-                    </tr>`;
+                    html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'} ${commentText}</td><td>${actions}</td></tr>`;
                 });
                 document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام حالياً.</td></tr>';
             });
@@ -292,38 +371,12 @@
                 snap.forEach(child => {
                     const r = child.val();
                     const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
-                    
                     if (!isAdmin && r.empId !== currentUserData.id) return;
 
-                    let adminButtons = isAdmin ? `
-                        <div class="d-flex gap-1 mt-2">
-                            <button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i> موافقة</button>
-                            <button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i> تأجيل</button>
-                            <button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i> رفض</button>
-                            <button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                        </div>
-                    ` : '';
-
+                    let adminButtons = isAdmin ? `<div class="d-flex gap-1 mt-2"><button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i> موافقة</button><button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i> تأجيل</button><button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i> رفض</button><button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></div>` : '';
                     let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger ms-2">عاجل</span>` : '';
 
-                    html += `
-                    <div class="col-md-6 mb-3">
-                        <div class="card shadow-sm request-card border-${statusColor}">
-                            <div class="card-header d-flex justify-content-between align-items-center bg-light">
-                                <h6 class="mb-0">${r.item} ${priorityBadge}</h6>
-                                <span class="badge bg-${statusColor}">${r.status || 'جديد'}</span>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><i class="fas fa-user text-primary"></i> <b>الموظف:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
-                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
-                                <p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل:</b> ${r.purpose || 'لا يوجد'}</p>
-                                <hr class="my-2">
-                                <label class="small text-muted">تعليق المشتريات / سبب الرفض:</label>
-                                <textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" ${isAdmin ? '' : 'readonly'} placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>
-                                ${adminButtons}
-                            </div>
-                        </div>
-                    </div>`;
+                    html += `<div class="col-md-6 mb-3"><div class="card shadow-sm request-card border-${statusColor}"><div class="card-header d-flex justify-content-between align-items-center bg-light"><h6 class="mb-0">${r.item} ${priorityBadge}</h6><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></div><div class="card-body"><p class="mb-1"><i class="fas fa-user text-primary"></i> <b>الموظف:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p><p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p><p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل:</b> ${r.purpose || 'لا يوجد'}</p><hr class="my-2"><label class="small text-muted">تعليق المشتريات / سبب الرفض:</label><textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" ${isAdmin ? '' : 'readonly'} placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>${adminButtons}</div></div></div>`;
                 });
                 document.getElementById('requestsList').innerHTML = html || '<div class="alert alert-info w-100">لا توجد طلبات حالياً.</div>';
             });
@@ -351,88 +404,27 @@
                 title.innerText = 'إضافة مستخدم';
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => {
-                    depOpts += `<option value="${d.key}">${d.val().name}</option>`;
-                });
-                body.innerHTML = `
-                    <input type="text" id="newName" class="form-control mb-2" placeholder="الاسم">
-                    <input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد">
-                    <input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور">
-                    <label class="small text-muted">القسم</label>
-                    <select id="newDept" class="form-control mb-2">${depOpts}</select>
-                    <label class="small text-muted">الصلاحية</label>
-                    <select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>
-                `;
+                depsSnap.forEach(d => { depOpts += `<option value="${d.key}">${d.val().name}</option>`; });
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><label class="small text-muted">القسم</label><select id="newDept" class="form-control mb-2">${depOpts}</select><label class="small text-muted">الصلاحية</label><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
                 const usersSnap = await db.ref('users').once('value');
                 let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => {
-                    userOpts += `<option value="${u.key}">${u.val().name}</option>`;
-                });
+                usersSnap.forEach(u => { userOpts += `<option value="${u.key}">${u.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
                 const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
                 let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => {
-                    userOpts += `<option value="${u.key}">${u.val().name}</option>`;
-                });
+                usersSnap.forEach(u => { userOpts += `<option value="${u.key}">${u.val().name}</option>`; });
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => {
-                    depOpts += `<option value="${d.key}">${d.val().name}</option>`;
-                });
-                body.innerHTML = `
-                    <input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة">
-                    <select id="taskUser" class="form-control mb-2">${userOpts}</select>
-                    <select id="taskDept" class="form-control mb-2">${depOpts}</select>
-                    <select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>
-                `;
+                depsSnap.forEach(d => { depOpts += `<option value="${d.key}">${d.val().name}</option>`; });
+                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
             } else if (type === 'request') {
                 title.innerText = 'تسجيل طلب شراء جديد';
                 let currentName = currentUserData ? currentUserData.name : '';
                 let currentDept = currentUserData ? (currentUserData.deptName || 'غير محدد') : '';
-                
-                body.innerHTML = `
-                    <div class="mb-2">
-                        <label class="small text-muted">اسم الموظف</label>
-                        <input type="text" id="reqUser" class="form-control" value="${currentName}" readonly>
-                    </div>
-                    <div class="mb-2">
-                        <label class="small text-muted">القسم</label>
-                        <input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly>
-                    </div>
-                    <div class="mb-2">
-                        <label class="small text-muted">اسم الصنف المطلوب</label>
-                        <input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4">
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-6">
-                            <label class="small text-muted">الكمية</label>
-                            <input type="number" id="reqQty" class="form-control" placeholder="العدد">
-                        </div>
-                        <div class="col-6">
-                            <label class="small text-muted">الوحدة</label>
-                            <select id="reqUnit" class="form-control">
-                                <option value="قطعة">قطعة</option>
-                                <option value="كرتونة">كرتونة</option>
-                                <option value="علبة">علبة</option>
-                                <option value="عبوة">عبوة</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="small text-muted">الأولوية</label>
-                        <select id="reqPriority" class="form-control">
-                            <option value="عادية">عادية</option>
-                            <option value="عاجلة">عاجلة</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="small text-muted">تفاصيل إضافية / الغرض</label>
-                        <textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea>
-                    </div>
-                `;
+                body.innerHTML = `<div class="mb-2"><label class="small text-muted">اسم الموظف</label><input type="text" id="reqUser" class="form-control" value="${currentName}" readonly></div><div class="mb-2"><label class="small text-muted">القسم</label><input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly></div><div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4"></div><div class="row mb-2"><div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" placeholder="العدد"></div><div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة">قطعة</option><option value="كرتونة">كرتونة</option><option value="علبة">علبة</option><option value="عبوة">عبوة</option></select></div></div><div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية">عادية</option><option value="عاجلة">عاجلة</option></select></div><div class="mb-2"><label class="small text-muted">تفاصيل إضافية / الغرض</label><textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea></div>`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
@@ -441,43 +433,25 @@
         function confirmAdd() {
             if (currentAdd.type === 'user') {
                 const deptSel = document.getElementById('newDept');
-                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text })
-                .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'department') {
                 const managerSel = document.getElementById('depManager');
-                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text })
-                .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'task') {
                 const userSel = document.getElementById('taskUser');
                 const depSel = document.getElementById('taskDept');
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' })
-                .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'request') {
                 let empId = currentUserData ? currentUserData.id : '';
                 let empName = currentUserData ? currentUserData.name : '';
                 let empDept = currentUserData ? (currentUserData.deptName || '') : '';
-
-                db.ref('requests').push({
-                    empId: empId,
-                    empName: empName,
-                    empDept: empDept,
-                    item: document.getElementById('reqItem').value,
-                    qty: document.getElementById('reqQty').value,
-                    unit: document.getElementById('reqUnit').value,
-                    priority: document.getElementById('reqPriority').value,
-                    purpose: document.getElementById('reqPurpose').value,
-                    status: 'جديد',
-                    comment: '',
-                    timestamp: new Date().toLocaleDateString()
-                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('requests').push({ empId: empId, empName: empName, empDept: empDept, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, unit: document.getElementById('reqUnit').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             }
         }
 
         function updateRequestStatus(id, status) {
             const comment = document.getElementById('comment_' + id).value;
-            db.ref('requests/' + id).update({ status: status, comment: comment })
-                .then(() => alert('تم تحديث حالة الطلب إلى: ' + status))
-                .catch(err => alert(err.message));
+            db.ref('requests/' + id).update({ status: status, comment: comment }).then(() => alert('تم تحديث حالة الطلب إلى: ' + status)).catch(err => alert(err.message));
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
@@ -494,29 +468,21 @@
                 title.innerText = 'تعديل مستخدم';
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => {
-                    depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`;
-                });
+                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}"><select id="newDept" class="form-control mb-2">${depOpts}</select><select id="newRole" class="form-control"><option value="user" ${data.role === 'user' ? 'selected' : ''}>مستخدم</option><option value="admin" ${data.role === 'admin' ? 'selected' : ''}>مدير</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'تعديل قسم';
                 const usersSnap = await db.ref('users').once('value');
                 let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => {
-                    userOpts += `<option value="${u.key}" ${data.managerId === u.key ? 'selected' : ''}>${u.val().name}</option>`;
-                });
+                usersSnap.forEach(u => { userOpts += `<option value="${u.key}" ${data.managerId === u.key ? 'selected' : ''}>${u.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control">${data.desc || ''}</textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'تعديل مهمة';
                 const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
                 let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => {
-                    userOpts += `<option value="${u.key}" ${data.userId === u.key ? 'selected' : ''}>${u.val().name}</option>`;
-                });
+                usersSnap.forEach(u => { userOpts += `<option value="${u.key}" ${data.userId === u.key ? 'selected' : ''}>${u.val().name}</option>`; });
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => {
-                    depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`;
-                });
+                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option><option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option><option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option></select>`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
@@ -545,37 +511,22 @@
             db.ref('users/' + currentResetUserId).update({ password: p1 }).then(() => { bootstrap.Modal.getInstance(document.getElementById('resetModal')).hide(); alert("تم تحديث كلمة المرور بنجاح"); });
         }
 
-        // دالة استلام المهمة
         function receiveTask(id) {
             if(!confirm('هل أنت متأكد من استلام هذه المهمة؟')) return;
-            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' })
-                .then(() => alert('تم تأكيد الاستلام بنجاح!'))
-                .catch(err => alert(err.message));
+            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' }).then(() => alert('تم تأكيد الاستلام بنجاح!')).catch(err => alert(err.message));
         }
 
-        // دالة فتح نافذة تحديث حالة المهمة
         function openTaskUpdateModal(id) {
             currentUpdateTaskId = id;
             document.getElementById('taskUpdateComment').value = '';
             new bootstrap.Modal(document.getElementById('taskUpdateModal')).show();
         }
 
-        // دالة تأكيد تحديث حالة المهمة (بعد التأكد من الكومنت)
         function confirmTaskUpdate() {
             const newStatus = document.getElementById('taskUpdateStatus').value;
             const comment = document.getElementById('taskUpdateComment').value;
-
-            if(comment.trim() === '') {
-                alert('يجب كتابة تعليق إجباري لتحديث الحالة!');
-                return;
-            }
-
-            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment })
-                .then(() => {
-                    bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide();
-                    alert('تم تحديث حالة المهمة بنجاح!');
-                })
-                .catch(err => alert(err.message));
+            if(comment.trim() === '') { alert('يجب كتابة تعليق إجباري لتحديث الحالة!'); return; }
+            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide(); alert('تم تحديث حالة المهمة بنجاح!'); }).catch(err => alert(err.message));
         }
 
         function exportToExcel(tableId, fileName) {
@@ -589,22 +540,9 @@
             let data = [];
             snap.forEach(child => {
                 const r = child.val();
-                data.push({
-                    "التاريخ": r.timestamp || '',
-                    "اسم الموظف": r.empName || '',
-                    "القسم": r.empDept || '',
-                    "الصنف المطلوب": r.item || '',
-                    "الكمية": r.qty || '',
-                    "الوحدة": r.unit || '',
-                    "الأولوية": r.priority || '',
-                    "التفاصيل": r.purpose || '',
-                    "الحالة": r.status || '',
-                    "تعليق المشتريات": r.comment || ''
-                });
+                data.push({ "التاريخ": r.timestamp || '', "اسم الموظف": r.empName || '', "القسم": r.empDept || '', "الصنف المطلوب": r.item || '', "الكمية": r.qty || '', "الوحدة": r.unit || '', "الأولوية": r.priority || '', "التفاصيل": r.purpose || '', "الحالة": r.status || '', "تعليق المشتريات": r.comment || '' });
             });
-
             if(data.length === 0) { alert("لا توجد طلبات لتصديرها!"); return; }
-
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Requests");
