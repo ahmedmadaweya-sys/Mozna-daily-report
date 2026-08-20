@@ -13,7 +13,8 @@
         .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
         .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
         .table th { background-color: #e9ecef; }
-        .request-card { border-right: 5px solid #007bff; }
+        .request-card { border-right: 5px solid #007bff; cursor: pointer; transition: 0.2s; }
+        .request-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
         .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
     </style>
 </head>
@@ -48,7 +49,6 @@
                         <button id="adminReportBtn" onclick="openAttendanceReportModal()" class="btn btn-warning d-none"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</button>
                     </div>
                     
-                    <!-- كارد الحضور والانصراف (للموظفين) -->
                     <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
                         <div class="card-body text-center">
                             <h4 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h4>
@@ -56,28 +56,15 @@
                                 <i class="fas fa-sign-in-alt"></i> تسجيل حضور
                             </button>
                             <div class="row mt-3">
-                                <div class="col-md-4">
-                                    <h6>وقت آخر حضور</h6>
-                                    <p id="checkInTime" class="fw-bold text-success">--:--</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <h6>وقت آخر انصراف</h6>
-                                    <p id="checkOutTime" class="fw-bold text-danger">--:--</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <h6>إجمالي ساعات اليوم</h6>
-                                    <p id="dailyHours" class="fw-bold text-primary">0 ساعة</p>
-                                </div>
+                                <div class="col-md-4"><h6>وقت آخر حضور</h6><p id="checkInTime" class="fw-bold text-success">--:--</p></div>
+                                <div class="col-md-4"><h6>وقت آخر انصراف</h6><p id="checkOutTime" class="fw-bold text-danger">--:--</p></div>
+                                <div class="col-md-4"><h6>إجمالي ساعات اليوم</h6><p id="dailyHours" class="fw-bold text-primary">0 ساعة</p></div>
                             </div>
                             <hr>
-                            <div class="mt-2">
-                                <h6>إجمالي ساعات العمل هذا الشهر</h6>
-                                <p id="monthlyHours" class="fw-bold text-info fs-5">0 ساعة</p>
-                            </div>
+                            <div class="mt-2"><h6>إجمالي ساعات العمل هذا الشهر</h6><p id="monthlyHours" class="fw-bold text-info fs-5">0 ساعة</p></div>
                         </div>
                     </div>
 
-                    <!-- كروت الإحصائيات (للمدير فقط) -->
                     <div id="statsCards" class="row d-none">
                         <div class="col-md-3 mb-4"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>المستخدمين</h5><h2 id="statUsers" class="display-4 mb-0">0</h2></div><i class="fas fa-users fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>الأقسام</h5><h2 id="statDepts" class="display-4 mb-0">0</h2></div><i class="fas fa-building fa-3x opacity-50"></i></div></div></div>
@@ -124,7 +111,7 @@
                     <div class="d-flex justify-content-between mb-3">
                         <h2>الطلبات والمشتريات</h2>
                         <div>
-                            <button onclick="exportRequestsToExcel()" class="btn btn-success"><i class="fas fa-file-excel"></i> سحب كل الطلبات Excel</button>
+                            <button id="exportRequestsBtn" onclick="exportRequestsToExcel()" class="btn btn-success d-none"><i class="fas fa-file-excel"></i> سحب الطلبات Excel</button>
                             <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
                         </div>
                     </div>
@@ -141,6 +128,20 @@
     <div class="modal fade" id="resetModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="password" id="newPass" class="form-control mb-2" placeholder="كلمة المرور الجديدة"><input type="password" id="confirmPass" class="form-control" placeholder="تأكيد كلمة المرور"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="confirmReset()">حفظ كلمة المرور</button></div></div></div></div>
     <div class="modal fade" id="taskUpdateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">الحالة الجديدة</label><select id="taskUpdateStatus" class="form-control mb-3"><option value="قيد التنفيذ">قيد التنفيذ</option><option value="مكتملة">مكتملة</option></select><label class="form-label">ملاحظات / سبب التحديث (إجباري)</label><textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button></div></div></div></div>
 
+    <!-- Modal تفاصيل الطلب -->
+    <div class="modal fade" id="requestDetailsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-shopping-cart"></i> تفاصيل الطلب</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="requestDetailsBody"></div>
+                <div class="modal-footer" id="requestDetailsFooter"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal تقارير الحضور -->
     <div class="modal fade" id="attendanceReportModal" tabindex="-1">
         <div class="modal-dialog">
@@ -153,16 +154,9 @@
                     <label class="form-label fw-bold">اختر الموظفين:</label>
                     <small class="d-block text-muted mb-2">(للاختيار المتعدد استمر بالضغط على Ctrl أو Shift)</small>
                     <select id="reportEmployees" class="form-control mb-3" multiple size="5" style="height: 150px;"></select>
-                    
                     <label class="form-label fw-bold">نوع التقرير:</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked>
-                        <label class="form-check-label" for="reportSummary">تقرير إجمالي الساعات (شيت واحد للكل)</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed">
-                        <label class="form-check-label" for="reportDetailed">تقرير يومي تفصيلي (تبويب لكل موظف)</label>
-                    </div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked><label class="form-check-label" for="reportSummary">تقرير إجمالي الساعات (شيت واحد للكل)</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed"><label class="form-check-label" for="reportDetailed">تقرير يومي تفصيلي (تبويب لكل موظف)</label></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -200,6 +194,7 @@
         let currentUserData = null; 
         let currentUpdateTaskId = ''; 
         let currentDayRef = null; 
+        let currentRequestId = null;
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -244,7 +239,6 @@
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
-            // إظهار كارد الحضور للموظف، وكروت الإحصائيات للمدير
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             document.getElementById('statsCards').classList.toggle('d-none', !isAdmin);
             document.getElementById('adminWelcomeAlert').classList.toggle('d-none', !isAdmin);
@@ -278,20 +272,16 @@
 
         function loadAttendanceStatus() {
             if (!currentUserData || currentUserData.role === 'admin') return;
-
             const now = new Date();
             const day = now.getDate();
             const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
-
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
 
             currentDayRef.on('value', snap => {
                 const data = snap.val() || {};
                 const btn = document.getElementById('attendanceBtn');
-                
                 const totalHours = data.totalHours || 0;
                 document.getElementById('dailyHours').innerText = `${parseFloat(totalHours).toFixed(1)} ساعة`;
-                
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
                     const activeSes = data.sessions[data.activeSession];
                     btn.className = 'btn btn-danger btn-lg w-50 mb-3';
@@ -307,9 +297,7 @@
                     if (data.sessions) {
                         const sessionsArray = Object.values(data.sessions);
                         const lastSession = sessionsArray[sessionsArray.length - 1];
-                        if (lastSession && lastSession.checkOut) {
-                            lastCheckOut = lastSession.checkOut;
-                        }
+                        if (lastSession && lastSession.checkOut) lastCheckOut = lastSession.checkOut;
                     }
                     document.getElementById('checkInTime').innerText = '--:--';
                     document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
@@ -320,9 +308,7 @@
                 let totalMonthHours = 0;
                 snap.forEach(daySnap => {
                     const dayData = daySnap.val();
-                    if (dayData.totalHours) {
-                        totalMonthHours += parseFloat(dayData.totalHours);
-                    }
+                    if (dayData.totalHours) totalMonthHours += parseFloat(dayData.totalHours);
                 });
                 document.getElementById('monthlyHours').innerText = `${totalMonthHours.toFixed(1)} ساعة`;
             });
@@ -334,7 +320,6 @@
                 const data = snap.val() || {};
                 const now = new Date();
                 const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-
                 if (!data.activeSession) {
                     const newSessionRef = currentDayRef.child('sessions').push();
                     newSessionRef.set({ checkIn: timeString, checkOut: null, duration: 0 }).then(() => {
@@ -347,14 +332,9 @@
                     const [inHours, inMinutes] = activeSesData.checkIn.split(':').map(Number);
                     let checkInDate = new Date();
                     checkInDate.setHours(inHours, inMinutes, 0, 0);
-
                     const diffMs = now - checkInDate;
                     const diffHrs = diffMs / (1000 * 60 * 60);
-                    
-                    currentDayRef.child(`sessions/${activeSesId}`).update({ 
-                        checkOut: timeString, 
-                        duration: diffHrs.toFixed(2) 
-                    }).then(() => {
+                    currentDayRef.child(`sessions/${activeSesId}`).update({ checkOut: timeString, duration: diffHrs.toFixed(2) }).then(() => {
                         const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
                         currentDayRef.update({ activeSession: null, totalHours: newTotal });
                         alert('تم تسجيل انصرافك بنجاح. مدة هذه الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
@@ -380,12 +360,7 @@
             const select = document.getElementById('reportEmployees');
             const selectedUsers = Array.from(select.selectedOptions).map(opt => ({ id: opt.value, name: opt.text }));
             const reportType = document.querySelector('input[name="reportType"]:checked').value;
-
-            if (selectedUsers.length === 0) {
-                alert('من فضلك اختر موظف واحد على الأقل!');
-                return;
-            }
-
+            if (selectedUsers.length === 0) { alert('من فضلك اختر موظف واحد على الأقل!'); return; }
             const attSnap = await db.ref('attendance').once('value');
             const allAttendance = attSnap.val() || {};
             const wb = XLSX.utils.book_new();
@@ -397,46 +372,34 @@
                     for (const monthYear in userAtt) {
                         let monthTotal = 0;
                         for (const day in userAtt[monthYear]) {
-                            if (userAtt[monthYear][day].totalHours) {
-                                monthTotal += parseFloat(userAtt[monthYear][day].totalHours);
-                            }
+                            if (userAtt[monthYear][day].totalHours) monthTotal += parseFloat(userAtt[monthYear][day].totalHours);
                         }
-                        summaryData.push({
-                            "اسم الموظف": user.name,
-                            "الشهر": monthYear,
-                            "إجمالي الساعات": monthTotal.toFixed(2)
-                        });
+                        summaryData.push({ "اسم الموظف": user.name, "الشهر": monthYear, "إجمالي الساعات": monthTotal.toFixed(2) });
                     }
                 });
-
                 if (summaryData.length === 0) { alert("لا توجد بيانات حضور للموظفين المختارين."); return; }
                 const ws = XLSX.utils.json_to_sheet(summaryData);
                 XLSX.utils.book_append_sheet(wb, ws, "ملخص الحضور");
                 XLSX.writeFile(wb, "Attendance_Summary.xlsx");
-
             } else {
                 let hasData = false;
                 selectedUsers.forEach(user => {
                     const userAtt = allAttendance[user.id] || {};
                     let userRows = [];
                     let daysArray = [];
-
                     for (const monthYear in userAtt) {
                         for (const day in userAtt[monthYear]) {
                             daysArray.push({ monthYear, day, data: userAtt[monthYear][day] });
                         }
                     }
-
                     daysArray.sort((a, b) => {
                         if (a.monthYear !== b.monthYear) return a.monthYear.localeCompare(b.monthYear);
                         return parseInt(a.day) - parseInt(b.day);
                     });
-
                     daysArray.forEach(item => {
                         const dateStr = `${item.day}-${item.monthYear}`;
                         const dayData = item.data;
                         const totalDayHours = dayData.totalHours ? parseFloat(dayData.totalHours).toFixed(2) : "0";
-                        
                         if (dayData.sessions) {
                             Object.values(dayData.sessions).forEach(ses => {
                                 userRows.push({
@@ -449,7 +412,6 @@
                             });
                         }
                     });
-
                     if (userRows.length > 0) {
                         hasData = true;
                         const ws = XLSX.utils.json_to_sheet(userRows);
@@ -457,11 +419,9 @@
                         XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employee");
                     }
                 });
-
                 if (!hasData) { alert("لا توجد بيانات تفصيلية للموظفين المختارين."); return; }
                 XLSX.writeFile(wb, "Detailed_Attendance.xlsx");
             }
-
             bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide();
             alert("تم إنشاء التقرير بنجاح!");
         }
@@ -491,11 +451,9 @@
                 document.getElementById('statTasks').innerText = snap.numChildren();
                 let html = '';
                 const isAdmin = currentUserData && currentUserData.role === 'admin';
-                
                 snap.forEach(child => {
                     const t = child.val();
                     if (!isAdmin && t.userId !== currentUserData.id) return;
-
                     let actions = '';
                     if (isAdmin) {
                         actions = `<button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
@@ -517,18 +475,38 @@
                 document.getElementById('statRequests').innerText = snap.numChildren();
                 let html = '';
                 const isAdmin = currentUserData && currentUserData.role === 'admin';
+                let canExport = isAdmin;
                 
                 snap.forEach(child => {
                     const r = child.val();
-                    const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
-                    if (!isAdmin && r.empId !== currentUserData.id) return;
+                    const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
+                    
+                    // صلاحيات الرؤية: الأدمن يرى الكل، القسم الموجه إليه يرى الطلب، الموظف يرى طلباته
+                    if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return;
+                    
+                    if (isTargetDept) canExport = true;
 
-                    let adminButtons = isAdmin ? `<div class="d-flex gap-1 mt-2"><button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i> موافقة</button><button onclick="updateRequestStatus('${child.key}', 'تأجيل')" class="btn btn-sm btn-warning flex-grow-1"><i class="fas fa-pause"></i> تأجيل</button><button onclick="updateRequestStatus('${child.key}', 'مرفوض')" class="btn btn-sm btn-danger flex-grow-1"><i class="fas fa-times"></i> رفض</button><button onclick="openDeleteModal('${child.key}', 'requests')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></div>` : '';
+                    const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
                     let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger ms-2">عاجل</span>` : '';
 
-                    html += `<div class="col-md-6 mb-3"><div class="card shadow-sm request-card border-${statusColor}"><div class="card-header d-flex justify-content-between align-items-center bg-light"><h6 class="mb-0">${r.item} ${priorityBadge}</h6><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></div><div class="card-body"><p class="mb-1"><i class="fas fa-user text-primary"></i> <b>الموظف:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p><p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p><p class="mb-1"><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل:</b> ${r.purpose || 'لا يوجد'}</p><hr class="my-2"><label class="small text-muted">تعليق المشتريات / سبب الرفض:</label><textarea class="form-control form-control-sm mb-2" id="comment_${child.key}" ${isAdmin ? '' : 'readonly'} placeholder="اكتب تعليق هنا...">${r.comment || ''}</textarea>${adminButtons}</div></div></div>`;
+                    html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm request-card border-${statusColor}" onclick="openRequestDetails('${child.key}')">
+                            <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                                <h6 class="mb-0">${r.item} ${priorityBadge}</h6>
+                                <span class="badge bg-${statusColor}">${r.status || 'جديد'}</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-1"><i class="fas fa-user text-primary"></i> <b>طالب الطلب:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
+                                <p class="mb-1"><i class="fas fa-building text-primary"></i> <b>موجه إلى:</b> ${r.targetDeptName || 'غير محدد'}</p>
+                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
+                            </div>
+                        </div>
+                    </div>`;
                 });
+                
                 document.getElementById('requestsList').innerHTML = html || '<div class="alert alert-info w-100">لا توجد طلبات حالياً.</div>';
+                document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
             });
         }
 
@@ -574,7 +552,20 @@
                 title.innerText = 'تسجيل طلب شراء جديد';
                 let currentName = currentUserData ? currentUserData.name : '';
                 let currentDept = currentUserData ? (currentUserData.deptName || 'غير محدد') : '';
-                body.innerHTML = `<div class="mb-2"><label class="small text-muted">اسم الموظف</label><input type="text" id="reqUser" class="form-control" value="${currentName}" readonly></div><div class="mb-2"><label class="small text-muted">القسم</label><input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly></div><div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4"></div><div class="row mb-2"><div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" placeholder="العدد"></div><div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة">قطعة</option><option value="كرتونة">كرتونة</option><option value="علبة">علبة</option><option value="عبوة">عبوة</option></select></div></div><div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية">عادية</option><option value="عاجلة">عاجلة</option></select></div><div class="mb-2"><label class="small text-muted">تفاصيل إضافية / الغرض</label><textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea></div>`;
+                
+                const depsSnap = await db.ref('departments').once('value');
+                let targetDepOpts = '<option value="">-- اختر القسم الموجه إليه الطلب --</option>';
+                depsSnap.forEach(d => { targetDepOpts += `<option value="${d.key}" data-name="${d.val().name}">${d.val().name}</option>`; });
+
+                body.innerHTML = `
+                    <div class="mb-2"><label class="small text-muted">اسم الموظف</label><input type="text" id="reqUser" class="form-control" value="${currentName}" readonly></div>
+                    <div class="mb-2"><label class="small text-muted">القسم التابع له</label><input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly></div>
+                    <div class="mb-2"><label class="small text-muted">وجهة الطلب (القسم الموجه إليه)</label><select id="reqTargetDept" class="form-control" required>${targetDepOpts}</select></div>
+                    <div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4"></div>
+                    <div class="row mb-2"><div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" placeholder="العدد"></div><div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة">قطعة</option><option value="كرتونة">كرتونة</option><option value="علبة">علبة</option><option value="عبوة">عبوة</option></select></div></div>
+                    <div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية">عادية</option><option value="عاجلة">عاجلة</option></select></div>
+                    <div class="mb-2"><label class="small text-muted">تفاصيل إضافية / الغرض</label><textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea></div>
+                `;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
@@ -595,9 +586,84 @@
                 let empId = currentUserData ? currentUserData.id : '';
                 let empName = currentUserData ? currentUserData.name : '';
                 let empDept = currentUserData ? (currentUserData.deptName || '') : '';
-                db.ref('requests').push({ empId: empId, empName: empName, empDept: empDept, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, unit: document.getElementById('reqUnit').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                
+                const targetDeptSel = document.getElementById('reqTargetDept');
+                if (!targetDeptSel.value) { alert('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
+                const targetDeptName = targetDeptSel.options[targetDeptSel.selectedIndex].text;
+
+                db.ref('requests').push({
+                    empId: empId,
+                    empName: empName,
+                    empDept: empDept,
+                    targetDeptId: targetDeptSel.value,
+                    targetDeptName: targetDeptName,
+                    item: document.getElementById('reqItem').value,
+                    qty: document.getElementById('reqQty').value,
+                    unit: document.getElementById('reqUnit').value,
+                    priority: document.getElementById('reqPriority').value,
+                    purpose: document.getElementById('reqPurpose').value,
+                    status: 'جديد',
+                    comment: '',
+                    timestamp: new Date().toLocaleDateString()
+                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             }
         }
+
+        // ================= دوال تفاصيل الطلب =================
+        async function openRequestDetails(id) {
+            currentRequestId = id;
+            const snap = await db.ref('requests/' + id).once('value');
+            const r = snap.val();
+            if (!r) return;
+
+            const isAdmin = currentUserData && currentUserData.role === 'admin';
+            const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
+            const canTakeAction = isAdmin || isTargetDept;
+
+            const body = document.getElementById('requestDetailsBody');
+            body.innerHTML = `
+                <h5 class="mb-3">${r.item} ${r.priority === 'عاجلة' ? '<span class="badge bg-danger">عاجل</span>' : ''}</h5>
+                <p><i class="fas fa-user text-primary"></i> <b>طالب الطلب:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
+                <p><i class="fas fa-building text-primary"></i> <b>موجه إلى قسم:</b> ${r.targetDeptName || 'غير محدد'}</p>
+                <p><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
+                <p><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل / الغرض:</b> ${r.purpose || 'لا يوجد'}</p>
+                <hr>
+                <label class="small text-muted">تعليق المشتريات / سبب الرفض:</label>
+                <textarea class="form-control mb-2" id="detailComment" ${canTakeAction ? '' : 'readonly'} placeholder="لا يوجد تعليق">${r.comment || ''}</textarea>
+            `;
+
+            const footer = document.getElementById('requestDetailsFooter');
+            if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
+                    <button type="button" class="btn btn-warning" onclick="updateRequestStatusFromModal('تأجيل')"><i class="fas fa-pause"></i> تأجيل</button>
+                    <button type="button" class="btn btn-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
+                    ${isAdmin ? `<button type="button" class="btn btn-outline-danger" onclick="deleteRequestFromModal()"><i class="fas fa-trash"></i></button>` : ''}
+                `;
+            } else {
+                footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+            }
+
+            new bootstrap.Modal(document.getElementById('requestDetailsModal')).show();
+        }
+
+        function updateRequestStatusFromModal(status) {
+            const comment = document.getElementById('detailComment').value;
+            db.ref('requests/' + currentRequestId).update({ status: status, comment: comment }).then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
+                alert('تم تحديث حالة الطلب إلى: ' + status);
+            }).catch(err => alert(err.message));
+        }
+
+        function deleteRequestFromModal() {
+            if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+            db.ref('requests/' + currentRequestId).remove().then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
+                alert('تم حذف الطلب بنجاح');
+            }).catch(err => alert(err.message));
+        }
+        // =========================================================
 
         function updateRequestStatus(id, status) {
             const comment = document.getElementById('comment_' + id).value;
@@ -690,7 +756,7 @@
             let data = [];
             snap.forEach(child => {
                 const r = child.val();
-                data.push({ "التاريخ": r.timestamp || '', "اسم الموظف": r.empName || '', "القسم": r.empDept || '', "الصنف المطلوب": r.item || '', "الكمية": r.qty || '', "الوحدة": r.unit || '', "الأولوية": r.priority || '', "التفاصيل": r.purpose || '', "الحالة": r.status || '', "تعليق المشتريات": r.comment || '' });
+                data.push({ "التاريخ": r.timestamp || '', "اسم الموظف": r.empName || '', "قسم الموظف": r.empDept || '', "موجه إلى قسم": r.targetDeptName || '', "الصنف المطلوب": r.item || '', "الكمية": r.qty || '', "الوحدة": r.unit || '', "الأولوية": r.priority || '', "التفاصيل": r.purpose || '', "الحالة": r.status || '', "تعليق المشتريات": r.comment || '' });
             });
             if(data.length === 0) { alert("لا توجد طلبات لتصديرها!"); return; }
             const ws = XLSX.utils.json_to_sheet(data);
