@@ -7,6 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- مكتبة الإشعارات Toastr -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .sidebar { min-height: 100vh; background-color: #343a40; color: white; }
@@ -16,6 +19,8 @@
         .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
         .req-row { cursor: pointer; transition: 0.2s; }
         .req-row:hover { background-color: #f1f3f5; }
+        .quick-link { transition: 0.3s; }
+        .quick-link:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
     </style>
 </head>
 <body>
@@ -49,6 +54,7 @@
                         <button id="adminReportBtn" onclick="openAttendanceReportModal()" class="btn btn-warning d-none"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</button>
                     </div>
                     
+                    <!-- كارد الحضور والانصراف -->
                     <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
                         <div class="card-body text-center">
                             <h4 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h4>
@@ -65,14 +71,23 @@
                         </div>
                     </div>
 
-                    <div id="statsCards" class="row d-none">
-                        <div class="col-md-3 mb-4"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>المستخدمين</h5><h2 id="statUsers" class="display-4 mb-0">0</h2></div><i class="fas fa-users fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-3 mb-4"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>الأقسام</h5><h2 id="statDepts" class="display-4 mb-0">0</h2></div><i class="fas fa-building fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-3 mb-4"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي المهام</h5><h2 id="statTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-3 mb-4"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات شراء</h5><h2 id="statRequests" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
+                    <!-- كروت الإحصائيات الذكية -->
+                    <div id="statsCards" class="row d-none mb-4">
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات تنتظر موافقتك</h5><h2 id="statPendingReq" class="display-4 mb-0">0</h2></div><i class="fas fa-bell fa-3x opacity-50"></i></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>مهام لم تُستلم بعد</h5><h2 id="statUnreceivedTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي طلبات اليوم</h5><h2 id="statTotalReq" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
                     </div>
-<div id="adminWelcomeAlert" class="mt-4 alert alert-info d-none"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
+
+                    <!-- اختصارات سريعة للموظف -->
+                    <div id="employeeShortcuts" class="row d-none mb-4">
+                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-primary text-white" onclick="showSection('requests', null)"><div class="card-body text-center"><i class="fas fa-plus-circle fa-2x mb-2"></i><h5>تسجيل طلب شراء</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-success text-white" onclick="showSection('tasks', null)"><div class="card-body text-center"><i class="fas fa-tasks fa-2x mb-2"></i><h5>عرض مهامي</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-info text-white" onclick="showSection('requests', null)"><div class="card-body text-center"><i class="fas fa-history fa-2x mb-2"></i><h5>متابعة طلباتي</h5></div></div></div>
+                    </div>
+
+                    <div id="adminWelcomeAlert" class="mt-4 alert alert-info d-none"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
                 </div>
+
                 <div id="usersSection" style="display: none;">
                     <div class="d-flex justify-content-between mb-3">
                         <h2>إدارة المستخدمين</h2>
@@ -201,6 +216,25 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
+        // إعدادات الإشعارات
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": true,
+            "positionClass": "toast-bottom-left",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "3000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+
         let currentDelete = { id: '', type: '' };
         let currentAdd = { type: '' };
         let currentResetUserId = '';
@@ -213,8 +247,8 @@
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
-                .then(() => document.getElementById('loginError').innerText = '')
-                .catch(err => document.getElementById('loginError').innerText = 'خطأ: ' + err.message);
+                .then(() => { document.getElementById('loginError').innerText = ''; toastr.success('تم تسجيل الدخول بنجاح'); })
+                .catch(err => { document.getElementById('loginError').innerText = 'خطأ: ' + err.message; toastr.error('خطأ: ' + err.message); });
         }
         function logout() { auth.signOut(); }
 
@@ -255,6 +289,7 @@
             
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             document.getElementById('statsCards').classList.toggle('d-none', !isAdmin);
+            document.getElementById('employeeShortcuts').classList.toggle('d-none', isAdmin);
             document.getElementById('adminWelcomeAlert').classList.toggle('d-none', !isAdmin);
             document.getElementById('adminReportBtn').classList.toggle('d-none', !isAdmin);
             
@@ -338,7 +373,7 @@
                     const newSessionRef = currentDayRef.child('sessions').push();
                     newSessionRef.set({ checkIn: timeString, checkOut: null, duration: 0 }).then(() => {
                         currentDayRef.update({ activeSession: newSessionRef.key });
-                        alert('تم تسجيل حضورك بنجاح في: ' + formatTime(timeString));
+                        toastr.success('تم تسجيل حضورك في: ' + formatTime(timeString));
                     });
                 } else {
                     const activeSesId = data.activeSession;
@@ -351,7 +386,7 @@
                     currentDayRef.child(`sessions/${activeSesId}`).update({ checkOut: timeString, duration: diffHrs.toFixed(2) }).then(() => {
                         const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
                         currentDayRef.update({ activeSession: null, totalHours: newTotal });
-                        alert('تم تسجيل انصرافك بنجاح. مدة هذه الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
+                        toastr.info('تم تسجيل انصرافك. مدة الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
                     });
                 }
             });
@@ -374,7 +409,7 @@
             const select = document.getElementById('reportEmployees');
             const selectedUsers = Array.from(select.selectedOptions).map(opt => ({ id: opt.value, name: opt.text }));
             const reportType = document.querySelector('input[name="reportType"]:checked').value;
-            if (selectedUsers.length === 0) { alert('من فضلك اختر موظف واحد على الأقل!'); return; }
+            if (selectedUsers.length === 0) { toastr.warning('من فضلك اختر موظف واحد على الأقل!'); return; }
             const attSnap = await db.ref('attendance').once('value');
             const allAttendance = attSnap.val() || {};
             const wb = XLSX.utils.book_new();
@@ -391,7 +426,7 @@
                         summaryData.push({ "اسم الموظف": user.name, "الشهر": monthYear, "إجمالي الساعات": monthTotal.toFixed(2) });
                     }
                 });
-                if (summaryData.length === 0) { alert("لا توجد بيانات حضور للموظفين المختارين."); return; }
+                if (summaryData.length === 0) { toastr.warning("لا توجد بيانات حضور للموظفين المختارين."); return; }
                 const ws = XLSX.utils.json_to_sheet(summaryData);
                 XLSX.utils.book_append_sheet(wb, ws, "ملخص الحضور");
                 XLSX.writeFile(wb, "Attendance_Summary.xlsx");
@@ -433,11 +468,11 @@
                         XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employee");
                     }
                 });
-                if (!hasData) { alert("لا توجد بيانات تفصيلية للموظفين المختارين."); return; }
+                if (!hasData) { toastr.warning("لا توجد بيانات تفصيلية للموظفين المختارين."); return; }
                 XLSX.writeFile(wb, "Detailed_Attendance.xlsx");
             }
             bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide();
-            alert("تم إنشاء التقرير بنجاح!");
+            toastr.success("تم إنشاء التقرير بنجاح!");
         }
         // =========================================================
 
@@ -465,8 +500,14 @@
                 document.getElementById('statTasks').innerText = snap.numChildren();
                 let html = '';
                 const isAdmin = currentUserData && currentUserData.role === 'admin';
+                let unreceivedCount = 0;
+                let myActiveTasks = 0;
+                
                 snap.forEach(child => {
                     const t = child.val();
+                    if (t.status === 'جديدة') unreceivedCount++;
+                    if (!isAdmin && t.userId === currentUserData.id && t.status !== 'مكتملة') myActiveTasks++;
+
                     if (!isAdmin && t.userId !== currentUserData.id) return;
                     let actions = '';
                     if (isAdmin) {
@@ -483,6 +524,9 @@
                     html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'} ${commentText}</td><td>${actions}</td></tr>`;
                 });
                 document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام حالياً.</td></tr>';
+                
+                // تحديث إحصائيات الأدمن والموظف
+                document.getElementById('statUnreceivedTasks').innerText = isAdmin ? unreceivedCount : myActiveTasks;
             });
 
             db.ref('requests').on('value', snap => {
@@ -490,11 +534,16 @@
                 let html = '';
                 const isAdmin = currentUserData && currentUserData.role === 'admin';
                 let canExport = isAdmin;
+                let pendingReqForAdmin = 0;
+                let myPendingReq = 0;
                 
                 snap.forEach(child => {
                     const r = child.val();
                     const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
                     
+                    if (r.status === 'جديد') pendingReqForAdmin++;
+                    if (r.empId === currentUserData.id && (r.status === 'جديد' || r.status === 'تأجيل')) myPendingReq++;
+
                     if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return;
                     if (isTargetDept) canExport = true;
 
@@ -514,6 +563,10 @@
                 
                 document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات حالياً.</td></tr>';
                 document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
+                
+                // تحديث إحصائيات الأدمن والموظف
+                document.getElementById('statPendingReq').innerText = isAdmin ? pendingReqForAdmin : myPendingReq;
+                document.getElementById('statTotalReq').innerText = snap.numChildren();
             });
         }
 
@@ -581,21 +634,21 @@
         function confirmAdd() {
             if (currentAdd.type === 'user') {
                 const deptSel = document.getElementById('newDept');
-                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المستخدم بنجاح'); }).catch(err => toastr.error(err.message));
             } else if (currentAdd.type === 'department') {
                 const managerSel = document.getElementById('depManager');
-                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة القسم بنجاح'); }).catch(err => toastr.error(err.message));
             } else if (currentAdd.type === 'task') {
                 const userSel = document.getElementById('taskUser');
                 const depSel = document.getElementById('taskDept');
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة بنجاح'); }).catch(err => toastr.error(err.message));
             } else if (currentAdd.type === 'request') {
                 let empId = currentUserData ? currentUserData.id : '';
                 let empName = currentUserData ? currentUserData.name : '';
                 let empDept = currentUserData ? (currentUserData.deptName || '') : '';
                 
                 const targetDeptSel = document.getElementById('reqTargetDept');
-                if (!targetDeptSel.value) { alert('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
+                if (!targetDeptSel.value) { toastr.warning('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
                 const targetDeptName = targetDeptSel.options[targetDeptSel.selectedIndex].text;
 
                 const counterRef = db.ref('counters/requests');
@@ -620,8 +673,8 @@
                         timestamp: new Date().toLocaleDateString()
                     }).then(() => {
                         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-                        alert('تم تسجيل طلبك بنجاح برقم: #' + newReqId);
-                    }).catch(err => alert(err.message));
+                        toastr.success('تم تسجيل طلبك بنجاح برقم: #' + newReqId);
+                    }).catch(err => toastr.error(err.message));
                 });
             }
         }
@@ -650,8 +703,6 @@
             `;
 
             const footer = document.getElementById('requestDetailsFooter');
-            
-            // لو الأدمن، يقدر يعدل ويحذف ويعمل موافقة
             if (isAdmin) {
                 footer.innerHTML = `
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
@@ -663,9 +714,7 @@
                         <button type="button" class="btn btn-outline-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
                     ` : ''}
                 `;
-            } 
-            // لو موظف قسم مشتريات (مش أدمن) يقدر يعمل موافقة وتأجيل ورفض بس
-            else if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
+            } else if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
                 footer.innerHTML = `
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
                     <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
@@ -679,7 +728,6 @@
             new bootstrap.Modal(document.getElementById('requestDetailsModal')).show();
         }
 
-        // فتح نافذة التعديل من جوه تفاصيل الطلب
         function openEditRequestFromModal() {
             bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
             openEditModal('request', currentRequestId);
@@ -689,21 +737,21 @@
             const comment = document.getElementById('detailComment').value;
             db.ref('requests/' + currentRequestId).update({ status: status, comment: comment }).then(() => {
                 bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
-                alert('تم تحديث حالة الطلب إلى: ' + status);
-            }).catch(err => alert(err.message));
+                toastr.success('تم تحديث حالة الطلب إلى: ' + status);
+            }).catch(err => toastr.error(err.message));
         }
 
         function deleteRequestFromModal() {
             if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
             db.ref('requests/' + currentRequestId).remove().then(() => {
                 bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
-                alert('تم حذف الطلب بنجاح');
-            }).catch(err => alert(err.message));
+                toastr.success('تم حذف الطلب بنجاح');
+            }).catch(err => toastr.error(err.message));
         }
         // =========================================================
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
-        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide()).catch(err => alert(err.message)); }
+        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف بنجاح'); }).catch(err => toastr.error(err.message)); }
 
         async function openEditModal(type, id) {
             currentEdit = { id, type: type + 's' };
@@ -732,9 +780,7 @@
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option><option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option><option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option></select>`;
-            } 
-            // ============ تعديل الطلب (للأدمن) ============
-            else if (type === 'request') {
+            } else if (type === 'request') {
                 title.innerText = 'تعديل الطلب #' + (data.reqId || '');
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم الموجه إليه --</option>';
@@ -767,9 +813,7 @@
             } else if (currentEdit.type === 'tasks') {
                 const u=document.getElementById('taskUser'), d=document.getElementById('taskDept');
                 updates = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptId: d.value, deptName: d.options[d.selectedIndex].text, status: document.getElementById('taskStatus').value };
-            } 
-            // ============ حفظ تعديل الطلب ============
-            else if (currentEdit.type === 'requests') {
+            } else if (currentEdit.type === 'requests') {
                 const targetDeptSel = document.getElementById('reqTargetDept');
                 updates = {
                     item: document.getElementById('reqItem').value,
@@ -782,19 +826,19 @@
                     status: document.getElementById('reqStatus').value
                 };
             }
-            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()'); alert('تم حفظ التعديلات بنجاح!'); }).catch(err => alert(err.message));
+            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()'); toastr.success('تم حفظ التعديلات بنجاح!'); }).catch(err => toastr.error(err.message));
         }
 
         function openResetModal(userId) { currentResetUserId = userId; document.getElementById('newPass').value=''; document.getElementById('confirmPass').value=''; new bootstrap.Modal(document.getElementById('resetModal')).show(); }
         function confirmReset() {
             const p1 = document.getElementById('newPass').value, p2 = document.getElementById('confirmPass').value;
-            if (p1 !== p2 || p1.length < 6) { alert("كلمات المرور غير متطابقة أو أقل من 6 أحرف!"); return; }
-            db.ref('users/' + currentResetUserId).update({ password: p1 }).then(() => { bootstrap.Modal.getInstance(document.getElementById('resetModal')).hide(); alert("تم تحديث كلمة المرور بنجاح"); });
+            if (p1 !== p2 || p1.length < 6) { toastr.warning("كلمات المرور غير متطابقة أو أقل من 6 أحرف!"); return; }
+            db.ref('users/' + currentResetUserId).update({ password: p1 }).then(() => { bootstrap.Modal.getInstance(document.getElementById('resetModal')).hide(); toastr.success("تم تحديث كلمة المرور بنجاح"); });
         }
 
         function receiveTask(id) {
             if(!confirm('هل أنت متأكد من استلام هذه المهمة؟')) return;
-            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' }).then(() => alert('تم تأكيد الاستلام بنجاح!')).catch(err => alert(err.message));
+            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' }).then(() => toastr.success('تم تأكيد الاستلام بنجاح!')).catch(err => toastr.error(err.message));
         }
 
         function openTaskUpdateModal(id) {
@@ -806,14 +850,15 @@
         function confirmTaskUpdate() {
             const newStatus = document.getElementById('taskUpdateStatus').value;
             const comment = document.getElementById('taskUpdateComment').value;
-            if(comment.trim() === '') { alert('يجب كتابة تعليق إجباري لتحديث الحالة!'); return; }
-            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide(); alert('تم تحديث حالة المهمة بنجاح!'); }).catch(err => alert(err.message));
+            if(comment.trim() === '') { toastr.warning('يجب كتابة تعليق إجباري لتحديث الحالة!'); return; }
+            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide(); toastr.success('تم تحديث حالة المهمة بنجاح!'); }).catch(err => toastr.error(err.message));
         }
 
         function exportToExcel(tableId, fileName) {
             const table = document.getElementById(tableId);
             const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
             XLSX.writeFile(wb, fileName + ".xlsx");
+            toastr.success("تم تصدير الملف بنجاح");
         }
 
         async function exportRequestsToExcel() {
@@ -836,11 +881,12 @@
                     "تعليق المشتريات": r.comment || '' 
                 });
             });
-            if(data.length === 0) { alert("لا توجد طلبات لتصديرها!"); return; }
+            if(data.length === 0) { toastr.warning("لا توجد طلبات لتصديرها!"); return; }
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Requests");
             XLSX.writeFile(wb, "Purchase_Requests.xlsx");
+            toastr.success("تم تصدير طلبات الشراء بنجاح");
         }
     </script>
 </body>
