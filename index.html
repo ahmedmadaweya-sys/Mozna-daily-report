@@ -13,9 +13,9 @@
         .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
         .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
         .table th { background-color: #e9ecef; }
-        .request-card { border-right: 5px solid #007bff; cursor: pointer; transition: 0.2s; }
-        .request-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
         .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
+        .req-row { cursor: pointer; transition: 0.2s; }
+        .req-row:hover { background-color: #f1f3f5; }
     </style>
 </head>
 <body>
@@ -115,7 +115,24 @@
                             <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
                         </div>
                     </div>
-                    <div id="requestsList" class="row"></div>
+                    <!-- تحويل الكروت لجدول -->
+                    <div class="card shadow-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>رقم الطلب</th>
+                                        <th>الصنف المطلوب</th>
+                                        <th>طالب الطلب</th>
+                                        <th>موجه إلى قسم</th>
+                                        <th>الأولوية</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="requestsTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -233,7 +250,6 @@
 
         function applyPermissions() {
             const isAdmin = currentUserData && currentUserData.role === 'admin';
-            
             document.getElementById('navDashboard').style.display = 'block'; 
             document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
@@ -481,31 +497,24 @@
                     const r = child.val();
                     const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
                     
-                    // صلاحيات الرؤية: الأدمن يرى الكل، القسم الموجه إليه يرى الطلب، الموظف يرى طلباته
                     if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return;
-                    
                     if (isTargetDept) canExport = true;
 
                     const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
-                    let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger ms-2">عاجل</span>` : '';
-
+                    let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger">عاجل</span>` : '<span class="text-muted">عادية</span>';
+                    
                     html += `
-                    <div class="col-md-6 mb-3">
-                        <div class="card shadow-sm request-card border-${statusColor}" onclick="openRequestDetails('${child.key}')">
-                            <div class="card-header d-flex justify-content-between align-items-center bg-light">
-                                <h6 class="mb-0">${r.item} ${priorityBadge}</h6>
-                                <span class="badge bg-${statusColor}">${r.status || 'جديد'}</span>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-1"><i class="fas fa-user text-primary"></i> <b>طالب الطلب:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
-                                <p class="mb-1"><i class="fas fa-building text-primary"></i> <b>موجه إلى:</b> ${r.targetDeptName || 'غير محدد'}</p>
-                                <p class="mb-1"><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
-                            </div>
-                        </div>
-                    </div>`;
+                    <tr class="req-row" onclick="openRequestDetails('${child.key}')">
+                        <td class="fw-bold">#${r.reqId || '---'}</td>
+                        <td>${r.item}</td>
+                        <td>${r.empName || ''} <br><small class="text-muted">(${r.empDept || ''})</small></td>
+                        <td>${r.targetDeptName || 'غير محدد'}</td>
+                        <td>${priorityBadge}</td>
+                        <td><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></td>
+                    </tr>`;
                 });
                 
-                document.getElementById('requestsList').innerHTML = html || '<div class="alert alert-info w-100">لا توجد طلبات حالياً.</div>';
+                document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات حالياً.</td></tr>';
                 document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
             });
         }
@@ -591,21 +600,33 @@
                 if (!targetDeptSel.value) { alert('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
                 const targetDeptName = targetDeptSel.options[targetDeptSel.selectedIndex].text;
 
-                db.ref('requests').push({
-                    empId: empId,
-                    empName: empName,
-                    empDept: empDept,
-                    targetDeptId: targetDeptSel.value,
-                    targetDeptName: targetDeptName,
-                    item: document.getElementById('reqItem').value,
-                    qty: document.getElementById('reqQty').value,
-                    unit: document.getElementById('reqUnit').value,
-                    priority: document.getElementById('reqPriority').value,
-                    purpose: document.getElementById('reqPurpose').value,
-                    status: 'جديد',
-                    comment: '',
-                    timestamp: new Date().toLocaleDateString()
-                }).then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
+                // استخدام Transaction لتوليد رقم طلب تسلسلي فريد
+                const counterRef = db.ref('counters/requests');
+                counterRef.transaction(currentVal => {
+                    return (currentVal || 1000) + 1; // يبدأ من 1001
+                }).then(transactionResult => {
+                    const newReqId = transactionResult.snapshot.val();
+
+                    db.ref('requests').push({
+                        reqId: newReqId,
+                        empId: empId,
+                        empName: empName,
+                        empDept: empDept,
+                        targetDeptId: targetDeptSel.value,
+                        targetDeptName: targetDeptName,
+                        item: document.getElementById('reqItem').value,
+                        qty: document.getElementById('reqQty').value,
+                        unit: document.getElementById('reqUnit').value,
+                        priority: document.getElementById('reqPriority').value,
+                        purpose: document.getElementById('reqPurpose').value,
+                        status: 'جديد',
+                        comment: '',
+                        timestamp: new Date().toLocaleDateString()
+                    }).then(() => {
+                        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                        alert('تم تسجيل طلبك بنجاح برقم: #' + newReqId);
+                    }).catch(err => alert(err.message));
+                });
             }
         }
 
@@ -622,7 +643,7 @@
 
             const body = document.getElementById('requestDetailsBody');
             body.innerHTML = `
-                <h5 class="mb-3">${r.item} ${r.priority === 'عاجلة' ? '<span class="badge bg-danger">عاجل</span>' : ''}</h5>
+                <h5 class="mb-3">طلب رقم #${r.reqId || ''} - ${r.item} ${r.priority === 'عاجلة' ? '<span class="badge bg-danger">عاجل</span>' : ''}</h5>
                 <p><i class="fas fa-user text-primary"></i> <b>طالب الطلب:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
                 <p><i class="fas fa-building text-primary"></i> <b>موجه إلى قسم:</b> ${r.targetDeptName || 'غير محدد'}</p>
                 <p><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
@@ -664,11 +685,6 @@
             }).catch(err => alert(err.message));
         }
         // =========================================================
-
-        function updateRequestStatus(id, status) {
-            const comment = document.getElementById('comment_' + id).value;
-            db.ref('requests/' + id).update({ status: status, comment: comment }).then(() => alert('تم تحديث حالة الطلب إلى: ' + status)).catch(err => alert(err.message));
-        }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
         function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide()).catch(err => alert(err.message)); }
@@ -756,7 +772,20 @@
             let data = [];
             snap.forEach(child => {
                 const r = child.val();
-                data.push({ "التاريخ": r.timestamp || '', "اسم الموظف": r.empName || '', "قسم الموظف": r.empDept || '', "موجه إلى قسم": r.targetDeptName || '', "الصنف المطلوب": r.item || '', "الكمية": r.qty || '', "الوحدة": r.unit || '', "الأولوية": r.priority || '', "التفاصيل": r.purpose || '', "الحالة": r.status || '', "تعليق المشتريات": r.comment || '' });
+                data.push({ 
+                    "رقم الطلب": "#" + (r.reqId || ''), 
+                    "التاريخ": r.timestamp || '', 
+                    "اسم الموظف": r.empName || '', 
+                    "قسم الموظف": r.empDept || '', 
+                    "موجه إلى قسم": r.targetDeptName || '', 
+                    "الصنف المطلوب": r.item || '', 
+                    "الكمية": r.qty || '', 
+                    "الوحدة": r.unit || '', 
+                    "الأولوية": r.priority || '', 
+                    "التفاصيل": r.purpose || '', 
+                    "الحالة": r.status || '', 
+                    "تعليق المشتريات": r.comment || '' 
+                });
             });
             if(data.length === 0) { alert("لا توجد طلبات لتصديرها!"); return; }
             const ws = XLSX.utils.json_to_sheet(data);
