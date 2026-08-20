@@ -54,15 +54,15 @@
                             </button>
                             <div class="row mt-3">
                                 <div class="col-md-4">
-                                    <h6>وقت الحضور اليوم</h6>
+                                    <h6>وقت آخر حضور</h6>
                                     <p id="checkInTime" class="fw-bold text-success">--:--</p>
                                 </div>
                                 <div class="col-md-4">
-                                    <h6>وقت الانصراف اليوم</h6>
+                                    <h6>وقت آخر انصراف</h6>
                                     <p id="checkOutTime" class="fw-bold text-danger">--:--</p>
                                 </div>
                                 <div class="col-md-4">
-                                    <h6>ساعات عمل اليوم</h6>
+                                    <h6>إجمالي ساعات اليوم</h6>
                                     <p id="dailyHours" class="fw-bold text-primary">0 ساعة</p>
                                 </div>
                             </div>
@@ -164,7 +164,7 @@
         let allUsers = []; 
         let currentUserData = null; 
         let currentUpdateTaskId = ''; 
-        let currentAttendanceRef = null; 
+        let currentDayRef = null; 
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -227,9 +227,8 @@
             }
         }
 
-        // ================= دوال الحضور والانصراف =================
+        // ================= دوال الحضور والانصراف (المعدلة) =================
         
-        // دالة لتحويل الوقت لصيغة عربية مقروءة
         function formatTime(timeStr) {
             if (!timeStr || timeStr === '--:--') return '--:--';
             const [h, m] = timeStr.split(':').map(Number);
@@ -246,76 +245,98 @@
             const day = now.getDate();
             const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
 
-            currentAttendanceRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
+            currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
 
-            currentAttendanceRef.on('value', snap => {
+            // الاستماع لتغييرات اليوم لحظياً
+            currentDayRef.on('value', snap => {
                 const data = snap.val() || {};
                 const btn = document.getElementById('attendanceBtn');
                 
-                if (data.checkIn && !data.checkOut) {
+                const totalHours = data.totalHours || 0;
+                document.getElementById('dailyHours').innerText = `${parseFloat(totalHours).toFixed(1)} ساعة`;
+                
+                if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
+                    // الموظف في حالة حضور (في الداخل)
+                    const activeSes = data.sessions[data.activeSession];
                     btn.className = 'btn btn-danger btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
                     btn.disabled = false;
-                    document.getElementById('checkInTime').innerText = formatTime(data.checkIn);
+                    
+                    document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
-                    document.getElementById('dailyHours').innerText = 'في العمل حالياً';
-                } else if (data.checkIn && data.checkOut) {
-                    btn.className = 'btn btn-secondary btn-lg w-50 mb-3';
-                    btn.innerHTML = '<i class="fas fa-check-circle"></i> تم تسجيل اليوم';
-                    btn.disabled = true;
-                    document.getElementById('checkInTime').innerText = formatTime(data.checkIn);
-                    document.getElementById('checkOutTime').innerText = formatTime(data.checkOut);
-                    document.getElementById('dailyHours').innerText = `${data.workedHours} ساعة`;
                 } else {
+                    // الموظف في حالة انصراف (في الخارج)
                     btn.className = 'btn btn-success btn-lg w-50 mb-3';
                     btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
                     btn.disabled = false;
+                    
+                    // البحث عن آخر انصراف عشان نعرض وقته
+                    let lastCheckOut = '--:--';
+                    if (data.sessions) {
+                        const sessionsArray = Object.values(data.sessions);
+                        const lastSession = sessionsArray[sessionsArray.length - 1];
+                        if (lastSession && lastSession.checkOut) {
+                            lastCheckOut = lastSession.checkOut;
+                        }
+                    }
                     document.getElementById('checkInTime').innerText = '--:--';
-                    document.getElementById('checkOutTime').innerText = '--:--';
-                    document.getElementById('dailyHours').innerText = '0 ساعة';
+                    document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
                 }
             });
 
+            // حساب ساعات الشهر
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => {
-                let totalHours = 0;
+                let totalMonthHours = 0;
                 snap.forEach(daySnap => {
                     const dayData = daySnap.val();
-                    if (dayData.workedHours) {
-                        totalHours += parseFloat(dayData.workedHours);
+                    if (dayData.totalHours) {
+                        totalMonthHours += parseFloat(dayData.totalHours);
                     }
                 });
-                document.getElementById('monthlyHours').innerText = `${totalHours.toFixed(1)} ساعة`;
+                document.getElementById('monthlyHours').innerText = `${totalMonthHours.toFixed(1)} ساعة`;
             });
         }
 
         function toggleAttendance() {
-            if (!currentAttendanceRef) return;
+            if (!currentDayRef) return;
             
-            currentAttendanceRef.once('value').then(snap => {
+            currentDayRef.once('value').then(snap => {
                 const data = snap.val() || {};
                 const now = new Date();
-                // حفظ الوقت بصيغة 24 ساعة (مثال: 14:30) لسهولة الحساب
                 const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-                if (!data.checkIn) {
-                    // تسجيل حضور
-                    currentAttendanceRef.update({ checkIn: timeString });
-                    alert('تم تسجيل حضورك بنجاح في: ' + formatTime(timeString));
-                } else if (!data.checkOut) {
-                    // تسجيل انصراف وحساب الساعات
-                    const [inHours, inMinutes] = data.checkIn.split(':').map(Number);
+                if (!data.activeSession) {
+                    // تسجيل حضور جديد
+                    const newSessionRef = currentDayRef.child('sessions').push();
+                    newSessionRef.set({ checkIn: timeString, checkOut: null, duration: 0 }).then(() => {
+                        currentDayRef.update({ activeSession: newSessionRef.key });
+                        alert('تم تسجيل حضورك بنجاح في: ' + formatTime(timeString));
+                    });
+                } else {
+                    // تسجيل انصراف وحساب المدة
+                    const activeSesId = data.activeSession;
+                    const activeSesData = data.sessions[activeSesId];
                     
+                    const [inHours, inMinutes] = activeSesData.checkIn.split(':').map(Number);
                     let checkInDate = new Date();
                     checkInDate.setHours(inHours, inMinutes, 0, 0);
 
                     const diffMs = now - checkInDate;
                     const diffHrs = diffMs / (1000 * 60 * 60);
                     
-                    currentAttendanceRef.update({ 
+                    // تحديث الجلسة الحالية بوقت الخروج والمدة
+                    currentDayRef.child(`sessions/${activeSesId}`).update({ 
                         checkOut: timeString, 
-                        workedHours: diffHrs.toFixed(2) 
+                        duration: diffHrs.toFixed(2) 
+                    }).then(() => {
+                        // تفريغ الجلسة النشطة وإضافة المدة لإجمالي اليوم
+                        const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
+                        currentDayRef.update({ 
+                            activeSession: null, 
+                            totalHours: newTotal 
+                        });
+                        alert('تم تسجيل انصرافك بنجاح. مدة هذه الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
                     });
-                    alert('تم تسجيل انصرافك بنجاح. عدد ساعات عمل اليوم: ' + diffHrs.toFixed(2) + ' ساعة');
                 }
             });
         }
