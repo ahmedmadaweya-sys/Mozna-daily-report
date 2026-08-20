@@ -115,7 +115,6 @@
                             <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
                         </div>
                     </div>
-                    <!-- تحويل الكروت لجدول -->
                     <div class="card shadow-sm">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0">
@@ -600,13 +599,11 @@
                 if (!targetDeptSel.value) { alert('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
                 const targetDeptName = targetDeptSel.options[targetDeptSel.selectedIndex].text;
 
-                // استخدام Transaction لتوليد رقم طلب تسلسلي فريد
                 const counterRef = db.ref('counters/requests');
                 counterRef.transaction(currentVal => {
-                    return (currentVal || 1000) + 1; // يبدأ من 1001
+                    return (currentVal || 1000) + 1;
                 }).then(transactionResult => {
                     const newReqId = transactionResult.snapshot.val();
-
                     db.ref('requests').push({
                         reqId: newReqId,
                         empId: empId,
@@ -654,19 +651,39 @@
             `;
 
             const footer = document.getElementById('requestDetailsFooter');
-            if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
+            
+            // لو الأدمن، يقدر يعدل ويحذف ويعمل موافقة
+            if (isAdmin) {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-warning" onclick="openEditRequestFromModal()"><i class="fas fa-edit"></i> تعديل الطلب</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteRequestFromModal()"><i class="fas fa-trash"></i> حذف</button>
+                    ${r.status !== 'تم التنفيذ' && r.status !== 'مرفوض' ? `
+                        <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
+                        <button type="button" class="btn btn-info" onclick="updateRequestStatusFromModal('تأجيل')"><i class="fas fa-pause"></i> تأجيل</button>
+                        <button type="button" class="btn btn-outline-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
+                    ` : ''}
+                `;
+            } 
+            // لو موظف قسم مشتريات (مش أدمن) يقدر يعمل موافقة وتأجيل ورفض بس
+            else if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
                 footer.innerHTML = `
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
                     <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
                     <button type="button" class="btn btn-warning" onclick="updateRequestStatusFromModal('تأجيل')"><i class="fas fa-pause"></i> تأجيل</button>
                     <button type="button" class="btn btn-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
-                    ${isAdmin ? `<button type="button" class="btn btn-outline-danger" onclick="deleteRequestFromModal()"><i class="fas fa-trash"></i></button>` : ''}
                 `;
             } else {
                 footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             }
 
             new bootstrap.Modal(document.getElementById('requestDetailsModal')).show();
+        }
+
+        // فتح نافذة التعديل من جوه تفاصيل الطلب
+        function openEditRequestFromModal() {
+            bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
+            openEditModal('request', currentRequestId);
         }
 
         function updateRequestStatusFromModal(status) {
@@ -716,6 +733,25 @@
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option><option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option><option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option></select>`;
+            } 
+            // ============ تعديل الطلب (للأدمن) ============
+            else if (type === 'request') {
+                title.innerText = 'تعديل الطلب #' + (data.reqId || '');
+                const depsSnap = await db.ref('departments').once('value');
+                let depOpts = '<option value="">-- اختر القسم الموجه إليه --</option>';
+                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.targetDeptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
+
+                body.innerHTML = `
+                    <div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" value="${data.item || ''}"></div>
+                    <div class="row mb-2">
+                        <div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" value="${data.qty || ''}"></div>
+                        <div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة" ${data.unit === 'قطعة' ? 'selected' : ''}>قطعة</option><option value="كرتونة" ${data.unit === 'كرتونة' ? 'selected' : ''}>كرتونة</option><option value="علبة" ${data.unit === 'علبة' ? 'selected' : ''}>علبة</option><option value="عبوة" ${data.unit === 'عبوة' ? 'selected' : ''}>عبوة</option></select></div>
+                    </div>
+                    <div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية" ${data.priority === 'عادية' ? 'selected' : ''}>عادية</option><option value="عاجلة" ${data.priority === 'عاجلة' ? 'selected' : ''}>عاجلة</option></select></div>
+                    <div class="mb-2"><label class="small text-muted">وجهة الطلب (القسم الموجه إليه)</label><select id="reqTargetDept" class="form-control">${depOpts}</select></div>
+                    <div class="mb-2"><label class="small text-muted">تفاصيل / الغرض</label><textarea id="reqPurpose" class="form-control">${data.purpose || ''}</textarea></div>
+                    <div class="mb-2"><label class="small text-muted">الحالة</label><select id="reqStatus" class="form-control"><option value="جديد" ${data.status === 'جديد' ? 'selected' : ''}>جديد</option><option value="تم التنفيذ" ${data.status === 'تم التنفيذ' ? 'selected' : ''}>تم التنفيذ (موافقة)</option><option value="تأجيل" ${data.status === 'تأجيل' ? 'selected' : ''}>تأجيل</option><option value="مرفوض" ${data.status === 'مرفوض' ? 'selected' : ''}>مرفوض</option></select></div>
+                `;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
@@ -732,8 +768,22 @@
             } else if (currentEdit.type === 'tasks') {
                 const u=document.getElementById('taskUser'), d=document.getElementById('taskDept');
                 updates = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptId: d.value, deptName: d.options[d.selectedIndex].text, status: document.getElementById('taskStatus').value };
+            } 
+            // ============ حفظ تعديل الطلب ============
+            else if (currentEdit.type === 'requests') {
+                const targetDeptSel = document.getElementById('reqTargetDept');
+                updates = {
+                    item: document.getElementById('reqItem').value,
+                    qty: document.getElementById('reqQty').value,
+                    unit: document.getElementById('reqUnit').value,
+                    priority: document.getElementById('reqPriority').value,
+                    targetDeptId: targetDeptSel.value,
+                    targetDeptName: targetDeptSel.options[targetDeptSel.selectedIndex].text,
+                    purpose: document.getElementById('reqPurpose').value,
+                    status: document.getElementById('reqStatus').value
+                };
             }
-            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()'); }).catch(err => alert(err.message));
+            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()'); alert('تم حفظ التعديلات بنجاح!'); }).catch(err => alert(err.message));
         }
 
         function openResetModal(userId) { currentResetUserId = userId; document.getElementById('newPass').value=''; document.getElementById('confirmPass').value=''; new bootstrap.Modal(document.getElementById('resetModal')).show(); }
