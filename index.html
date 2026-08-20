@@ -77,13 +77,14 @@
                         </div>
                     </div>
 
-                    <div class="row">
+                    <!-- كروت الإحصائيات (للمدير فقط) -->
+                    <div id="statsCards" class="row d-none">
                         <div class="col-md-3 mb-4"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>المستخدمين</h5><h2 id="statUsers" class="display-4 mb-0">0</h2></div><i class="fas fa-users fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>الأقسام</h5><h2 id="statDepts" class="display-4 mb-0">0</h2></div><i class="fas fa-building fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي المهام</h5><h2 id="statTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-3 mb-4"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات شراء</h5><h2 id="statRequests" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
                     </div>
-                    <div class="mt-4 alert alert-info"><i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة. يمكنك إدارة كل شيء من القائمة الجانبية.</div>
+                    <div id="adminWelcomeAlert" class="mt-4 alert alert-info d-none"><i class="fas fa-info-circle"></i> أهلاً بك في نظام الإدارة. يمكنك إدارة كل شيء من القائمة الجانبية.</div>
                 </div>
 
                 <div id="usersSection" style="display: none;">
@@ -243,7 +244,10 @@
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
+            // إظهار كارد الحضور للموظف، وكروت الإحصائيات للمدير
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
+            document.getElementById('statsCards').classList.toggle('d-none', !isAdmin);
+            document.getElementById('adminWelcomeAlert').classList.toggle('d-none', !isAdmin);
             document.getElementById('adminReportBtn').classList.toggle('d-none', !isAdmin);
             
             showSection('dashboard', null);
@@ -449,7 +453,6 @@
                     if (userRows.length > 0) {
                         hasData = true;
                         const ws = XLSX.utils.json_to_sheet(userRows);
-                        // تنظيف اسم الموظف عشان يبقى اسم التبويب صحيح في الإكسيل (بحد أقصى 31 حرف)
                         let sheetName = user.name.replace(/[*?\/\\\[\]:]/g, '').substring(0, 31);
                         XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employee");
                     }
