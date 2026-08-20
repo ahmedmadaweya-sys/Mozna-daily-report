@@ -19,7 +19,7 @@
         .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
         .req-row { cursor: pointer; transition: 0.2s; }
         .req-row:hover { background-color: #f1f3f5; }
-        .quick-link { transition: 0.3s; }
+        .quick-link { transition: 0.3s; cursor: pointer; }
         .quick-link:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
     </style>
 </head>
@@ -54,7 +54,6 @@
                         <button id="adminReportBtn" onclick="openAttendanceReportModal()" class="btn btn-warning d-none"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</button>
                     </div>
                     
-                    <!-- كارد الحضور والانصراف -->
                     <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
                         <div class="card-body text-center">
                             <h4 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h4>
@@ -71,14 +70,12 @@
                         </div>
                     </div>
 
-                    <!-- كروت الإحصائيات الذكية -->
                     <div id="statsCards" class="row d-none mb-4">
                         <div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات تنتظر موافقتك</h5><h2 id="statPendingReq" class="display-4 mb-0">0</h2></div><i class="fas fa-bell fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-4 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>مهام لم تُستلم بعد</h5><h2 id="statUnreceivedTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
                         <div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي طلبات اليوم</h5><h2 id="statTotalReq" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
                     </div>
 
-                    <!-- اختصارات سريعة للموظف -->
                     <div id="employeeShortcuts" class="row d-none mb-4">
                         <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-primary text-white" onclick="showSection('requests', null)"><div class="card-body text-center"><i class="fas fa-plus-circle fa-2x mb-2"></i><h5>تسجيل طلب شراء</h5></div></div></div>
                         <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-success text-white" onclick="showSection('tasks', null)"><div class="card-body text-center"><i class="fas fa-tasks fa-2x mb-2"></i><h5>عرض مهامي</h5></div></div></div>
@@ -118,6 +115,23 @@
                             <button onclick="openAddModal('task')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مهمة</button>
                         </div>
                     </div>
+                    
+                    <!-- شريط البحث والفلترة للمهام -->
+                    <div class="row mb-3 g-2 align-items-center bg-light p-3 rounded shadow-sm">
+                        <div class="col-md-8">
+                            <input type="text" id="searchTask" class="form-control" placeholder="ابحث بعنوان المهمة أو اسم الموظف..." oninput="renderTasksTable()">
+                        </div>
+                        <div class="col-md-4">
+                            <select id="filterTaskStatus" class="form-control" onchange="renderTasksTable()">
+                                <option value="الكل">كل الحالات</option>
+                                <option value="جديدة">جديدة (لم تُستلم)</option>
+                                <option value="تم الاستلام">تم الاستلام</option>
+                                <option value="قيد التنفيذ">قيد التنفيذ</option>
+                                <option value="مكتملة">مكتملة</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="tasksTable"><thead><tr><th>عنوان المهمة</th><th>الموظف المختص</th><th>القسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="tasksTbody"></tbody></table></div></div>
                 </div>
 
@@ -129,9 +143,26 @@
                             <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
                         </div>
                     </div>
+
+                    <!-- شريط البحث والفلترة للطلبات -->
+                    <div class="row mb-3 g-2 align-items-center bg-light p-3 rounded shadow-sm">
+                        <div class="col-md-8">
+                            <input type="text" id="searchReq" class="form-control" placeholder="ابحث برقم الطلب، الصنف، أو اسم الموظف..." oninput="renderRequestsTable()">
+                        </div>
+                        <div class="col-md-4">
+                            <select id="filterReqStatus" class="form-control" onchange="renderRequestsTable()">
+                                <option value="الكل">كل الحالات</option>
+                                <option value="جديد">جديد</option>
+                                <option value="تم التنفيذ">تم التنفيذ (موافقة)</option>
+                                <option value="تأجيل">تأجيل</option>
+                                <option value="مرفوض">مرفوض</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="card shadow-sm">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                            <table class="table table-hover mb-0" id="requestsTable">
                                 <thead>
                                     <tr>
                                         <th>رقم الطلب</th>
@@ -240,6 +271,8 @@
         let currentResetUserId = '';
         let currentEdit = { id: '', type: '' };
         let allUsers = []; 
+        let allTasks = []; // تخزين المهام مؤقتاً للبحث
+        let allRequests = []; // تخزين الطلبات مؤقتاً للبحث
         let currentUserData = null; 
         let currentUpdateTaskId = ''; 
         let currentDayRef = null; 
@@ -497,78 +530,121 @@
             });
 
             db.ref('tasks').on('value', snap => {
-                document.getElementById('statTasks').innerText = snap.numChildren();
-                let html = '';
-                const isAdmin = currentUserData && currentUserData.role === 'admin';
+                allTasks = []; 
                 let unreceivedCount = 0;
                 let myActiveTasks = 0;
-                
+                const isAdmin = currentUserData && currentUserData.role === 'admin';
+
                 snap.forEach(child => {
                     const t = child.val();
+                    t.id = child.key;
                     if (t.status === 'جديدة') unreceivedCount++;
                     if (!isAdmin && t.userId === currentUserData.id && t.status !== 'مكتملة') myActiveTasks++;
-
-                    if (!isAdmin && t.userId !== currentUserData.id) return;
-                    let actions = '';
-                    if (isAdmin) {
-                        actions = `<button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
-                    } else {
-                        if (t.status === 'مكتملة') {
-                            actions = `<span class="badge bg-success">تم الإنهاء</span>`;
-                        } else {
-                            if (t.status === 'جديدة') actions += `<button onclick="receiveTask('${child.key}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
-                            actions += `<button onclick="openTaskUpdateModal('${child.key}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
-                        }
-                    }
-                    let commentText = t.comment ? `<br><small class="text-muted fst-italic">ملاحظة: ${t.comment}</small>` : '';
-                    html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'} ${commentText}</td><td>${actions}</td></tr>`;
+                    allTasks.push(t);
                 });
-                document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام حالياً.</td></tr>';
                 
-                // تحديث إحصائيات الأدمن والموظف
                 document.getElementById('statUnreceivedTasks').innerText = isAdmin ? unreceivedCount : myActiveTasks;
+                renderTasksTable();
             });
 
             db.ref('requests').on('value', snap => {
-                document.getElementById('statRequests').innerText = snap.numChildren();
-                let html = '';
-                const isAdmin = currentUserData && currentUserData.role === 'admin';
-                let canExport = isAdmin;
+                allRequests = [];
                 let pendingReqForAdmin = 0;
                 let myPendingReq = 0;
-                
+                const isAdmin = currentUserData && currentUserData.role === 'admin';
+
                 snap.forEach(child => {
                     const r = child.val();
-                    const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
-                    
+                    r.id = child.key;
                     if (r.status === 'جديد') pendingReqForAdmin++;
                     if (r.empId === currentUserData.id && (r.status === 'جديد' || r.status === 'تأجيل')) myPendingReq++;
-
-                    if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return;
-                    if (isTargetDept) canExport = true;
-
-                    const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
-                    let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger">عاجل</span>` : '<span class="text-muted">عادية</span>';
-                    
-                    html += `
-                    <tr class="req-row" onclick="openRequestDetails('${child.key}')">
-                        <td class="fw-bold">#${r.reqId || '---'}</td>
-                        <td>${r.item}</td>
-                        <td>${r.empName || ''} <br><small class="text-muted">(${r.empDept || ''})</small></td>
-                        <td>${r.targetDeptName || 'غير محدد'}</td>
-                        <td>${priorityBadge}</td>
-                        <td><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></td>
-                    </tr>`;
+                    allRequests.push(r);
                 });
-                
-                document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات حالياً.</td></tr>';
-                document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
-                
-                // تحديث إحصائيات الأدمن والموظف
+
+                document.getElementById('statRequests').innerText = snap.numChildren();
                 document.getElementById('statPendingReq').innerText = isAdmin ? pendingReqForAdmin : myPendingReq;
                 document.getElementById('statTotalReq').innerText = snap.numChildren();
+                
+                const canExport = isAdmin || allRequests.some(r => r.targetDeptName === currentUserData.deptName);
+                document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
+                
+                renderRequestsTable();
             });
         }
+
+        // ================= دوال عرض الجداول (مع البحث والفلترة) =================
+        function renderTasksTable() {
+            const isAdmin = currentUserData && currentUserData.role === 'admin';
+            const searchTerm = (document.getElementById('searchTask')?.value || '').toLowerCase();
+            const filterStatus = document.getElementById('filterTaskStatus')?.value || 'الكل';
+            
+            let html = '';
+            let filteredTasks = allTasks.filter(t => {
+                if (!isAdmin && t.userId !== currentUserData.id) return false;
+                if (filterStatus !== 'الكل' && t.status !== filterStatus) return false;
+                const searchMatch = (t.title || '').toLowerCase().includes(searchTerm) || (t.userName || '').toLowerCase().includes(searchTerm) || (t.deptName || '').toLowerCase().includes(searchTerm);
+                return searchMatch;
+            });
+
+            if (filteredTasks.length === 0) {
+                document.getElementById('tasksTbody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام مطابقة.</td></tr>';
+                return;
+            }
+
+            filteredTasks.forEach(t => {
+                let actions = '';
+                if (isAdmin) {
+                    actions = `<button onclick="openEditModal('task', '${t.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${t.id}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
+                } else {
+                    if (t.status === 'مكتملة') {
+                        actions = `<span class="badge bg-success">تم الإنهاء</span>`;
+                    } else {
+                        if (t.status === 'جديدة') actions += `<button onclick="receiveTask('${t.id}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
+                        actions += `<button onclick="openTaskUpdateModal('${t.id}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
+                    }
+                }
+                let commentText = t.comment ? `<br><small class="text-muted fst-italic">ملاحظة: ${t.comment}</small>` : '';
+                html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'} ${commentText}</td><td>${actions}</td></tr>`;
+            });
+            document.getElementById('tasksTbody').innerHTML = html;
+        }
+
+        function renderRequestsTable() {
+            const isAdmin = currentUserData && currentUserData.role === 'admin';
+            const searchTerm = (document.getElementById('searchReq')?.value || '').toLowerCase();
+            const filterStatus = document.getElementById('filterReqStatus')?.value || 'الكل';
+            
+            let html = '';
+            let filteredRequests = allRequests.filter(r => {
+                const isTargetDept = currentUserData.deptName === r.targetDeptName;
+                if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return false;
+                if (filterStatus !== 'الكل' && r.status !== filterStatus) return false;
+                const searchMatch = (r.reqId || '').toString().includes(searchTerm) || (r.item || '').toLowerCase().includes(searchTerm) || (r.empName || '').toLowerCase().includes(searchTerm) || (r.targetDeptName || '').toLowerCase().includes(searchTerm);
+                return searchMatch;
+            });
+
+            if (filteredRequests.length === 0) {
+                document.getElementById('requestsTbody').innerHTML = '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات مطابقة.</td></tr>';
+                return;
+            }
+
+            filteredRequests.forEach(r => {
+                const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
+                let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger">عاجل</span>` : '<span class="text-muted">عادية</span>';
+                
+                html += `
+                <tr class="req-row" onclick="openRequestDetails('${r.id}')">
+                    <td class="fw-bold">#${r.reqId || '---'}</td>
+                    <td>${r.item}</td>
+                    <td>${r.empName || ''} <br><small class="text-muted">(${r.empDept || ''})</small></td>
+                    <td>${r.targetDeptName || 'غير محدد'}</td>
+                    <td>${priorityBadge}</td>
+                    <td><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></td>
+                </tr>`;
+            });
+            document.getElementById('requestsTbody').innerHTML = html;
+        }
+        // =========================================================
 
         function renderDepartments() {
             db.ref('departments').once('value').then(snap => {
@@ -682,8 +758,7 @@
         // ================= دوال تفاصيل الطلب =================
         async function openRequestDetails(id) {
             currentRequestId = id;
-            const snap = await db.ref('requests/' + id).once('value');
-            const r = snap.val();
+            const r = allRequests.find(req => req.id === id);
             if (!r) return;
 
             const isAdmin = currentUserData && currentUserData.role === 'admin';
@@ -862,10 +937,8 @@
         }
 
         async function exportRequestsToExcel() {
-            const snap = await db.ref('requests').once('value');
             let data = [];
-            snap.forEach(child => {
-                const r = child.val();
+            allRequests.forEach(r => {
                 data.push({ 
                     "رقم الطلب": "#" + (r.reqId || ''), 
                     "التاريخ": r.timestamp || '', 
