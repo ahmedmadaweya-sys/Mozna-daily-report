@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الإدارة المتكامل</title>
+    <title>نظام الإدارة المتكامل ERP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- مكتبة الإشعارات Toastr -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { min-height: 100vh; background-color: #343a40; color: white; }
-        .sidebar a { color: #d1d3d4; text-decoration: none; padding: 15px; display: block; transition: 0.3s; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; overflow-y: auto; }
+        .sidebar a { color: #d1d3d4; text-decoration: none; padding: 12px 15px; display: block; transition: 0.3s; font-size: 0.95rem; }
         .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
         .table th { background-color: #e9ecef; }
-        .attendance-card { border: 2px solid #007bff; border-radius: 15px; }
         .req-row { cursor: pointer; transition: 0.2s; }
         .req-row:hover { background-color: #f1f3f5; }
         .quick-link { transition: 0.3s; cursor: pointer; }
@@ -37,145 +35,97 @@
 
     <div id="appSection" class="d-none">
         <div class="d-flex">
-            <div class="sidebar" style="width: 250px;">
-                <h4 class="p-3 text-center border-bottom">لوحة التحكم</h4>
+            <div class="sidebar" style="width: 230px;">
+                <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
                 <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
-                <a href="#" id="navRequests" onclick="showSection('requests', event)"><i class="fas fa-cart-plus"></i> الطلبات والمشتريات</a>
+                <a href="#" id="navRequests" onclick="showSection('requests', event)"><i class="fas fa-cart-plus"></i> المشتريات</a>
+                <a href="#" id="navSales" onclick="showSection('sales', event)"><i class="fas fa-hand-holding-usd"></i> المبيعات</a>
+                <a href="#" id="navCustomers" onclick="showSection('customers', event)"><i class="fas fa-address-book"></i> العملاء</a>
+                <a href="#" id="navInventory" onclick="showSection('inventory', event)"><i class="fas fa-warehouse"></i> المخزن</a>
+                <a href="#" id="navReports" onclick="showSection('reports', event)"><i class="fas fa-chart-line"></i> التقارير</a>
                 <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
             </div>
 
-            <div class="p-4 w-100">
+            <div class="p-4 w-100" style="overflow-y: auto; height: 100vh;">
+                
+                <!-- Dashboard -->
                 <div id="dashboardSection">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2>الرئيسية</h2>
-                        <button id="adminReportBtn" onclick="openAttendanceReportModal()" class="btn btn-warning d-none"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</button>
+                    <h2 class="mb-4">الرئيسية</h2>
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>طلبات تنتظر موافقتك</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div><i class="fas fa-bell fa-2x opacity-50"></i></div></div></div>
+                        <div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>مهام لم تُستلم</h6><h2 id="statUnreceivedTasks" class="display-6 mb-0">0</h2></div><i class="fas fa-tasks fa-2x opacity-50"></i></div></div></div>
+                        <div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>المستخدمين</h6><h2 id="statUsers" class="display-6 mb-0">0</h2></div><i class="fas fa-users fa-2x opacity-50"></i></div></div></div>
+                        <div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>العملاء</h6><h2 id="statCustomers" class="display-6 mb-0">0</h2></div><i class="fas fa-address-book fa-2x opacity-50"></i></div></div></div>
                     </div>
-                    
-                    <div id="attendanceCard" class="card shadow-sm attendance-card mb-4 d-none">
+                    <div id="attendanceCard" class="card shadow-sm mb-4 d-none border-primary">
                         <div class="card-body text-center">
-                            <h4 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h4>
-                            <button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg w-50 mb-3">
-                                <i class="fas fa-sign-in-alt"></i> تسجيل حضور
-                            </button>
+                            <h5 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5>
+                            <button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg w-50 mb-3">تسجيل حضور</button>
                             <div class="row mt-3">
-                                <div class="col-md-4"><h6>وقت آخر حضور</h6><p id="checkInTime" class="fw-bold text-success">--:--</p></div>
-                                <div class="col-md-4"><h6>وقت آخر انصراف</h6><p id="checkOutTime" class="fw-bold text-danger">--:--</p></div>
-                                <div class="col-md-4"><h6>إجمالي ساعات اليوم</h6><p id="dailyHours" class="fw-bold text-primary">0 ساعة</p></div>
+                                <div class="col-md-4"><small>وقت الحضور</small><p id="checkInTime" class="fw-bold text-success mb-0">--:--</p></div>
+                                <div class="col-md-4"><small>وقت الانصراف</small><p id="checkOutTime" class="fw-bold text-danger mb-0">--:--</p></div>
+                                <div class="col-md-4"><small>ساعات اليوم</small><p id="dailyHours" class="fw-bold text-primary mb-0">0</p></div>
                             </div>
-                            <hr>
-                            <div class="mt-2"><h6>إجمالي ساعات العمل هذا الشهر</h6><p id="monthlyHours" class="fw-bold text-info fs-5">0 ساعة</p></div>
+                            <div class="mt-2"><small>إجمالي ساعات الشهر</small><p id="monthlyHours" class="fw-bold text-info mb-0">0 ساعة</p></div>
                         </div>
                     </div>
-
-                    <div id="statsCards" class="row d-none mb-4">
-                        <div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>طلبات تنتظر موافقتك</h5><h2 id="statPendingReq" class="display-4 mb-0">0</h2></div><i class="fas fa-bell fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-4 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>مهام لم تُستلم بعد</h5><h2 id="statUnreceivedTasks" class="display-4 mb-0">0</h2></div><i class="fas fa-tasks fa-3x opacity-50"></i></div></div></div>
-                        <div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h5>إجمالي طلبات اليوم</h5><h2 id="statTotalReq" class="display-4 mb-0">0</h2></div><i class="fas fa-cart-plus fa-3x opacity-50"></i></div></div></div>
-                    </div>
-
-                    <div id="employeeShortcuts" class="row d-none mb-4">
-                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-primary text-white" onclick="showSection('requests', null)"><div class="card-body text-center"><i class="fas fa-plus-circle fa-2x mb-2"></i><h5>تسجيل طلب شراء</h5></div></div></div>
-                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-success text-white" onclick="showSection('tasks', null)"><div class="card-body text-center"><i class="fas fa-tasks fa-2x mb-2"></i><h5>عرض مهامي</h5></div></div></div>
-                        <div class="col-md-4 mb-3"><div class="card shadow-sm h-100 quick-link bg-info text-white" onclick="showSection('requests', null)"><div class="card-body text-center"><i class="fas fa-history fa-2x mb-2"></i><h5>متابعة طلباتي</h5></div></div></div>
-                    </div>
-
-                    <div id="adminWelcomeAlert" class="mt-4 alert alert-info d-none"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
+                    <div class="alert alert-info"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
                 </div>
 
+                <!-- Users -->
                 <div id="usersSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h2>إدارة المستخدمين</h2>
-                        <div>
-                            <button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
-                            <button onclick="openAddModal('user')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مستخدم</button>
-                        </div>
-                    </div>
+                    <div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div><button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button></div></div>
                     <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div>
                 </div>
 
+                <!-- Departments -->
                 <div id="departmentsSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h2>إدارة الأقسام</h2>
-                        <div>
-                            <button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
-                            <button onclick="openAddModal('department')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة قسم</button>
-                        </div>
-                    </div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>اسم القسم</th><th>مدير القسم</th><th>الموظفين</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div>
+                    <div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div><button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('department')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div>
                 </div>
 
+                <!-- Tasks -->
                 <div id="tasksSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h2>إدارة المهام</h2>
-                        <div id="tasksActions">
-                            <button onclick="exportToExcel('tasksTable', 'المهام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
-                            <button onclick="openAddModal('task')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مهمة</button>
-                        </div>
-                    </div>
-                    
-                    <!-- شريط البحث والفلترة للمهام -->
-                    <div class="row mb-3 g-2 align-items-center bg-light p-3 rounded shadow-sm">
-                        <div class="col-md-8">
-                            <input type="text" id="searchTask" class="form-control" placeholder="ابحث بعنوان المهمة أو اسم الموظف..." oninput="renderTasksTable()">
-                        </div>
-                        <div class="col-md-4">
-                            <select id="filterTaskStatus" class="form-control" onchange="renderTasksTable()">
-                                <option value="الكل">كل الحالات</option>
-                                <option value="جديدة">جديدة (لم تُستلم)</option>
-                                <option value="تم الاستلام">تم الاستلام</option>
-                                <option value="قيد التنفيذ">قيد التنفيذ</option>
-                                <option value="مكتملة">مكتملة</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="tasksTable"><thead><tr><th>عنوان المهمة</th><th>الموظف المختص</th><th>القسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="tasksTbody"></tbody></table></div></div>
+                    <div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"><button onclick="exportToExcel('tasksTable', 'المهام')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="tasksTable"><thead><tr><th>العنوان</th><th>الموظف</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="tasksTbody"></tbody></table></div></div>
                 </div>
 
+                <!-- Requests -->
                 <div id="requestsSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h2>الطلبات والمشتريات</h2>
-                        <div>
-                            <button id="exportRequestsBtn" onclick="exportRequestsToExcel()" class="btn btn-success d-none"><i class="fas fa-file-excel"></i> سحب الطلبات Excel</button>
-                            <button onclick="openAddModal('request')" class="btn btn-primary"><i class="fas fa-plus"></i> تسجيل طلب جديد</button>
-                        </div>
-                    </div>
+                    <div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div><button id="exportRequestsBtn" onclick="exportRequestsToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم الطلب</th><th>الصنف</th><th>طالب الطلب</th><th>موجه لـ</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div>
+                </div>
 
-                    <!-- شريط البحث والفلترة للطلبات -->
-                    <div class="row mb-3 g-2 align-items-center bg-light p-3 rounded shadow-sm">
-                        <div class="col-md-8">
-                            <input type="text" id="searchReq" class="form-control" placeholder="ابحث برقم الطلب، الصنف، أو اسم الموظف..." oninput="renderRequestsTable()">
-                        </div>
-                        <div class="col-md-4">
-                            <select id="filterReqStatus" class="form-control" onchange="renderRequestsTable()">
-                                <option value="الكل">كل الحالات</option>
-                                <option value="جديد">جديد</option>
-                                <option value="تم التنفيذ">تم التنفيذ (موافقة)</option>
-                                <option value="تأجيل">تأجيل</option>
-                                <option value="مرفوض">مرفوض</option>
-                            </select>
-                        </div>
-                    </div>
+                <!-- Sales -->
+                <div id="salesSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3"><h2>المبيعات</h2><div><button onclick="exportToExcel('salesTable', 'المبيعات')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('sale')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> بيع جديد</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="salesTable"><thead><tr><th>المندوب</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="salesTbody"></tbody></table></div></div>
+                </div>
 
-                    <div class="card shadow-sm">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0" id="requestsTable">
-                                <thead>
-                                    <tr>
-                                        <th>رقم الطلب</th>
-                                        <th>الصنف المطلوب</th>
-                                        <th>طالب الطلب</th>
-                                        <th>موجه إلى قسم</th>
-                                        <th>الأولوية</th>
-                                        <th>الحالة</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="requestsTbody"></tbody>
-                            </table>
-                        </div>
+                <!-- Customers -->
+                <div id="customersSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div><button onclick="exportToExcel('customersTable', 'العملاء')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل جديد</button> <button onclick="registerFieldVisit()" class="btn btn-info btn-sm text-white"><i class="fas fa-map-marker-alt"></i> تسجيل زيارة ميدانية</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>المساحة/المحصول</th><th>المتابعة</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div>
+                </div>
+
+                <!-- Inventory -->
+                <div id="inventorySection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3"><h2>المخزن</h2><div><button onclick="exportToExcel('inventoryTable', 'المخزن')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> صنف جديد</button></div></div>
+                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="inventoryTable"><thead><tr><th>اسم الصنف</th><th>التصنيف</th><th>الكمية</th><th>الوحدة</th><th>إجراءات</th></tr></thead><tbody id="inventoryTbody"></tbody></table></div></div>
+                </div>
+
+                <!-- Reports -->
+                <div id="reportsSection" style="display: none;">
+                    <h2 class="mb-4">التقارير</h2>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="openAttendanceReportModal()"><div class="card-body text-center"><i class="fas fa-clock fa-3x mb-2"></i><h5>تقرير الحضور والانصراف</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="exportToExcel('salesTable', 'تقرير_المبيعات')"><div class="card-body text-center"><i class="fas fa-hand-holding-usd fa-3x mb-2"></i><h5>تقرير المبيعات</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-primary shadow-sm h-100 quick-link" onclick="exportRequestsToExcel()"><div class="card-body text-center"><i class="fas fa-cart-plus fa-3x mb-2"></i><h5>تقرير المشتريات</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-secondary shadow-sm h-100 quick-link" onclick="exportToExcel('inventoryTable', 'تقرير_المخزن')"><div class="card-body text-center"><i class="fas fa-warehouse fa-3x mb-2"></i><h5>تقرير المخزن</h5></div></div></div>
+                        <div class="col-md-4 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="exportToExcel('customersTable', 'تقرير_العملاء')"><div class="card-body text-center"><i class="fas fa-address-book fa-3x mb-2"></i><h5>تقرير العملاء</h5></div></div></div>
                     </div>
                 </div>
 
@@ -184,48 +134,10 @@
     </div>
 
     <!-- Modals -->
-    <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد الإضافة</button></div></div></div></div>
-    <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">تأكيد الحذف</button></div></div></div></div>
-    <div class="modal fade" id="resetModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="password" id="newPass" class="form-control mb-2" placeholder="كلمة المرور الجديدة"><input type="password" id="confirmPass" class="form-control" placeholder="تأكيد كلمة المرور"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="confirmReset()">حفظ كلمة المرور</button></div></div></div></div>
-    <div class="modal fade" id="taskUpdateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">الحالة الجديدة</label><select id="taskUpdateStatus" class="form-control mb-3"><option value="قيد التنفيذ">قيد التنفيذ</option><option value="مكتملة">مكتملة</option></select><label class="form-label">ملاحظات / سبب التحديث (إجباري)</label><textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button></div></div></div></div>
-
-    <!-- Modal تفاصيل الطلب -->
-    <div class="modal fade" id="requestDetailsModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fas fa-shopping-cart"></i> تفاصيل الطلب</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="requestDetailsBody"></div>
-                <div class="modal-footer" id="requestDetailsFooter"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal تقارير الحضور -->
-    <div class="modal fade" id="attendanceReportModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-white">
-                    <h5 class="modal-title"><i class="fas fa-file-export"></i> تقارير الحضور والانصراف</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label fw-bold">اختر الموظفين:</label>
-                    <small class="d-block text-muted mb-2">(للاختيار المتعدد استمر بالضغط على Ctrl أو Shift)</small>
-                    <select id="reportEmployees" class="form-control mb-3" multiple size="5" style="height: 150px;"></select>
-                    <label class="form-label fw-bold">نوع التقرير:</label>
-                    <div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked><label class="form-check-label" for="reportSummary">تقرير إجمالي الساعات (شيت واحد للكل)</label></div>
-                    <div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed"><label class="form-check-label" for="reportDetailed">تقرير يومي تفصيلي (تبويب لكل موظف)</label></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-warning" onclick="generateAttendanceReport()">سحب البيانات Excel</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد</button></div></div></div></div>
+    <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد؟</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button></div></div></div></div>
+    <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
+    <div class="modal fade" id="attendanceReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title">تقرير الحضور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><select id="reportEmployees" class="form-control mb-3" multiple size="5" style="height: 150px;"></select><div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked><label class="form-check-label" for="reportSummary">ملخص شهري</label></div><div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed"><label class="form-check-label" for="reportDetailed">تفصيلي يومي</label></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="generateAttendanceReport()">سحب Excel</button></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -233,734 +145,286 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU",
-            authDomain: "daily-report-7196f.firebaseapp.com",
-            databaseURL: "https://daily-report-7196f-default-rtdb.firebaseio.com",
-            projectId: "daily-report-7196f",
-            storageBucket: "daily-report-7196f.firebasestorage.app",
-            messagingSenderId: "760687344646",
-            appId: "1:760687344646:web:03f6739ce3649bbdec1787",
-            measurementId: "G-9FM68J9DHV"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyBCctS6DZYYdDBqA6mV-e5smTg-7d3-tEU", authDomain: "daily-report-7196f.firebaseapp.com", databaseURL: "https://daily-report-7196f-default-rtdb.firebaseio.com", projectId: "daily-report-7196f", storageBucket: "daily-report-7196f.firebasestorage.app", messagingSenderId: "760687344646", appId: "1:760687344646:web:03f6739ce3649bbdec1787" };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-
-        // إعدادات الإشعارات
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "newestOnTop": false,
-            "progressBar": true,
-            "positionClass": "toast-bottom-left",
-            "preventDuplicates": false,
-            "onclick": null,
-            "showDuration": "300",
-            "hideDuration": "1000",
-            "timeOut": "3000",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
+        toastr.options = { "positionClass": "toast-bottom-left", "timeOut": "2000" };
 
         let currentDelete = { id: '', type: '' };
         let currentAdd = { type: '' };
-        let currentResetUserId = '';
         let currentEdit = { id: '', type: '' };
-        let allUsers = []; 
-        let allTasks = []; // تخزين المهام مؤقتاً للبحث
-        let allRequests = []; // تخزين الطلبات مؤقتاً للبحث
+        let allUsers = [], allTasks = [], allRequests = [], allSales = [], allCustomers = [], allInventory = [];
         let currentUserData = null; 
-        let currentUpdateTaskId = ''; 
         let currentDayRef = null; 
-        let currentRequestId = null;
 
-        function doLogin() {
-            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
-                .then(() => { document.getElementById('loginError').innerText = ''; toastr.success('تم تسجيل الدخول بنجاح'); })
-                .catch(err => { document.getElementById('loginError').innerText = 'خطأ: ' + err.message; toastr.error('خطأ: ' + err.message); });
-        }
+        function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
 
         auth.onAuthStateChanged(async user => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
             if (user) {
-                loginSec.classList.add('d-none');
-                loginSec.style.display = 'none';
-                appSec.classList.remove('d-none');
-                appSec.style.display = 'block';
-
+                loginSec.classList.add('d-none'); appSec.classList.remove('d-none');
                 const userSnap = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
-                if (userSnap.exists()) {
-                    userSnap.forEach(child => {
-                        currentUserData = child.val();
-                        currentUserData.id = child.key;
-                    });
-                    applyPermissions();
-                    loadAttendanceStatus(); 
-                }
+                if (userSnap.exists()) { userSnap.forEach(child => { currentUserData = child.val(); currentUserData.id = child.key; }); applyPermissions(); loadAttendanceStatus(); }
                 loadData();
-            } else {
-                loginSec.classList.remove('d-none');
-                loginSec.style.display = 'flex';
-                appSec.classList.add('d-none');
-                appSec.style.display = 'none';
-                currentUserData = null;
-            }
+            } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
         });
 
         function applyPermissions() {
             const isAdmin = currentUserData && currentUserData.role === 'admin';
-            document.getElementById('navDashboard').style.display = 'block'; 
-            document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
-            
+            ['Users', 'Departments', 'Inventory', 'Reports'].forEach(nav => document.getElementById('nav'+nav).style.display = isAdmin ? 'block' : 'none');
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
-            document.getElementById('statsCards').classList.toggle('d-none', !isAdmin);
-            document.getElementById('employeeShortcuts').classList.toggle('d-none', isAdmin);
-            document.getElementById('adminWelcomeAlert').classList.toggle('d-none', !isAdmin);
-            document.getElementById('adminReportBtn').classList.toggle('d-none', !isAdmin);
-            
             showSection('dashboard', null);
-            document.querySelector('#navDashboard').classList.add('active');
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'users', 'departments', 'tasks', 'requests'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
+            ['dashboard', 'users', 'departments', 'tasks', 'requests', 'sales', 'customers', 'inventory', 'reports'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
-            if(evt && evt.target.closest('a')) {
-                evt.target.closest('a').classList.add('active');
-            } else {
-                const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1)));
-                if(navLink) navLink.classList.add('active');
-            }
+            if(evt && evt.target.closest('a')) evt.target.closest('a').classList.add('active');
+            else { const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1))); if(navLink) navLink.classList.add('active'); }
         }
 
-        // ================= دوال الحضور والانصراف =================
-        function formatTime(timeStr) {
-            if (!timeStr || timeStr === '--:--') return '--:--';
-            const [h, m] = timeStr.split(':').map(Number);
-            const period = h >= 12 ? 'م' : 'ص';
-            let hours = h % 12;
-            if (hours === 0) hours = 12;
-            return `${hours}:${m.toString().padStart(2, '0')} ${period}`;
-        }
+        function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
 
         function loadAttendanceStatus() {
             if (!currentUserData || currentUserData.role === 'admin') return;
-            const now = new Date();
-            const day = now.getDate();
-            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
-
             currentDayRef.on('value', snap => {
-                const data = snap.val() || {};
-                const btn = document.getElementById('attendanceBtn');
-                const totalHours = data.totalHours || 0;
-                document.getElementById('dailyHours').innerText = `${parseFloat(totalHours).toFixed(1)} ساعة`;
+                const data = snap.val() || {}; const btn = document.getElementById('attendanceBtn');
+                document.getElementById('dailyHours').innerText = `${parseFloat(data.totalHours || 0).toFixed(1)} ساعة`;
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
                     const activeSes = data.sessions[data.activeSession];
-                    btn.className = 'btn btn-danger btn-lg w-50 mb-3';
-                    btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
-                    btn.disabled = false;
+                    btn.className = 'btn btn-danger btn-lg w-50 mb-3'; btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
                     document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
                 } else {
-                    btn.className = 'btn btn-success btn-lg w-50 mb-3';
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
-                    btn.disabled = false;
-                    let lastCheckOut = '--:--';
-                    if (data.sessions) {
-                        const sessionsArray = Object.values(data.sessions);
-                        const lastSession = sessionsArray[sessionsArray.length - 1];
-                        if (lastSession && lastSession.checkOut) lastCheckOut = lastSession.checkOut;
-                    }
-                    document.getElementById('checkInTime').innerText = '--:--';
-                    document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
+                    btn.className = 'btn btn-success btn-lg w-50 mb-3'; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
+                    let lastCheckOut = '--:--'; if (data.sessions) { const s = Object.values(data.sessions); if (s[s.length-1]?.checkOut) lastCheckOut = s[s.length-1].checkOut; }
+                    document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
                 }
             });
-
-            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => {
-                let totalMonthHours = 0;
-                snap.forEach(daySnap => {
-                    const dayData = daySnap.val();
-                    if (dayData.totalHours) totalMonthHours += parseFloat(dayData.totalHours);
-                });
-                document.getElementById('monthlyHours').innerText = `${totalMonthHours.toFixed(1)} ساعة`;
-            });
+            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
 
         function toggleAttendance() {
             if (!currentDayRef) return;
             currentDayRef.once('value').then(snap => {
-                const data = snap.val() || {};
-                const now = new Date();
-                const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+                const data = snap.val() || {}; const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
                 if (!data.activeSession) {
-                    const newSessionRef = currentDayRef.child('sessions').push();
-                    newSessionRef.set({ checkIn: timeString, checkOut: null, duration: 0 }).then(() => {
-                        currentDayRef.update({ activeSession: newSessionRef.key });
-                        toastr.success('تم تسجيل حضورك في: ' + formatTime(timeString));
-                    });
+                    const newRef = currentDayRef.child('sessions').push();
+                    newRef.set({ checkIn: timeStr, checkOut: null, duration: 0 }).then(() => { currentDayRef.update({ activeSession: newRef.key }); toastr.success('تم تسجيل حضورك'); });
                 } else {
-                    const activeSesId = data.activeSession;
-                    const activeSesData = data.sessions[activeSesId];
-                    const [inHours, inMinutes] = activeSesData.checkIn.split(':').map(Number);
-                    let checkInDate = new Date();
-                    checkInDate.setHours(inHours, inMinutes, 0, 0);
-                    const diffMs = now - checkInDate;
-                    const diffHrs = diffMs / (1000 * 60 * 60);
-                    currentDayRef.child(`sessions/${activeSesId}`).update({ checkOut: timeString, duration: diffHrs.toFixed(2) }).then(() => {
+                    const sesId = data.activeSession; const sesData = data.sessions[sesId];
+                    const [h, m] = sesData.checkIn.split(':').map(Number); let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
+                    const diffHrs = (now - checkInDate) / (1000 * 60 * 60);
+                    currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, duration: diffHrs.toFixed(2) }).then(() => {
                         const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
-                        currentDayRef.update({ activeSession: null, totalHours: newTotal });
-                        toastr.info('تم تسجيل انصرافك. مدة الجلسة: ' + diffHrs.toFixed(2) + ' ساعة');
+                        currentDayRef.update({ activeSession: null, totalHours: newTotal }); toastr.info('تم تسجيل الانصراف');
                     });
                 }
             });
         }
-
-        // ================= دوال تقارير الحضور للمدير =================
-        function openAttendanceReportModal() {
-            const select = document.getElementById('reportEmployees');
-            select.innerHTML = '';
-            allUsers.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.text = u.name;
-                select.appendChild(opt);
-            });
-            new bootstrap.Modal(document.getElementById('attendanceReportModal')).show();
-        }
-
-        async function generateAttendanceReport() {
-            const select = document.getElementById('reportEmployees');
-            const selectedUsers = Array.from(select.selectedOptions).map(opt => ({ id: opt.value, name: opt.text }));
-            const reportType = document.querySelector('input[name="reportType"]:checked').value;
-            if (selectedUsers.length === 0) { toastr.warning('من فضلك اختر موظف واحد على الأقل!'); return; }
-            const attSnap = await db.ref('attendance').once('value');
-            const allAttendance = attSnap.val() || {};
-            const wb = XLSX.utils.book_new();
-
-            if (reportType === 'summary') {
-                let summaryData = [];
-                selectedUsers.forEach(user => {
-                    const userAtt = allAttendance[user.id] || {};
-                    for (const monthYear in userAtt) {
-                        let monthTotal = 0;
-                        for (const day in userAtt[monthYear]) {
-                            if (userAtt[monthYear][day].totalHours) monthTotal += parseFloat(userAtt[monthYear][day].totalHours);
-                        }
-                        summaryData.push({ "اسم الموظف": user.name, "الشهر": monthYear, "إجمالي الساعات": monthTotal.toFixed(2) });
-                    }
-                });
-                if (summaryData.length === 0) { toastr.warning("لا توجد بيانات حضور للموظفين المختارين."); return; }
-                const ws = XLSX.utils.json_to_sheet(summaryData);
-                XLSX.utils.book_append_sheet(wb, ws, "ملخص الحضور");
-                XLSX.writeFile(wb, "Attendance_Summary.xlsx");
-            } else {
-                let hasData = false;
-                selectedUsers.forEach(user => {
-                    const userAtt = allAttendance[user.id] || {};
-                    let userRows = [];
-                    let daysArray = [];
-                    for (const monthYear in userAtt) {
-                        for (const day in userAtt[monthYear]) {
-                            daysArray.push({ monthYear, day, data: userAtt[monthYear][day] });
-                        }
-                    }
-                    daysArray.sort((a, b) => {
-                        if (a.monthYear !== b.monthYear) return a.monthYear.localeCompare(b.monthYear);
-                        return parseInt(a.day) - parseInt(b.day);
-                    });
-                    daysArray.forEach(item => {
-                        const dateStr = `${item.day}-${item.monthYear}`;
-                        const dayData = item.data;
-                        const totalDayHours = dayData.totalHours ? parseFloat(dayData.totalHours).toFixed(2) : "0";
-                        if (dayData.sessions) {
-                            Object.values(dayData.sessions).forEach(ses => {
-                                userRows.push({
-                                    "التاريخ": dateStr,
-                                    "وقت الحضور": formatTime(ses.checkIn),
-                                    "وقت الانصراف": ses.checkOut ? formatTime(ses.checkOut) : "لم يسجل",
-                                    "مدة الجلسة (ساعات)": ses.duration ? parseFloat(ses.duration).toFixed(2) : "0",
-                                    "إجمالي ساعات اليوم": totalDayHours
-                                });
-                            });
-                        }
-                    });
-                    if (userRows.length > 0) {
-                        hasData = true;
-                        const ws = XLSX.utils.json_to_sheet(userRows);
-                        let sheetName = user.name.replace(/[*?\/\\\[\]:]/g, '').substring(0, 31);
-                        XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employee");
-                    }
-                });
-                if (!hasData) { toastr.warning("لا توجد بيانات تفصيلية للموظفين المختارين."); return; }
-                XLSX.writeFile(wb, "Detailed_Attendance.xlsx");
-            }
-            bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide();
-            toastr.success("تم إنشاء التقرير بنجاح!");
-        }
-        // =========================================================
 
         function loadData() {
             db.ref('users').on('value', snap => {
-                allUsers = []; 
-                document.getElementById('statUsers').innerText = snap.numChildren();
+                allUsers = []; document.getElementById('statUsers').innerText = snap.numChildren();
                 let html = '';
-                snap.forEach(child => {
-                    const u = child.val();
-                    u.id = child.key;
-                    allUsers.push(u); 
-                    html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.deptName || 'غير محدد'}</td><td>${u.role || 'مستخدم'}</td><td><button onclick="openResetModal('${child.key}')" class="btn btn-sm btn-warning"><i class="fas fa-key"></i></button> <button onclick="openEditModal('user', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
-                });
-                document.getElementById('usersTbody').innerHTML = html;
-                renderDepartments(); 
+                snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.deptName || ''}</td><td>${u.role}</td><td><button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${u.id}','users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`; });
+                document.getElementById('usersTbody').innerHTML = html; renderDepartments();
             });
-
             db.ref('departments').on('value', snap => {
-                document.getElementById('statDepts').innerText = snap.numChildren();
-                renderDepartments(); 
-            });
-
-            db.ref('tasks').on('value', snap => {
-                allTasks = []; 
-                let unreceivedCount = 0;
-                let myActiveTasks = 0;
-                const isAdmin = currentUserData && currentUserData.role === 'admin';
-
-                snap.forEach(child => {
-                    const t = child.val();
-                    t.id = child.key;
-                    if (t.status === 'جديدة') unreceivedCount++;
-                    if (!isAdmin && t.userId === currentUserData.id && t.status !== 'مكتملة') myActiveTasks++;
-                    allTasks.push(t);
-                });
-                
-                document.getElementById('statUnreceivedTasks').innerText = isAdmin ? unreceivedCount : myActiveTasks;
-                renderTasksTable();
-            });
-
-            db.ref('requests').on('value', snap => {
-                allRequests = [];
-                let pendingReqForAdmin = 0;
-                let myPendingReq = 0;
-                const isAdmin = currentUserData && currentUserData.role === 'admin';
-
-                snap.forEach(child => {
-                    const r = child.val();
-                    r.id = child.key;
-                    if (r.status === 'جديد') pendingReqForAdmin++;
-                    if (r.empId === currentUserData.id && (r.status === 'جديد' || r.status === 'تأجيل')) myPendingReq++;
-                    allRequests.push(r);
-                });
-
-                document.getElementById('statRequests').innerText = snap.numChildren();
-                document.getElementById('statPendingReq').innerText = isAdmin ? pendingReqForAdmin : myPendingReq;
-                document.getElementById('statTotalReq').innerText = snap.numChildren();
-                
-                const canExport = isAdmin || allRequests.some(r => r.targetDeptName === currentUserData.deptName);
-                document.getElementById('exportRequestsBtn').classList.toggle('d-none', !canExport);
-                
-                renderRequestsTable();
-            });
-        }
-
-        // ================= دوال عرض الجداول (مع البحث والفلترة) =================
-        function renderTasksTable() {
-            const isAdmin = currentUserData && currentUserData.role === 'admin';
-            const searchTerm = (document.getElementById('searchTask')?.value || '').toLowerCase();
-            const filterStatus = document.getElementById('filterTaskStatus')?.value || 'الكل';
-            
-            let html = '';
-            let filteredTasks = allTasks.filter(t => {
-                if (!isAdmin && t.userId !== currentUserData.id) return false;
-                if (filterStatus !== 'الكل' && t.status !== filterStatus) return false;
-                const searchMatch = (t.title || '').toLowerCase().includes(searchTerm) || (t.userName || '').toLowerCase().includes(searchTerm) || (t.deptName || '').toLowerCase().includes(searchTerm);
-                return searchMatch;
-            });
-
-            if (filteredTasks.length === 0) {
-                document.getElementById('tasksTbody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام مطابقة.</td></tr>';
-                return;
-            }
-
-            filteredTasks.forEach(t => {
-                let actions = '';
-                if (isAdmin) {
-                    actions = `<button onclick="openEditModal('task', '${t.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${t.id}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
-                } else {
-                    if (t.status === 'مكتملة') {
-                        actions = `<span class="badge bg-success">تم الإنهاء</span>`;
-                    } else {
-                        if (t.status === 'جديدة') actions += `<button onclick="receiveTask('${t.id}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
-                        actions += `<button onclick="openTaskUpdateModal('${t.id}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
-                    }
-                }
-                let commentText = t.comment ? `<br><small class="text-muted fst-italic">ملاحظة: ${t.comment}</small>` : '';
-                html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'} ${commentText}</td><td>${actions}</td></tr>`;
-            });
-            document.getElementById('tasksTbody').innerHTML = html;
-        }
-
-        function renderRequestsTable() {
-            const isAdmin = currentUserData && currentUserData.role === 'admin';
-            const searchTerm = (document.getElementById('searchReq')?.value || '').toLowerCase();
-            const filterStatus = document.getElementById('filterReqStatus')?.value || 'الكل';
-            
-            let html = '';
-            let filteredRequests = allRequests.filter(r => {
-                const isTargetDept = currentUserData.deptName === r.targetDeptName;
-                if (!isAdmin && !isTargetDept && r.empId !== currentUserData.id) return false;
-                if (filterStatus !== 'الكل' && r.status !== filterStatus) return false;
-                const searchMatch = (r.reqId || '').toString().includes(searchTerm) || (r.item || '').toLowerCase().includes(searchTerm) || (r.empName || '').toLowerCase().includes(searchTerm) || (r.targetDeptName || '').toLowerCase().includes(searchTerm);
-                return searchMatch;
-            });
-
-            if (filteredRequests.length === 0) {
-                document.getElementById('requestsTbody').innerHTML = '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات مطابقة.</td></tr>';
-                return;
-            }
-
-            filteredRequests.forEach(r => {
-                const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
-                let priorityBadge = r.priority === 'عاجلة' ? `<span class="badge bg-danger">عاجل</span>` : '<span class="text-muted">عادية</span>';
-                
-                html += `
-                <tr class="req-row" onclick="openRequestDetails('${r.id}')">
-                    <td class="fw-bold">#${r.reqId || '---'}</td>
-                    <td>${r.item}</td>
-                    <td>${r.empName || ''} <br><small class="text-muted">(${r.empDept || ''})</small></td>
-                    <td>${r.targetDeptName || 'غير محدد'}</td>
-                    <td>${priorityBadge}</td>
-                    <td><span class="badge bg-${statusColor}">${r.status || 'جديد'}</span></td>
-                </tr>`;
-            });
-            document.getElementById('requestsTbody').innerHTML = html;
-        }
-        // =========================================================
-
-        function renderDepartments() {
-            db.ref('departments').once('value').then(snap => {
                 let html = '';
-                snap.forEach(child => {
-                    const d = child.val();
-                    const deptUsers = allUsers.filter(u => u.deptId === child.key);
-                    const usersList = deptUsers.map(u => `<span class="badge bg-info me-1">${u.name}</span>`).join(' ') || '<span class="text-muted">لا يوجد</span>';
-                    html += `<tr><td>${d.name}</td><td>${d.managerName || 'غير محدد'}</td><td>${usersList}</td><td>${d.desc || ''}</td><td><button onclick="openEditModal('department', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
-                });
+                snap.forEach(child => { const d = child.val(); html += `<tr><td>${d.name}</td><td>${d.managerName || ''}</td><td>${d.desc || ''}</td><td><button onclick="openEditModal('department','${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}','departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`; });
                 document.getElementById('departmentsTbody').innerHTML = html;
             });
+            db.ref('tasks').on('value', snap => {
+                allTasks = []; let unreceived = 0; const isAdmin = currentUserData?.role === 'admin';
+                snap.forEach(child => { const t = child.val(); t.id = child.key; if(t.status === 'جديدة') unreceived++; allTasks.push(t); });
+                document.getElementById('statUnreceivedTasks').innerText = isAdmin ? unreceived : allTasks.filter(t => t.userId === currentUserData.id && t.status !== 'مكتملة').length;
+                let html = '';
+                allTasks.filter(t => isAdmin || t.userId === currentUserData.id).forEach(t => {
+                    let act = isAdmin ? `<button onclick="openEditModal('task','${t.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>` : (t.status === 'مكتملة' ? '<span class="badge bg-success">مكتملة</span>' : `<button onclick="receiveTask('${t.id}')" class="btn btn-sm btn-primary">استلام</button>`);
+                    html += `<tr><td>${t.title}</td><td>${t.userName}</td><td>${t.status}</td><td>${act}</td></tr>`;
+                });
+                document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="4" class="text-center text-muted">لا توجد مهام</td></tr>';
+            });
+            db.ref('requests').on('value', snap => {
+                allRequests = []; let pending = 0; const isAdmin = currentUserData?.role === 'admin';
+                snap.forEach(child => { const r = child.val(); r.id = child.key; if(r.status === 'جديد') pending++; allRequests.push(r); });
+                document.getElementById('statPendingReq').innerText = isAdmin ? pending : allRequests.filter(r => r.empId === currentUserData.id && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض').length;
+                let html = '';
+                allRequests.filter(r => isAdmin || r.empId === currentUserData.id || r.targetDeptName === currentUserData.deptName).forEach(r => {
+                    html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>#${r.reqId}</td><td>${r.item}</td><td>${r.empName}</td><td>${r.targetDeptName}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':r.status==='مرفوض'?'danger':r.status==='موافقة الإدارة'?'info':'secondary'}">${r.status}</span></td></tr>`;
+                });
+                document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد طلبات</td></tr>';
+            });
+            db.ref('sales').on('value', snap => {
+                allSales = []; let html = '';
+                snap.forEach(child => { const s = child.val(); s.id = child.key; allSales.push(s); 
+                    html += `<tr><td>${s.repName}</td><td>${s.customerName}</td><td>${s.productType}</td><td>${s.qty}</td><td>${s.amount}</td><td><span class="badge bg-${s.status==='تم التوصيل'?'success':s.status==='جارٍ التوصيل'?'warning':'primary'}">${s.status}</span></td><td><button onclick="openEditModal('sale','${s.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${s.id}','sales')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                document.getElementById('salesTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد مبيعات</td></tr>';
+            });
+            db.ref('customers').on('value', snap => {
+                allCustomers = []; document.getElementById('statCustomers').innerText = snap.numChildren();
+                let html = '';
+                snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); 
+                    html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td>${c.landArea} (${c.crop})</td><td><button onclick="addFollowUp('${c.id}')" class="btn btn-sm btn-info text-white"><i class="fas fa-comment"></i> متابعة</button></td><td><button onclick="openEditModal('customer','${c.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${c.id}','customers')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                document.getElementById('customersTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا يوجد عملاء</td></tr>';
+            });
+            db.ref('inventory').on('value', snap => {
+                allInventory = []; let html = '';
+                snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); 
+                    html += `<tr><td>${i.name}</td><td>${i.category}</td><td>${i.qty}</td><td>${i.unit}</td><td><button onclick="openEditModal('inventory','${i.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${i.id}','inventory')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                document.getElementById('inventoryTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">المخزن فارغ</td></tr>';
+            });
         }
+
+        function renderDepartments() { /* Merged with loadData for simplicity */ }
 
         async function openAddModal(type) {
             currentAdd.type = type;
             const body = document.getElementById('addModalBody');
             const title = document.getElementById('addModalTitle');
+            const depOpts = (await db.ref('departments').once('value')).val() || {};
+            const userOpts = allUsers;
             
             if (type === 'user') {
                 title.innerText = 'إضافة مستخدم';
-                const depsSnap = await db.ref('departments').once('value');
-                let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => { depOpts += `<option value="${d.key}">${d.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><label class="small text-muted">القسم</label><select id="newDept" class="form-control mb-2">${depOpts}</select><label class="small text-muted">الصلاحية</label><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
+                let opts = '<option value="">--</option>'; for(let d in depOpts) opts += `<option value="${d}">${depOpts[d].name}</option>`;
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
-                const usersSnap = await db.ref('users').once('value');
-                let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => { userOpts += `<option value="${u.key}">${u.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
+                let opts = '<option value="">--</option>'; userOpts.forEach(u => opts += `<option value="${u.id}">${u.name}</option>`);
+                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
-                const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
-                let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => { userOpts += `<option value="${u.key}">${u.val().name}</option>`; });
-                let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => { depOpts += `<option value="${d.key}">${d.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
+                let uOpts = '<option value="">--</option>'; userOpts.forEach(u => uOpts += `<option value="${u.id}">${u.name}</option>`);
+                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان"><select id="taskUser" class="form-control mb-2">${uOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
             } else if (type === 'request') {
-                title.innerText = 'تسجيل طلب شراء جديد';
-                let currentName = currentUserData ? currentUserData.name : '';
-                let currentDept = currentUserData ? (currentUserData.deptName || 'غير محدد') : '';
-                
-                const depsSnap = await db.ref('departments').once('value');
-                let targetDepOpts = '<option value="">-- اختر القسم الموجه إليه الطلب --</option>';
-                depsSnap.forEach(d => { targetDepOpts += `<option value="${d.key}" data-name="${d.val().name}">${d.val().name}</option>`; });
-
-                body.innerHTML = `
-                    <div class="mb-2"><label class="small text-muted">اسم الموظف</label><input type="text" id="reqUser" class="form-control" value="${currentName}" readonly></div>
-                    <div class="mb-2"><label class="small text-muted">القسم التابع له</label><input type="text" id="reqDept" class="form-control" value="${currentDept}" readonly></div>
-                    <div class="mb-2"><label class="small text-muted">وجهة الطلب (القسم الموجه إليه)</label><select id="reqTargetDept" class="form-control" required>${targetDepOpts}</select></div>
-                    <div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" placeholder="مثال: طابعة / ورق A4"></div>
-                    <div class="row mb-2"><div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" placeholder="العدد"></div><div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة">قطعة</option><option value="كرتونة">كرتونة</option><option value="علبة">علبة</option><option value="عبوة">عبوة</option></select></div></div>
-                    <div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية">عادية</option><option value="عاجلة">عاجلة</option></select></div>
-                    <div class="mb-2"><label class="small text-muted">تفاصيل إضافية / الغرض</label><textarea id="reqPurpose" class="form-control" placeholder="اكتب المواصفات أو الغرض من الطلب"></textarea></div>
-                `;
+                title.innerText = 'طلب شراء';
+                let opts = '<option value="">--</option>'; for(let d in depOpts) opts += `<option value="${depOpts[d].name}">${depOpts[d].name}</option>`;
+                body.innerHTML = `<input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية"><select id="reqTargetDept" class="form-control mb-2">${opts}</select><select id="reqPriority" class="form-control"><option>عادية</option><option>عاجلة</option></select><textarea id="reqPurpose" class="form-control" placeholder="الغرض"></textarea>`;
+            } else if (type === 'sale') {
+                title.innerText = 'بيع جديد';
+                let cOpts = '<option value="">--</option>'; allCustomers.forEach(c => cOpts += `<option value="${c.name}">${c.name}</option>`);
+                body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="saleCustomer" class="form-control mb-2">${cOpts}</select><input type="text" id="saleProduct" class="form-control mb-2" placeholder="نوع المنتج"><input type="number" id="saleQty" class="form-control mb-2" placeholder="الكمية"><input type="number" id="saleAmount" class="form-control mb-2" placeholder="المبلغ"><input type="text" id="saleAddress" class="form-control mb-2" placeholder="العنوان"><select id="saleStatus" class="form-control mb-2"><option>إنتاج</option><option>جارٍ التوصيل</option><option>تم التوصيل</option></select><textarea id="saleNotes" class="form-control" placeholder="ملاحظات</textarea>`;
+            } else if (type === 'customer') {
+                title.innerText = 'عميل جديد';
+                body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل"><select id="custType" class="form-control mb-2"><option>تاجر</option><option>مزارع</option><option>جمعية</option><option>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون"><input type="text" id="custLand" class="form-control mb-2" placeholder="مساحة الأرض"><input type="text" id="custCrop" class="form-control mb-2" placeholder="المحصول"><textarea id="custReq" class="form-control mb-2" placeholder="طلبات العميل"></textarea><input type="hidden" id="custLocation"><div id="locStatus" class="small text-muted mb-2"></div>`;
+            } else if (type === 'inventory') {
+                title.innerText = 'صنف مخزن';
+                body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" placeholder="اسم الصنف"><select id="invCategory" class="form-control mb-2"><option>منتج نهائي</option><option>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" placeholder="الكمية"><input type="text" id="invUnit" class="form-control mb-2" placeholder="الوحدة" value="قطعة">`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
         function confirmAdd() {
-            if (currentAdd.type === 'user') {
-                const deptSel = document.getElementById('newDept');
-                db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, password: document.getElementById('newPassword').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المستخدم بنجاح'); }).catch(err => toastr.error(err.message));
-            } else if (currentAdd.type === 'department') {
-                const managerSel = document.getElementById('depManager');
-                db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة القسم بنجاح'); }).catch(err => toastr.error(err.message));
-            } else if (currentAdd.type === 'task') {
-                const userSel = document.getElementById('taskUser');
-                const depSel = document.getElementById('taskDept');
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة بنجاح'); }).catch(err => toastr.error(err.message));
-            } else if (currentAdd.type === 'request') {
-                let empId = currentUserData ? currentUserData.id : '';
-                let empName = currentUserData ? currentUserData.name : '';
-                let empDept = currentUserData ? (currentUserData.deptName || '') : '';
-                
-                const targetDeptSel = document.getElementById('reqTargetDept');
-                if (!targetDeptSel.value) { toastr.warning('من فضلك اختر القسم الموجه إليه الطلب!'); return; }
-                const targetDeptName = targetDeptSel.options[targetDeptSel.selectedIndex].text;
-
-                const counterRef = db.ref('counters/requests');
-                counterRef.transaction(currentVal => {
-                    return (currentVal || 1000) + 1;
-                }).then(transactionResult => {
-                    const newReqId = transactionResult.snapshot.val();
-                    db.ref('requests').push({
-                        reqId: newReqId,
-                        empId: empId,
-                        empName: empName,
-                        empDept: empDept,
-                        targetDeptId: targetDeptSel.value,
-                        targetDeptName: targetDeptName,
-                        item: document.getElementById('reqItem').value,
-                        qty: document.getElementById('reqQty').value,
-                        unit: document.getElementById('reqUnit').value,
-                        priority: document.getElementById('reqPriority').value,
-                        purpose: document.getElementById('reqPurpose').value,
-                        status: 'جديد',
-                        comment: '',
-                        timestamp: new Date().toLocaleDateString()
-                    }).then(() => {
-                        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-                        toastr.success('تم تسجيل طلبك بنجاح برقم: #' + newReqId);
-                    }).catch(err => toastr.error(err.message));
-                });
-            }
+            const type = currentAdd.type;
+            if (type === 'user') { const d = document.getElementById('newDept'); db.ref('users').push({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, password: document.getElementById('newPassword').value, deptId: d.value, deptName: d.options[d.selectedIndex].text, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: m.value, managerName: m.options[m.selectedIndex].text }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'task') { const u = document.getElementById('taskUser'); db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, status: document.getElementById('taskStatus').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'request') { db.ref('counters/requests').transaction(c => (c || 1000) + 1).then(res => { const newId = res.snapshot.val(); db.ref('requests').push({ reqId: newId, empId: currentUserData.id, empName: currentUserData.name, empDept: currentUserData.deptName, targetDeptName: document.getElementById('reqTargetDept').value, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب #' + newId); }); }); }
+            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
+            else if (type === 'customer') { db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value, location: document.getElementById('custLocation').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); }); }
+            else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
 
-        // ================= دوال تفاصيل الطلب =================
         async function openRequestDetails(id) {
-            currentRequestId = id;
-            const r = allRequests.find(req => req.id === id);
-            if (!r) return;
-
-            const isAdmin = currentUserData && currentUserData.role === 'admin';
-            const isTargetDept = currentUserData && currentUserData.deptName === r.targetDeptName;
-            const canTakeAction = isAdmin || isTargetDept;
-
-            const body = document.getElementById('requestDetailsBody');
-            body.innerHTML = `
-                <h5 class="mb-3">طلب رقم #${r.reqId || ''} - ${r.item} ${r.priority === 'عاجلة' ? '<span class="badge bg-danger">عاجل</span>' : ''}</h5>
-                <p><i class="fas fa-user text-primary"></i> <b>طالب الطلب:</b> ${r.empName || 'غير محدد'} (${r.empDept || 'غير محدد'})</p>
-                <p><i class="fas fa-building text-primary"></i> <b>موجه إلى قسم:</b> ${r.targetDeptName || 'غير محدد'}</p>
-                <p><i class="fas fa-sort-numeric-up text-primary"></i> <b>الكمية:</b> ${r.qty} ${r.unit || ''}</p>
-                <p><i class="fas fa-info-circle text-primary"></i> <b>التفاصيل / الغرض:</b> ${r.purpose || 'لا يوجد'}</p>
-                <hr>
-                <label class="small text-muted">تعليق المشتريات / سبب الرفض:</label>
-                <textarea class="form-control mb-2" id="detailComment" ${canTakeAction ? '' : 'readonly'} placeholder="لا يوجد تعليق">${r.comment || ''}</textarea>
-            `;
-
-            const footer = document.getElementById('requestDetailsFooter');
-            if (isAdmin) {
-                footer.innerHTML = `
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-warning" onclick="openEditRequestFromModal()"><i class="fas fa-edit"></i> تعديل الطلب</button>
-                    <button type="button" class="btn btn-danger" onclick="deleteRequestFromModal()"><i class="fas fa-trash"></i> حذف</button>
-                    ${r.status !== 'تم التنفيذ' && r.status !== 'مرفوض' ? `
-                        <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
-                        <button type="button" class="btn btn-info" onclick="updateRequestStatusFromModal('تأجيل')"><i class="fas fa-pause"></i> تأجيل</button>
-                        <button type="button" class="btn btn-outline-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
-                    ` : ''}
-                `;
-            } else if (canTakeAction && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
-                footer.innerHTML = `
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-success" onclick="updateRequestStatusFromModal('تم التنفيذ')"><i class="fas fa-check"></i> موافقة</button>
-                    <button type="button" class="btn btn-warning" onclick="updateRequestStatusFromModal('تأجيل')"><i class="fas fa-pause"></i> تأجيل</button>
-                    <button type="button" class="btn btn-danger" onclick="updateRequestStatusFromModal('مرفوض')"><i class="fas fa-times"></i> رفض</button>
-                `;
-            } else {
-                footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            }
-
-            new bootstrap.Modal(document.getElementById('requestDetailsModal')).show();
-        }
-
-        function openEditRequestFromModal() {
-            bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
-            openEditModal('request', currentRequestId);
-        }
-
-        function updateRequestStatusFromModal(status) {
-            const comment = document.getElementById('detailComment').value;
-            db.ref('requests/' + currentRequestId).update({ status: status, comment: comment }).then(() => {
-                bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
-                toastr.success('تم تحديث حالة الطلب إلى: ' + status);
-            }).catch(err => toastr.error(err.message));
-        }
-
-        function deleteRequestFromModal() {
-            if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
-            db.ref('requests/' + currentRequestId).remove().then(() => {
-                bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
-                toastr.success('تم حذف الطلب بنجاح');
-            }).catch(err => toastr.error(err.message));
-        }
-        // =========================================================
-
-        function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
-        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف بنجاح'); }).catch(err => toastr.error(err.message)); }
-
-        async function openEditModal(type, id) {
-            currentEdit = { id, type: type + 's' };
-            const body = document.getElementById('addModalBody');
-            const title = document.getElementById('addModalTitle');
-            const snap = await db.ref(currentEdit.type + '/' + id).once('value');
-            const data = snap.val();
+            const r = allRequests.find(req => req.id === id); if (!r) return;
+            const isAdmin = currentUserData?.role === 'admin';
+            const isTargetDept = currentUserData?.deptName === r.targetDeptName;
+            const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
             
-            if (type === 'user') {
-                title.innerText = 'تعديل مستخدم';
-                const depsSnap = await db.ref('departments').once('value');
-                let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}"><select id="newDept" class="form-control mb-2">${depOpts}</select><select id="newRole" class="form-control"><option value="user" ${data.role === 'user' ? 'selected' : ''}>مستخدم</option><option value="admin" ${data.role === 'admin' ? 'selected' : ''}>مدير</option></select>`;
-            } else if (type === 'department') {
-                title.innerText = 'تعديل قسم';
-                const usersSnap = await db.ref('users').once('value');
-                let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => { userOpts += `<option value="${u.key}" ${data.managerId === u.key ? 'selected' : ''}>${u.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control">${data.desc || ''}</textarea>`;
-            } else if (type === 'task') {
-                title.innerText = 'تعديل مهمة';
-                const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
-                let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => { userOpts += `<option value="${u.key}" ${data.userId === u.key ? 'selected' : ''}>${u.val().name}</option>`; });
-                let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option><option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option><option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option></select>`;
-            } else if (type === 'request') {
-                title.innerText = 'تعديل الطلب #' + (data.reqId || '');
-                const depsSnap = await db.ref('departments').once('value');
-                let depOpts = '<option value="">-- اختر القسم الموجه إليه --</option>';
-                depsSnap.forEach(d => { depOpts += `<option value="${d.key}" ${data.targetDeptId === d.key ? 'selected' : ''}>${d.val().name}</option>`; });
+            document.getElementById('detailsModalTitle').innerText = `طلب #${r.reqId}`;
+            document.getElementById('detailsModalBody').innerHTML = `<h5>${r.item}</h5><p>الكمية: ${r.qty} | الأولوية: ${r.priority}</p><p>التفاصيل: ${r.purpose || ''}</p><hr><textarea class="form-control" id="detailComment" placeholder="تعليق" ${isAdmin || (isTargetDept && canPurchasingTakeAction) ? '' : 'readonly'}>${r.comment || ''}</textarea>`;
+            
+            let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+            if (isAdmin && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
+            if (isTargetDept && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
+            if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
+            
+            document.getElementById('detailsModalFooter').innerHTML = footer;
+            new bootstrap.Modal(document.getElementById('detailsModal')).show();
+        }
 
-                body.innerHTML = `
-                    <div class="mb-2"><label class="small text-muted">اسم الصنف المطلوب</label><input type="text" id="reqItem" class="form-control" value="${data.item || ''}"></div>
-                    <div class="row mb-2">
-                        <div class="col-6"><label class="small text-muted">الكمية</label><input type="number" id="reqQty" class="form-control" value="${data.qty || ''}"></div>
-                        <div class="col-6"><label class="small text-muted">الوحدة</label><select id="reqUnit" class="form-control"><option value="قطعة" ${data.unit === 'قطعة' ? 'selected' : ''}>قطعة</option><option value="كرتونة" ${data.unit === 'كرتونة' ? 'selected' : ''}>كرتونة</option><option value="علبة" ${data.unit === 'علبة' ? 'selected' : ''}>علبة</option><option value="عبوة" ${data.unit === 'عبوة' ? 'selected' : ''}>عبوة</option></select></div>
-                    </div>
-                    <div class="mb-2"><label class="small text-muted">الأولوية</label><select id="reqPriority" class="form-control"><option value="عادية" ${data.priority === 'عادية' ? 'selected' : ''}>عادية</option><option value="عاجلة" ${data.priority === 'عاجلة' ? 'selected' : ''}>عاجلة</option></select></div>
-                    <div class="mb-2"><label class="small text-muted">وجهة الطلب (القسم الموجه إليه)</label><select id="reqTargetDept" class="form-control">${depOpts}</select></div>
-                    <div class="mb-2"><label class="small text-muted">تفاصيل / الغرض</label><textarea id="reqPurpose" class="form-control">${data.purpose || ''}</textarea></div>
-                    <div class="mb-2"><label class="small text-muted">الحالة</label><select id="reqStatus" class="form-control"><option value="جديد" ${data.status === 'جديد' ? 'selected' : ''}>جديد</option><option value="تم التنفيذ" ${data.status === 'تم التنفيذ' ? 'selected' : ''}>تم التنفيذ (موافقة)</option><option value="تأجيل" ${data.status === 'تأجيل' ? 'selected' : ''}>تأجيل</option><option value="مرفوض" ${data.status === 'مرفوض' ? 'selected' : ''}>مرفوض</option></select></div>
-                `;
+        function updateReqStatus(id, status) {
+            const comment = document.getElementById('detailComment').value;
+            db.ref('requests/' + id).update({ status, comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); });
+        }
+
+        function registerFieldVisit() {
+            if (!navigator.geolocation) return toastr.error("المتصفح لا يدعم تحديد الموقع");
+            toastr.info("جاري تحديد موقعك...");
+            navigator.geolocation.getCurrentPosition(pos => {
+                const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                openAddModal('customer');
+                setTimeout(() => {
+                    document.getElementById('custLocation').value = link;
+                    document.getElementById('locStatus').innerHTML = `<a href="${link}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للعرض)</a>`;
+                }, 500);
+            }, err => toastr.error("تعذر获取 الموقع"));
+        }
+
+        function addFollowUp(custId) {
+            const note = prompt("اكتب ملاحظة المتابعة لهذا العميل:");
+            if (note) {
+                db.ref('customers/' + custId + '/followUps').push({ date: new Date().toLocaleString(), note: note, repId: currentUserData.id }).then(() => toastr.success('تمت إضافة المتابعة'));
             }
+        }
+
+        function receiveTask(id) { db.ref('tasks/' + id).update({ status: 'تم الاستلام' }).then(() => toastr.success('تم الاستلام')); }
+        
+        async function openEditModal(type, id) {
+            const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
+            currentEdit = { id, type: type + 's' };
+            const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
+            if (type === 'user') { const deps = (await db.ref('departments').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let d in deps) opts += `<option value="${d}" ${data.deptId===d?'selected':''}>${deps[d].name}</option>`; title.innerText='تعديل مستخدم'; body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير</option></select>`; }
+            else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.managerId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
+            else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${opts}</select><select id="taskStatus" class="form-control"><option ${data.status==='جديدة'?'selected':''}>جديدة</option><option ${data.status==='قيد التنفيذ'?'selected':''}>قيد التنفيذ</option><option ${data.status==='مكتملة'?'selected':''}>مكتملة</option></select>`; }
+            else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
+            else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
+            else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option><option ${data.category==='مادة خام'?'selected':''}>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}"><input type="text" id="invUnit" class="form-control mb-2" value="${data.unit}">`; }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
         function confirmEdit() {
-            let updates = {};
-            if (currentEdit.type === 'users') {
-                const deptSel = document.getElementById('newDept');
-                updates = { name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, role: document.getElementById('newRole').value, deptId: deptSel.value, deptName: deptSel.options[deptSel.selectedIndex].text };
-            } else if (currentEdit.type === 'departments') {
-                const managerSel = document.getElementById('depManager');
-                updates = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: managerSel.value, managerName: managerSel.options[managerSel.selectedIndex].text };
-            } else if (currentEdit.type === 'tasks') {
-                const u=document.getElementById('taskUser'), d=document.getElementById('taskDept');
-                updates = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptId: d.value, deptName: d.options[d.selectedIndex].text, status: document.getElementById('taskStatus').value };
-            } else if (currentEdit.type === 'requests') {
-                const targetDeptSel = document.getElementById('reqTargetDept');
-                updates = {
-                    item: document.getElementById('reqItem').value,
-                    qty: document.getElementById('reqQty').value,
-                    unit: document.getElementById('reqUnit').value,
-                    priority: document.getElementById('reqPriority').value,
-                    targetDeptId: targetDeptSel.value,
-                    targetDeptName: targetDeptSel.options[targetDeptSel.selectedIndex].text,
-                    purpose: document.getElementById('reqPurpose').value,
-                    status: document.getElementById('reqStatus').value
-                };
+            const t = currentEdit.type; const id = currentEdit.id; let upd = {};
+            if (t === 'users') { const d = document.getElementById('newDept'); upd = { name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, deptId: d.value, deptName: d.options[d.selectedIndex].text, role: document.getElementById('newRole').value }; }
+            else if (t === 'departments') { const m = document.getElementById('depManager'); upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: m.value, managerName: m.options[m.selectedIndex].text }; }
+            else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, status: document.getElementById('taskStatus').value }; }
+            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, lastUpdate: new Date().toLocaleString() }; }
+            else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
+            else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
+            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
+        }
+
+        function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
+        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
+
+        function openAttendanceReportModal() { const sel = document.getElementById('reportEmployees'); sel.innerHTML = ''; allUsers.forEach(u => sel.appendChild(new Option(u.name, u.id))); new bootstrap.Modal(document.getElementById('attendanceReportModal')).show(); }
+        async function generateAttendanceReport() {
+            const sel = document.getElementById('reportEmployees'); const users = Array.from(sel.selectedOptions).map(o => ({ id: o.value, name: o.text })); if (!users.length) return toastr.warning('اختر موظف');
+            const att = (await db.ref('attendance').once('value')).val() || {}; const wb = XLSX.utils.book_new();
+            if (document.querySelector('input[name="reportType"]:checked').value === 'summary') {
+                let d = []; users.forEach(u => { for (const m in (att[u.id]||{})) { let t=0; for (const day in att[u.id][m]) if(att[u.id][m][day].totalHours) t+=parseFloat(att[u.id][m][day].totalHours); d.push({ "الموظف": u.name, "الشهر": m, "الساعات": t.toFixed(2) }); } });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d), "ملخص");
+            } else {
+                users.forEach(u => { let r=[]; for (const m in (att[u.id]||{})) { for (const day in att[u.id][m]) { if(att[u.id][m][day].sessions) Object.values(att[u.id][m][day].sessions).forEach(s => r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut?formatTime(s.checkOut):"", "المدة": s.duration||0 })); } } if(r.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(r), u.name.substring(0,28)); });
             }
-            db.ref(currentEdit.type + '/' + currentEdit.id).update(updates).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()'); toastr.success('تم حفظ التعديلات بنجاح!'); }).catch(err => toastr.error(err.message));
+            XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
         }
 
-        function openResetModal(userId) { currentResetUserId = userId; document.getElementById('newPass').value=''; document.getElementById('confirmPass').value=''; new bootstrap.Modal(document.getElementById('resetModal')).show(); }
-        function confirmReset() {
-            const p1 = document.getElementById('newPass').value, p2 = document.getElementById('confirmPass').value;
-            if (p1 !== p2 || p1.length < 6) { toastr.warning("كلمات المرور غير متطابقة أو أقل من 6 أحرف!"); return; }
-            db.ref('users/' + currentResetUserId).update({ password: p1 }).then(() => { bootstrap.Modal.getInstance(document.getElementById('resetModal')).hide(); toastr.success("تم تحديث كلمة المرور بنجاح"); });
-        }
-
-        function receiveTask(id) {
-            if(!confirm('هل أنت متأكد من استلام هذه المهمة؟')) return;
-            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' }).then(() => toastr.success('تم تأكيد الاستلام بنجاح!')).catch(err => toastr.error(err.message));
-        }
-
-        function openTaskUpdateModal(id) {
-            currentUpdateTaskId = id;
-            document.getElementById('taskUpdateComment').value = '';
-            new bootstrap.Modal(document.getElementById('taskUpdateModal')).show();
-        }
-
-        function confirmTaskUpdate() {
-            const newStatus = document.getElementById('taskUpdateStatus').value;
-            const comment = document.getElementById('taskUpdateComment').value;
-            if(comment.trim() === '') { toastr.warning('يجب كتابة تعليق إجباري لتحديث الحالة!'); return; }
-            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide(); toastr.success('تم تحديث حالة المهمة بنجاح!'); }).catch(err => toastr.error(err.message));
-        }
-
-        function exportToExcel(tableId, fileName) {
-            const table = document.getElementById(tableId);
-            const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
-            XLSX.writeFile(wb, fileName + ".xlsx");
-            toastr.success("تم تصدير الملف بنجاح");
-        }
-
-        async function exportRequestsToExcel() {
-            let data = [];
-            allRequests.forEach(r => {
-                data.push({ 
-                    "رقم الطلب": "#" + (r.reqId || ''), 
-                    "التاريخ": r.timestamp || '', 
-                    "اسم الموظف": r.empName || '', 
-                    "قسم الموظف": r.empDept || '', 
-                    "موجه إلى قسم": r.targetDeptName || '', 
-                    "الصنف المطلوب": r.item || '', 
-                    "الكمية": r.qty || '', 
-                    "الوحدة": r.unit || '', 
-                    "الأولوية": r.priority || '', 
-                    "التفاصيل": r.purpose || '', 
-                    "الحالة": r.status || '', 
-                    "تعليق المشتريات": r.comment || '' 
-                });
-            });
-            if(data.length === 0) { toastr.warning("لا توجد طلبات لتصديرها!"); return; }
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Requests");
-            XLSX.writeFile(wb, "Purchase_Requests.xlsx");
-            toastr.success("تم تصدير طلبات الشراء بنجاح");
-        }
+        function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
+        async function exportRequestsToExcel() { let d=[]; allRequests.forEach(r => d.push({ "رقم": "#"+r.reqId, "الصنف": r.item, "الموظف": r.empName, "القسم": r.targetDeptName, "الحالة": r.status, "تعليق": r.comment })); XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.json_to_sheet(d), "Requests"), "Requests.xlsx"); toastr.success('تم التصدير'); }
     </script>
 </body>
 </html>
