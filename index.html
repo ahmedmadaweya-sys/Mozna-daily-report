@@ -77,7 +77,7 @@
                 <div id="tasksSection" style="display: none;">
                     <div class="d-flex justify-content-between mb-3">
                         <h2>إدارة المهام</h2>
-                        <div>
+                        <div id="tasksActions">
                             <button onclick="exportToExcel('tasksTable', 'المهام')" class="btn btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
                             <button onclick="openAddModal('task')" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة مهمة</button>
                         </div>
@@ -100,9 +100,37 @@
         </div>
     </div>
 
+    <!-- Modal الإضافة والتعديل -->
     <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد الإضافة</button></div></div></div></div>
+    <!-- Modal الحذف -->
     <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">تأكيد الحذف</button></div></div></div></div>
+    <!-- Modal إعادة تعيين كلمة المرور -->
     <div class="modal fade" id="resetModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-key"></i> إعادة تعيين كلمة المرور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="password" id="newPass" class="form-control mb-2" placeholder="كلمة المرور الجديدة"><input type="password" id="confirmPass" class="form-control" placeholder="تأكيد كلمة المرور"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="confirmReset()">حفظ كلمة المرور</button></div></div></div></div>
+    
+    <!-- Modal تحديث حالة المهمة (للموظف) -->
+    <div class="modal fade" id="taskUpdateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-tasks"></i> تحديث حالة المهمة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">الحالة الجديدة</label>
+                    <select id="taskUpdateStatus" class="form-control mb-3">
+                        <option value="قيد التنفيذ">قيد التنفيذ</option>
+                        <option value="مكتملة">مكتملة</option>
+                    </select>
+                    <label class="form-label">ملاحظات / سبب التحديث (إجباري)</label>
+                    <textarea id="taskUpdateComment" class="form-control" rows="3" placeholder="يجب كتابة تعليق لتحديث الحالة"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-info" onclick="confirmTaskUpdate()">حفظ التحديث</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -130,6 +158,7 @@
         let currentEdit = { id: '', type: '' };
         let allUsers = []; 
         let currentUserData = null; 
+        let currentUpdateTaskId = ''; // متغير لمسك ID المهمة اللي بتتحدث
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -153,11 +182,8 @@
                         currentUserData = child.val();
                         currentUserData.id = child.key;
                     });
-                    applyPermissions(); // تطبيق الصلاحيات
-                } else {
-                    console.log("المستخدم غير موجود في قاعدة البيانات");
+                    applyPermissions();
                 }
-
                 loadData();
             } else {
                 loginSec.classList.remove('d-none');
@@ -171,12 +197,13 @@
         function applyPermissions() {
             const isAdmin = currentUserData && currentUserData.role === 'admin';
             
-            // إظهار أو إخفاء القوائم بناءً على الصلاحية
             document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
             
-            // لو موظف عادي، نفتح له صفحة الطلبات مباشرة بدل الإحصائيات
+            // إخفاء زرار إضافة المهمة وتصديرها للموظف العادي
+            document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
+            
             if (!isAdmin) {
                 showSection('requests', null);
                 document.querySelector('#navDashboard').classList.remove('active');
@@ -225,12 +252,38 @@
                 
                 snap.forEach(child => {
                     const t = child.val();
-                    // لو موظف عادي، يشوف مهام قسمه بس. الأدمن يشوف الكل
-                    if (!isAdmin && t.deptId !== currentUserData.deptId) return;
+                    // الموظف يشوف مهامه هو بس (عبر الـ userId)
+                    if (!isAdmin && t.userId !== currentUserData.id) return;
 
-                    html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'}</td><td><button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
+                    let actions = '';
+                    if (isAdmin) {
+                        actions = `
+                            <button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> 
+                            <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        `;
+                    } else {
+                        // أزرار الموظف
+                        if (t.status !== 'مكتملة') {
+                            if (t.status === 'جديدة') {
+                                actions += `<button onclick="receiveTask('${child.key}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
+                            }
+                            actions += `<button onclick="openTaskUpdateModal('${child.key}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
+                        } else {
+                            actions = `<span class="badge bg-success">تم الإنهاء</span>`;
+                        }
+                    }
+
+                    let commentText = t.comment ? `<br><small class="text-muted fst-italic">ملاحظة: ${t.comment}</small>` : '';
+
+                    html += `<tr>
+                        <td>${t.title}</td>
+                        <td>${t.userName || 'غير محدد'}</td>
+                        <td>${t.deptName || 'غير محدد'}</td>
+                        <td>${t.status || 'جديدة'} ${commentText}</td>
+                        <td>${actions}</td>
+                    </tr>`;
                 });
-                document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام لقسمك حالياً.</td></tr>';
+                document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام حالياً.</td></tr>';
             });
 
             db.ref('requests').on('value', snap => {
@@ -242,10 +295,8 @@
                     const r = child.val();
                     const statusColor = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : r.status === 'تأجيل' ? 'warning' : 'secondary';
                     
-                    // لو الموظف عادي، يشوف طلباته هو بس. الأدمن يشوف الكل
                     if (!isAdmin && r.empId !== currentUserData.id) return;
 
-                    // أزرار التحكم تظهر للأدمن بس
                     let adminButtons = isAdmin ? `
                         <div class="d-flex gap-1 mt-2">
                             <button onclick="updateRequestStatus('${child.key}', 'تم التنفيذ')" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check"></i> موافقة</button>
@@ -393,7 +444,7 @@
             } else if (currentAdd.type === 'task') {
                 const userSel = document.getElementById('taskUser');
                 const depSel = document.getElementById('taskDept');
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value })
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: userSel.value, userName: userSel.options[userSel.selectedIndex].text, deptId: depSel.value, deptName: depSel.options[depSel.selectedIndex].text, status: document.getElementById('taskStatus').value, comment: '' })
                 .then(() => bootstrap.Modal.getInstance(document.getElementById('addModal')).hide()).catch(err => alert(err.message));
             } else if (currentAdd.type === 'request') {
                 let empId = currentUserData ? currentUserData.id : '';
@@ -480,6 +531,39 @@
             db.ref('users/' + currentResetUserId).update({ password: p1 }).then(() => { bootstrap.Modal.getInstance(document.getElementById('resetModal')).hide(); alert("تم تحديث كلمة المرور بنجاح"); });
         }
 
+        // دالة استلام المهمة
+        function receiveTask(id) {
+            if(!confirm('هل أنت متأكد من استلام هذه المهمة؟')) return;
+            db.ref('tasks/' + id).update({ status: 'تم الاستلام', comment: 'تم استلام المهمة من قبل الموظف' })
+                .then(() => alert('تم تأكيد الاستلام بنجاح!'))
+                .catch(err => alert(err.message));
+        }
+
+        // دالة فتح نافذة تحديث حالة المهمة
+        function openTaskUpdateModal(id) {
+            currentUpdateTaskId = id;
+            document.getElementById('taskUpdateComment').value = '';
+            new bootstrap.Modal(document.getElementById('taskUpdateModal')).show();
+        }
+
+        // دالة تأكيد تحديث حالة المهمة (بعد التأكد من الكومنت)
+        function confirmTaskUpdate() {
+            const newStatus = document.getElementById('taskUpdateStatus').value;
+            const comment = document.getElementById('taskUpdateComment').value;
+
+            if(comment.trim() === '') {
+                alert('يجب كتابة تعليق إجباري لتحديث الحالة!');
+                return;
+            }
+
+            db.ref('tasks/' + currentUpdateTaskId).update({ status: newStatus, comment: comment })
+                .then(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('taskUpdateModal')).hide();
+                    alert('تم تحديث حالة المهمة بنجاح!');
+                })
+                .catch(err => alert(err.message));
+        }
+
         function exportToExcel(tableId, fileName) {
             const table = document.getElementById(tableId);
             const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
@@ -505,10 +589,7 @@
                 });
             });
 
-            if(data.length === 0) {
-                alert("لا توجد طلبات لتصديرها!");
-                return;
-            }
+            if(data.length === 0) { alert("لا توجد طلبات لتصديرها!"); return; }
 
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
