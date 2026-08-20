@@ -179,9 +179,10 @@
             // لو موظف عادي، نفتح له صفحة الطلبات مباشرة بدل الإحصائيات
             if (!isAdmin) {
                 showSection('requests', null);
-                // إزالة Active من زرار الداشبورد لأنه مش هيراه
                 document.querySelector('#navDashboard').classList.remove('active');
                 document.querySelector('#navRequests').classList.add('active');
+            } else {
+                showSection('dashboard', null);
             }
         }
 
@@ -192,7 +193,6 @@
             if(evt && evt.target.closest('a')) {
                 evt.target.closest('a').classList.add('active');
             } else {
-                // لو فاتح من الكود، نظبط الـ active
                 const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1)));
                 if(navLink) navLink.classList.add('active');
             }
@@ -221,11 +221,16 @@
             db.ref('tasks').on('value', snap => {
                 document.getElementById('statTasks').innerText = snap.numChildren();
                 let html = '';
+                const isAdmin = currentUserData && currentUserData.role === 'admin';
+                
                 snap.forEach(child => {
                     const t = child.val();
+                    // لو موظف عادي، يشوف مهام قسمه بس. الأدمن يشوف الكل
+                    if (!isAdmin && t.deptId !== currentUserData.deptId) return;
+
                     html += `<tr><td>${t.title}</td><td>${t.userName || 'غير محدد'}</td><td>${t.deptName || 'غير محدد'}</td><td>${t.status || 'جديدة'}</td><td><button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
-                document.getElementById('tasksTbody').innerHTML = html;
+                document.getElementById('tasksTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مهام لقسمك حالياً.</td></tr>';
             });
 
             db.ref('requests').on('value', snap => {
@@ -298,7 +303,15 @@
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${depOpts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
+                body.innerHTML = `
+                    <input type="text" id="newName" class="form-control mb-2" placeholder="الاسم">
+                    <input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد">
+                    <input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور">
+                    <label class="small text-muted">القسم</label>
+                    <select id="newDept" class="form-control mb-2">${depOpts}</select>
+                    <label class="small text-muted">الصلاحية</label>
+                    <select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>
+                `;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
                 const usersSnap = await db.ref('users').once('value');
@@ -312,7 +325,12 @@
                 usersSnap.forEach(u => userOpts += `<option value="${u.key}">${u.val().name}</option>`);
                 let depOpts = '<option value="">-- اختر القسم --</option>';
                 depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>`;
+                body.innerHTML = `
+                    <input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة">
+                    <select id="taskUser" class="form-control mb-2">${userOpts}</select>
+                    <select id="taskDept" class="form-control mb-2">${depOpts}</select>
+                    <select id="taskStatus" class="form-control"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option></select>
+                `;
             } else if (type === 'request') {
                 title.innerText = 'تسجيل طلب شراء جديد';
                 let currentName = currentUserData ? currentUserData.name : '';
