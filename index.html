@@ -158,7 +158,7 @@
         let currentEdit = { id: '', type: '' };
         let allUsers = []; 
         let currentUserData = null; 
-        let currentUpdateTaskId = ''; // متغير لمسك ID المهمة اللي بتتحدث
+        let currentUpdateTaskId = ''; 
 
         function doLogin() {
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
@@ -200,8 +200,6 @@
             document.getElementById('navDashboard').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navUsers').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('navDepartments').style.display = isAdmin ? 'block' : 'none';
-            
-            // إخفاء زرار إضافة المهمة وتصديرها للموظف العادي
             document.getElementById('tasksActions').style.display = isAdmin ? 'block' : 'none';
             
             if (!isAdmin) {
@@ -252,24 +250,24 @@
                 
                 snap.forEach(child => {
                     const t = child.val();
-                    // الموظف يشوف مهامه هو بس (عبر الـ userId)
                     if (!isAdmin && t.userId !== currentUserData.id) return;
 
                     let actions = '';
                     if (isAdmin) {
+                        // المدير بس يقدر يعدل ويمسح
                         actions = `
                             <button onclick="openEditModal('task', '${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> 
                             <button onclick="openDeleteModal('${child.key}', 'tasks')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
                         `;
                     } else {
-                        // أزرار الموظف
-                        if (t.status !== 'مكتملة') {
+                        // الموظف بس يقدر يستلم ويحدث
+                        if (t.status === 'مكتملة') {
+                            actions = `<span class="badge bg-success">تم الإنهاء</span>`;
+                        } else {
                             if (t.status === 'جديدة') {
                                 actions += `<button onclick="receiveTask('${child.key}')" class="btn btn-sm btn-primary mb-1">استلمت المهمة</button><br>`;
                             }
                             actions += `<button onclick="openTaskUpdateModal('${child.key}')" class="btn btn-sm btn-warning">تحديث الحالة</button>`;
-                        } else {
-                            actions = `<span class="badge bg-success">تم الإنهاء</span>`;
                         }
                     }
 
@@ -353,7 +351,9 @@
                 title.innerText = 'إضافة مستخدم';
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
+                depsSnap.forEach(d => {
+                    depOpts += `<option value="${d.key}">${d.val().name}</option>`;
+                });
                 body.innerHTML = `
                     <input type="text" id="newName" class="form-control mb-2" placeholder="الاسم">
                     <input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد">
@@ -367,15 +367,21 @@
                 title.innerText = 'إضافة قسم';
                 const usersSnap = await db.ref('users').once('value');
                 let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => userOpts += `<option value="${u.key}">${u.val().name}</option>`);
+                usersSnap.forEach(u => {
+                    userOpts += `<option value="${u.key}">${u.val().name}</option>`;
+                });
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
                 const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
                 let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => userOpts += `<option value="${u.key}">${u.val().name}</option>`);
+                usersSnap.forEach(u => {
+                    userOpts += `<option value="${u.key}">${u.val().name}</option>`;
+                });
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => depOpts += `<option value="${d.key}">${d.val().name}</option>`);
+                depsSnap.forEach(d => {
+                    depOpts += `<option value="${d.key}">${d.val().name}</option>`;
+                });
                 body.innerHTML = `
                     <input type="text" id="taskTitle" class="form-control mb-2" placeholder="عنوان المهمة">
                     <select id="taskUser" class="form-control mb-2">${userOpts}</select>
@@ -488,21 +494,29 @@
                 title.innerText = 'تعديل مستخدم';
                 const depsSnap = await db.ref('departments').once('value');
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`);
+                depsSnap.forEach(d => {
+                    depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`;
+                });
                 body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}"><select id="newDept" class="form-control mb-2">${depOpts}</select><select id="newRole" class="form-control"><option value="user" ${data.role === 'user' ? 'selected' : ''}>مستخدم</option><option value="admin" ${data.role === 'admin' ? 'selected' : ''}>مدير</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'تعديل قسم';
                 const usersSnap = await db.ref('users').once('value');
                 let userOpts = '<option value="">-- اختر مدير القسم --</option>';
-                usersSnap.forEach(u => userOpts += `<option value="${u.key}" ${data.managerId === u.key ? 'selected' : ''}>${u.val().name}</option>`);
+                usersSnap.forEach(u => {
+                    userOpts += `<option value="${u.key}" ${data.managerId === u.key ? 'selected' : ''}>${u.val().name}</option>`;
+                });
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${userOpts}</select><textarea id="depDesc" class="form-control">${data.desc || ''}</textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'تعديل مهمة';
                 const [usersSnap, depsSnap] = await Promise.all([db.ref('users').once('value'), db.ref('departments').once('value')]);
                 let userOpts = '<option value="">-- اختر الموظف --</option>';
-                usersSnap.forEach(u => userOpts += `<option value="${u.key}" ${data.userId === u.key ? 'selected' : ''}>${u.val().name}</option>`);
+                usersSnap.forEach(u => {
+                    userOpts += `<option value="${u.key}" ${data.userId === u.key ? 'selected' : ''}>${u.val().name}</option>`;
+                });
                 let depOpts = '<option value="">-- اختر القسم --</option>';
-                depsSnap.forEach(d => depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`);
+                depsSnap.forEach(d => {
+                    depOpts += `<option value="${d.key}" ${data.deptId === d.key ? 'selected' : ''}>${d.val().name}</option>`;
+                });
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${userOpts}</select><select id="taskDept" class="form-control mb-2">${depOpts}</select><select id="taskStatus" class="form-control"><option ${data.status === 'جديدة' ? 'selected' : ''}>جديدة</option><option ${data.status === 'قيد التنفيذ' ? 'selected' : ''}>قيد التنفيذ</option><option ${data.status === 'مكتملة' ? 'selected' : ''}>مكتملة</option></select>`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
