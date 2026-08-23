@@ -246,7 +246,7 @@
                     userPermissions = permSnap.val() || {};
                     applyPermissions();
                     loadAttendanceStatus();
-                    loadDailyTasks(); // تحميل مهام اليوم للموظف
+                    loadDailyTasks();
                 }
                 loadData();
             } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
@@ -274,7 +274,7 @@
             document.getElementById('dashboardCards').innerHTML = cardsHtml;
 
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
-            document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin); // إظهار كارت المهام اليومية للموظفين فقط
+            document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin);
             
             showSection('dashboard', null);
         }
@@ -385,7 +385,7 @@
                         if (!act) act = '<span class="text-muted">مقيد</span>';
                         html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.deptName || ''}</td><td>${u.role}</td><td>${act}</td></tr>`; 
                     });
-                    document.getElementById('usersTbody').innerHTML = html; renderDepartments();
+                    document.getElementById('usersTbody').innerHTML = html;
                     document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 });
             }
@@ -492,8 +492,7 @@
             document.getElementById('reportsList').innerHTML = repHtml || '<div class="col-12 text-center text-muted">لا توجد تقارير متاحة لك</div>';
         }
 
-        function renderDepartments() { /* Merged */ }
-
+        // ===== Permissions Management =====
         async function loadPermissionsUI() {
             const permSnap = await db.ref('permissions/employee').once('value');
             const perms = permSnap.val() || {};
@@ -579,7 +578,7 @@
             });
         }
 
-        // ===== Fixing Excel Exports to fetch directly from DB =====
+        // ===== Excel Exports =====
         async function exportTasksToExcel() {
             const snap = await db.ref('tasks').once('value');
             let data = [];
@@ -590,7 +589,10 @@
                 data.push({ "العنوان": t.title, "الموظف": t.userName, "تاريخ البدء": t.startDate, "تاريخ الانتهاء": t.endDate, "الحالة": t.status, "آخر تعليق": lastComment });
             });
             if(!data.length) return toastr.warning("لا توجد مهام");
-            XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.json_to_sheet(data), "Tasks"), "Tasks_Report.xlsx");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+            XLSX.writeFile(wb, "Tasks_Report.xlsx");
             toastr.success("تم التصدير");
         }
 
@@ -602,7 +604,10 @@
                 data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop, "طلبات العميل": c.requests, "الإحداثيات": c.location || "" });
             });
             if(!data.length) return toastr.warning("لا يوجد عملاء");
-            XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.json_to_sheet(data), "Customers"), "Customers_Report.xlsx");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Customers");
+            XLSX.writeFile(wb, "Customers_Report.xlsx");
             toastr.success("تم التصدير");
         }
 
@@ -614,10 +619,15 @@
                 data.push({ "رقم": "#"+r.reqId, "الصنف": r.item, "الموظف": r.empName, "القسم": r.targetDeptName, "الحالة": r.status, "تعليق": r.comment });
             });
             if(!data.length) return toastr.warning("لا توجد طلبات");
-            XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.json_to_sheet(data), "Requests"), "Requests.xlsx");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Requests");
+            XLSX.writeFile(wb, "Requests.xlsx");
             toastr.success("تم التصدير");
         }
-        // =========================================================
+
+        function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
+        // ============================
 
         async function openAddModal(type) {
             currentAdd.type = type;
@@ -741,7 +751,8 @@
             const t = currentEdit.type; const id = currentEdit.id; let upd = {};
             if (t === 'users') { const d = document.getElementById('newDept'); upd = { name: document.getElementById('newName').value, deptId: d.value, deptName: d.options[d.selectedIndex].text, role: document.getElementById('newRole').value }; }
             else if (t === 'departments') { const m = document.getElementById('depManager'); upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerId: m.value, managerName: m.options[m.selectedIndex].text }; }
-else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
+            else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
+            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
             else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
             else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
             db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
@@ -756,14 +767,13 @@ else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = {
             const att = (await db.ref('attendance').once('value')).val() || {}; const wb = XLSX.utils.book_new();
             if (document.querySelector('input[name="reportType"]:checked').value === 'summary') {
                 let d = []; users.forEach(u => { for (const m in (att[u.id]||{})) { let t=0; for (const day in att[u.id][m]) if(att[u.id][m][day].totalHours) t+=parseFloat(att[u.id][m][day].totalHours); d.push({ "الموظف": u.name, "الشهر": m, "الساعات": t.toFixed(2) }); } });
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d), "ملخص");
+                const ws = XLSX.utils.json_to_sheet(d);
+                XLSX.utils.book_append_sheet(wb, ws, "ملخص");
             } else {
-                users.forEach(u => { let r=[]; for (const m in (att[u.id]||{})) { for (const day in att[u.id][m]) { if(att[u.id][m][day].sessions) Object.values(att[u.id][m][day].sessions).forEach(s => r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut?formatTime(s.checkOut):"", "المدة": s.duration||0 })); } } if(r.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(r), u.name.substring(0,28)); });
+                users.forEach(u => { let r=[]; for (const m in (att[u.id]||{})) { for (const day in att[u.id][m]) { if(att[u.id][m][day].sessions) Object.values(att[u.id][m][day].sessions).forEach(s => r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut?formatTime(s.checkOut):"", "المدة": s.duration||0 })); } } if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } });
             }
             XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
         }
-
-        function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
     </script>
 </body>
 </html>
