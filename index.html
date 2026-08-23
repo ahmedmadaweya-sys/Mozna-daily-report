@@ -325,13 +325,43 @@
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
 
-        function toggleAttendance() {
+        // Helper to get location as Promise
+        function getLocationPromise() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject("المتصفح لا يدعم تحديد الموقع.");
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
+                    err => reject("تعذر الحصول على الموقع."),
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+        }
+
+        async function toggleAttendance() {
             if (!currentDayRef) return;
-            currentDayRef.once('value').then(snap => {
-                const data = snap.val() || {}; const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const btn = document.getElementById('attendanceBtn');
+            btn.disabled = true; // منع الضغط مرتين
+            
+            currentDayRef.once('value').then(async snap => {
+                const data = snap.val() || {}; 
+                const now = new Date(); 
+                const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+                
                 if (!data.activeSession) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري تحديد الموقع...';
+                    let locationStr = '';
+                    try {
+                        locationStr = await getLocationPromise();
+                    } catch(e) { console.warn(e); }
+
                     const newRef = currentDayRef.child('sessions').push();
-                    newRef.set({ checkIn: timeStr, checkOut: null, duration: 0 }).then(() => { currentDayRef.update({ activeSession: newRef.key }); toastr.success('تم تسجيل حضورك'); });
+                    newRef.set({ checkIn: timeStr, checkOut: null, duration: 0, checkInLocation: locationStr }).then(() => { 
+                        currentDayRef.update({ activeSession: newRef.key }); 
+                        toastr.success('تم تسجيل حضورك' + (locationStr ? ' وموقعك' : ''));
+                    }).finally(() => { btn.disabled = false; });
                 } else {
                     const sesId = data.activeSession; const sesData = data.sessions[sesId];
                     const [h, m] = sesData.checkIn.split(':').map(Number); let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
@@ -341,7 +371,7 @@
                     currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, duration: diffHrs.toFixed(2) }).then(() => {
                         const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
                         currentDayRef.update({ activeSession: null, totalHours: newTotal }); toastr.info('تم تسجيل الانصراف');
-                    });
+                    }).finally(() => { btn.disabled = false; });
                 }
             });
         }
@@ -884,7 +914,7 @@
                 let d = []; users.forEach(u => { for (const m in (att[u.id]||{})) { let t=0; for (const day in att[u.id][m]) if(att[u.id][m][day].totalHours) t+=parseFloat(att[u.id][m][day].totalHours); d.push({ "الموظف": u.name, "الشهر": m, "الساعات": t.toFixed(2) }); } });
                 const ws = XLSX.utils.json_to_sheet(d); XLSX.utils.book_append_sheet(wb, ws, "ملخص");
             } else {
-                users.forEach(u => { let r=[]; for (const m in (att[u.id]||{})) { for (const day in att[u.id][m]) { if(att[u.id][m][day].sessions) Object.values(att[u.id][m][day].sessions).forEach(s => r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut?formatTime(s.checkOut):"", "المدة": s.duration||0 })); } } if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } });
+                users.forEach(u => { let r=[]; for (const m in (att[u.id]||{})) { for (const day in att[u.id][m]) { if(att[u.id][m][day].sessions) Object.values(att[u.id][m][day].sessions).forEach(s => r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut?formatTime(s.checkOut):"", "المدة": s.duration||0, "موقع الحضور": s.checkInLocation ? `https://www.google.com/maps?q=${s.checkInLocation}` : "لم يسجل" })); } } if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } });
             }
             XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
         }
