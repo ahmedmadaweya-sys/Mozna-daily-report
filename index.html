@@ -238,7 +238,6 @@
         let userPermissions = {};
         let currentDailyTasksRef = null;
         let breakInterval = null;
-        let breakStartTime = null;
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
@@ -306,18 +305,37 @@
             const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
             currentDayRef.on('value', snap => {
-                const data = snap.val() || {}; const btn = document.getElementById('attendanceBtn');
+                const data = snap.val() || {}; 
+                const btn = document.getElementById('attendanceBtn');
                 const breakBtn = document.getElementById('breakBtn');
+                
                 document.getElementById('dailyHours').innerText = `${parseFloat(data.totalHours || 0).toFixed(1)} ساعة`;
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
                     const activeSes = data.sessions[data.activeSession];
                     btn.className = 'btn btn-danger btn-lg'; btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
+                    btn.disabled = false; // Ensure it's enabled unless break is active
                     breakBtn.classList.remove('d-none');
                     document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
+
+                    // Check if break is active
+                    if (data.activeBreak) {
+                        startBreakTimerUI(data.activeBreak);
+                        btn.disabled = true;
+                        breakBtn.innerText = 'إنهاء الاستراحة';
+                        breakBtn.className = 'btn btn-warning btn-lg text-white';
+                    } else {
+                        stopBreakTimerUI();
+                        btn.disabled = false;
+                        breakBtn.innerText = 'بدء استراحة (بريك)';
+                        breakBtn.className = 'btn btn-info btn-lg text-white';
+                    }
+
                 } else {
                     btn.className = 'btn btn-success btn-lg'; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
+                    btn.disabled = false;
                     breakBtn.classList.add('d-none');
+                    stopBreakTimerUI();
                     let lastCheckOut = '--:--'; if (data.sessions) { const s = Object.values(data.sessions); if (s[s.length-1]?.checkOut) lastCheckOut = s[s.length-1].checkOut; }
                     document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
                 }
@@ -328,9 +346,7 @@
         function toggleAttendance() {
             if (!currentDayRef) return;
             currentDayRef.once('value').then(snap => {
-                const data = snap.val() || {};
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+                const data = snap.val() || {}; const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
                 const handleLocation = (callback) => {
                     if (!navigator.geolocation) { callback('غير متاح'); return; }
@@ -367,42 +383,79 @@
             });
         }
 
+        // ===== Break Logic (With Persistent Timer) =====
         function toggleBreak() {
+            if (!currentDayRef) return;
+            currentDayRef.once('value').then(snap => {
+                const data = snap.val() || {};
+                if (!data.activeBreak) {
+                    // Start Break
+                    const startTime = Date.now();
+                    currentDayRef.update({ activeBreak: startTime }).then(() => {
+                        startBreakTimerUI(startTime);
+                        toastr.info('بدأت الاستراحة');
+                    });
+                } else {
+                    // End Break
+                    const startTime = data.activeBreak;
+                    const elapsedMin = (Date.now() - startTime) / 60000;
+                    const deductionMin = Math.max(0, elapsedMin - 60);
+                    const oldDeduction = data.breakDeduction || 0;
+
+                    currentDayRef.update({
+                        breakDeduction: oldDeduction + deductionMin,
+                        activeBreak: null
+                    }).then(() => {
+                        stopBreakTimerUI();
+                        if (deductionMin > 0) toastr.warning(`تم خصم ${deductionMin.toFixed(0)} دقيقة من ساعات عملك`);
+                        else toastr.success('تم إنهاء الاستراحة في الوقت المحدد');
+                    });
+                }
+            });
+        }
+
+        function startBreakTimerUI(startTime) {
+            const display = document.getElementById('breakTimerDisplay');
+            const btn = document.getElementById('breakBtn');
+            const attBtn = document.getElementById('attendanceBtn');
+
+            btn.className = 'btn btn-warning btn-lg text-white';
+            btn.innerText = 'إنهاء الاستراحة';
+            attBtn.disabled = true;
+            display.classList.remove('d-none');
+
+            if (breakInterval) clearInterval(breakInterval); // Clear any existing timer
+
+            breakInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                if (elapsed <= 3600) {
+                    const remaining = 3600 - elapsed;
+                    const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+                    const s = Math.floor(remaining % 60).toString().padStart(2, '0');
+                    display.className = 'break-timer mb-3 text-primary';
+                    display.innerText = `متبقي: ${m}:${s}`;
+                } else {
+                    const exceeded = elapsed - 3600;
+                    const m = Math.floor(exceeded / 60).toString().padStart(2, '0');
+                    const s = Math.floor(exceeded % 60).toString().padStart(2, '0');
+                    display.className = 'break-timer mb-3 text-danger';
+                    display.innerText = `زيادة: ${m}:${s}`;
+                }
+            }, 1000);
+        }
+
+        function stopBreakTimerUI() {
+            if (breakInterval) clearInterval(breakInterval);
+            breakInterval = null;
             const btn = document.getElementById('breakBtn');
             const display = document.getElementById('breakTimerDisplay');
             const attBtn = document.getElementById('attendanceBtn');
-            if (btn.innerText.includes('بدء')) {
-                breakStartTime = Date.now();
-                btn.className = 'btn btn-warning btn-lg text-white'; btn.innerText = 'إنهاء الاستراحة';
-                attBtn.disabled = true; display.classList.remove('d-none'); display.className = 'break-timer mb-3 text-primary';
-                breakInterval = setInterval(() => {
-                    const elapsed = (Date.now() - breakStartTime) / 1000;
-                    if (elapsed <= 3600) {
-                        const remaining = 3600 - elapsed;
-                        const m = Math.floor(remaining / 60).toString().padStart(2, '0');
-                        const s = Math.floor(remaining % 60).toString().padStart(2, '0');
-                        display.innerText = `متبقي: ${m}:${s}`;
-                    } else {
-                        const exceeded = elapsed - 3600;
-                        const m = Math.floor(exceeded / 60).toString().padStart(2, '0');
-                        const s = Math.floor(exceeded % 60).toString().padStart(2, '0');
-                        display.className = 'break-timer mb-3 text-danger';
-                        display.innerText = `زيادة: ${m}:${s}`;
-                    }
-                }, 1000);
-            } else {
-                clearInterval(breakInterval);
-                const elapsedMin = (Date.now() - breakStartTime) / 60000;
-                const deductionMin = Math.max(0, elapsedMin - 60);
-                btn.className = 'btn btn-info btn-lg text-white'; btn.innerText = 'بدء استراحة (بريك)';
-                attBtn.disabled = false; display.classList.add('d-none');
-                currentDayRef.once('value').then(snap => {
-                    const data = snap.val() || {}; const oldDeduction = data.breakDeduction || 0;
-                    currentDayRef.update({ breakDeduction: oldDeduction + deductionMin });
-                    if (deductionMin > 0) toastr.warning(`تم خصم ${deductionMin.toFixed(0)} دقيقة من ساعات عملك`);
-                    else toastr.success('تم إنهاء الاستراحة في الوقت المحدد');
-                });
+            if (btn) {
+                btn.className = 'btn btn-info btn-lg text-white';
+                btn.innerText = 'بدء استراحة (بريك)';
             }
+            if (attBtn) attBtn.disabled = false;
+            if (display) display.classList.add('d-none');
         }
 
         function loadDailyTasks() {
