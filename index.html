@@ -543,17 +543,22 @@
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks"); XLSX.writeFile(wb, "Daily_Tasks_Report.xlsx"); toastr.success("تم التصدير");
         }
 
-        async function loadData() {
+        function loadData() {
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
             const myDepts = currentUserData?.departments || (currentUserData?.deptName ? [currentUserData.deptName] : []);
 
-            if (can('view', 'users')) {
-                db.ref('users').on('value', snap => {
-                    allUsers = []; if(document.getElementById('statUsers')) document.getElementById('statUsers').innerText = snap.numChildren();
+            // جلب كل المستخدمين في الخلفية دائماً لاستخدامهم في القوائم المنسدلة
+            db.ref('users').on('value', snap => {
+                allUsers = [];
+                snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); });
+
+                // عرض جدول المستخدمين فقط لمن يملك صلاحية
+                if (can('view', 'users')) {
+                    if(document.getElementById('statUsers')) document.getElementById('statUsers').innerText = snap.numChildren();
                     let html = '';
-                    snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); 
+                    allUsers.forEach(u => { 
                         let act = '';
                         if (isAdmin) act += `<button onclick="resetUserPassword('${u.email}')" class="btn btn-sm btn-warning"><i class="fas fa-key"></i></button> `;
                         if (can('edit', 'users')) act += `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
@@ -563,9 +568,11 @@
                     });
                     document.getElementById('usersTbody').innerHTML = html;
                     document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
-                    renderTeam();
-                });
-            }
+                }
+                
+                renderTeam(); // تحديث قائمة الفريق
+            });
+
             if (can('view', 'departments')) {
                 db.ref('departments').on('value', snap => {
                     let html = '';
