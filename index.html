@@ -26,6 +26,9 @@
         .chat-msg { margin-bottom: 10px; padding: 8px; border-radius: 8px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .break-timer { font-size: 2rem; font-weight: bold; }
         .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 5px; }
+        .notif-item { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; cursor: pointer; }
+        .notif-item:hover { background-color: #f8f9fa; }
+        .notif-unread { background-color: #e7f1ff; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -43,7 +46,19 @@
     <div id="appSection" class="d-none">
         <div class="d-flex">
             <div class="sidebar" style="width: 230px;">
-                <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
+                <div class="p-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h5 class="mb-0">لوحة التحكم</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light position-relative" id="notifBell" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            <i class="fas fa-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="display:none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-0" style="width: 300px; max-height: 400px; overflow-y: auto;" id="notifDropdown">
+                            <h6 class="dropdown-header">الإشعارات</h6>
+                            <div id="notifList"></div>
+                        </div>
+                    </div>
+                </div>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
                 <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
@@ -237,7 +252,7 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        toastr.options = { "positionClass": "toast-bottom-left", "timeOut": "2000" };
+        toastr.options = { "positionClass": "toast-bottom-left", "timeOut": "3000" };
 
         let currentDelete = { id: '', type: '' };
         let currentAdd = { type: '' };
@@ -266,6 +281,7 @@
                     applyPermissions();
                     loadAttendanceStatus();
                     loadDailyTasks();
+                    loadNotifications();
                 }
                 loadData();
             } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
@@ -283,8 +299,6 @@
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
-            
-            document.getElementById('navTeam').style.display = 'block';
             
             ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'Sales', 'Customers'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
             
@@ -327,62 +341,94 @@
 
         function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
 
+        // ===== Notification System =====
+        function playBeep() {
+            try {
+                let ctx = new (window.AudioContext || window.webkitAudioContext)();
+                let osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = 800;
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } catch(e) {}
+        }
+
+        function sendNotification(userId, text) {
+            if (!userId || userId === currentUserData.id) return; 
+            db.ref('notifications/' + userId).push({
+                text: text,
+                timestamp: Date.now(),
+                read: false
+            });
+        }
+
+        function loadNotifications() {
+            db.ref('notifications/' + currentUserData.id).on('value', snap => {
+                let notifs = [];
+                let unreadCount = 0;
+                snap.forEach(child => {
+                    const n = child.val(); n.id = child.key;
+                    notifs.push(n);
+                    if (!n.read) unreadCount++;
+                });
+
+                const countEl = document.getElementById('notifCount');
+                if (unreadCount > 0) {
+                    countEl.innerText = unreadCount;
+                    countEl.style.display = 'inline';
+                } else {
+                    countEl.style.display = 'none';
+                }
+
+                let html = '';
+                notifs.reverse().forEach(n => {
+                    html += `<div class="notif-item ${!n.read ? 'notif-unread' : ''}" onclick="markNotifRead('${n.id}')">
+                        <span class="${n.read ? 'text-muted' : 'text-dark'}">${n.text}</span>
+                        <br><small class="text-muted">${new Date(n.timestamp).toLocaleString('ar-EG')}</small>
+                    </div>`;
+                });
+                document.getElementById('notifList').innerHTML = html || '<div class="p-3 text-center text-muted">لا توجد إشعارات</div>';
+            });
+
+            // Listen for new notifications only for Sound & Toastr
+            db.ref('notifications/' + currentUserData.id).limitToLast(1).on('child_added', snap => {
+                const n = snap.val();
+                if (n.timestamp > Date.now() - 5000) { // Only trigger if very recent (last 5 secs)
+                    playBeep();
+                    toastr.info(n.text);
+                }
+            });
+        }
+
+        function markNotifRead(id) {
+            db.ref('notifications/' + currentUserData.id + '/' + id).update({ read: true });
+        }
+        // =================================
+
         // ===== Anti-Spoofing Security Layer =====
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c;
         }
 
         async function getSecureLocation() {
             return new Promise(async (resolve) => {
                 if (!navigator.geolocation) { resolve({ loc: 'غير متاح', suspicious: true, reason: 'Geolocation not supported' }); return; }
-                
-                const startTime = Date.now();
-                let ipLoc = null;
-                
-                // Fetch IP Location for cross-verification
+                const startTime = Date.now(); let ipLoc = null;
                 try {
-                    const ipRes = await fetch('https://ipapi.co/json/');
-                    const ipData = await ipRes.json();
+                    const ipRes = await fetch('https://ipapi.co/json/'); const ipData = await ipRes.json();
                     if (ipData.latitude && ipData.longitude) ipLoc = { lat: ipData.latitude, lon: ipData.longitude };
-                } catch (e) { /* Ignore IP error */ }
-
+                } catch (e) {}
                 navigator.geolocation.getCurrentPosition(pos => {
-                    const endTime = Date.now();
-                    const responseTime = endTime - startTime;
-                    const accuracy = pos.coords.accuracy;
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    
-                    let suspicious = false;
-                    let reasons = [];
-
-                    // 1. Accuracy Check (Fake GPS usually has 0-5m accuracy)
+                    const endTime = Date.now(); const responseTime = endTime - startTime; const accuracy = pos.coords.accuracy;
+                    const lat = pos.coords.latitude; const lon = pos.coords.longitude; let suspicious = false; let reasons = [];
                     if (accuracy < 5) { suspicious = true; reasons.push("دقة GPS غير واقعية"); }
-                    
-                    // 2. Response Time Check (Fake GPS responds instantly)
                     if (responseTime < 1000) { suspicious = true; reasons.push("استجابة سريعة جداً"); }
-                    
-                    // 3. IP Cross-Verification
-                    if (ipLoc) {
-                        const dist = calculateDistance(lat, lon, ipLoc.lat, ipLoc.lon);
-                        if (dist > 50) { suspicious = true; reasons.push("تباين كبير بين GPS و IP"); }
-                    }
-
-                    resolve({
-                        loc: `https://maps.google.com/?q=${lat},${lon}`,
-                        suspicious: suspicious,
-                        reason: suspicious ? reasons.join(' | ') : ''
-                    });
-                }, err => {
-                    resolve({ loc: 'مرفوض أو غير متاح', suspicious: true, reason: err.message });
-                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                    if (ipLoc) { const dist = calculateDistance(lat, lon, ipLoc.lat, ipLoc.lon); if (dist > 50) { suspicious = true; reasons.push("تباين كبير بين GPS و IP"); } }
+                    resolve({ loc: `https://maps.google.com/?q=${lat},${lon}`, suspicious: suspicious, reason: suspicious ? reasons.join(' | ') : '' });
+                }, err => { resolve({ loc: 'مرفوض أو غير متاح', suspicious: true, reason: err.message }); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             });
         }
         // ==========================================
@@ -393,35 +439,16 @@
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
             currentDayRef.on('value', snap => {
                 const data = snap.val() || {}; 
-                const btn = document.getElementById('attendanceBtn');
-                const breakBtn = document.getElementById('breakBtn');
-                
+                const btn = document.getElementById('attendanceBtn'); const breakBtn = document.getElementById('breakBtn');
                 document.getElementById('dailyHours').innerText = `${parseFloat(data.totalHours || 0).toFixed(1)} ساعة`;
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
                     const activeSes = data.sessions[data.activeSession];
-                    btn.className = 'btn btn-danger btn-lg'; btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
-                    btn.disabled = false; 
-                    breakBtn.classList.remove('d-none');
-                    document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
-                    document.getElementById('checkOutTime').innerText = '--:--';
-
-                    if (data.activeBreak) {
-                        startBreakTimerUI(data.activeBreak);
-                        btn.disabled = true;
-                        breakBtn.innerText = 'إنهاء الاستراحة';
-                        breakBtn.className = 'btn btn-warning btn-lg text-white';
-                    } else {
-                        stopBreakTimerUI();
-                        btn.disabled = false;
-                        breakBtn.innerText = 'بدء استراحة (بريك)';
-                        breakBtn.className = 'btn btn-info btn-lg text-white';
-                    }
-
+                    btn.className = 'btn btn-danger btn-lg'; btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف'; btn.disabled = false; breakBtn.classList.remove('d-none');
+                    document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn); document.getElementById('checkOutTime').innerText = '--:--';
+                    if (data.activeBreak) { startBreakTimerUI(data.activeBreak); btn.disabled = true; breakBtn.innerText = 'إنهاء الاستراحة'; breakBtn.className = 'btn btn-warning btn-lg text-white'; } 
+                    else { stopBreakTimerUI(); btn.disabled = false; breakBtn.innerText = 'بدء استراحة (بريك)'; breakBtn.className = 'btn btn-info btn-lg text-white'; }
                 } else {
-                    btn.className = 'btn btn-success btn-lg'; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور';
-                    btn.disabled = false;
-                    breakBtn.classList.add('d-none');
-                    stopBreakTimerUI();
+                    btn.className = 'btn btn-success btn-lg'; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل حضور'; btn.disabled = false; breakBtn.classList.add('d-none'); stopBreakTimerUI();
                     let lastCheckOut = '--:--'; if (data.sessions) { const s = Object.values(data.sessions); if (s[s.length-1]?.checkOut) lastCheckOut = s[s.length-1].checkOut; }
                     document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = formatTime(lastCheckOut);
                 }
@@ -434,26 +461,19 @@
             const data = (await currentDayRef.once('value')).val() || {};
             const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
             const locData = await getSecureLocation();
-
             if (!data.activeSession) {
                 const newRef = currentDayRef.child('sessions').push();
                 newRef.set({ checkIn: timeStr, checkInLoc: locData.loc, checkInSuspicious: locData.suspicious, checkInReason: locData.reason, checkOut: null, checkOutLoc: '', duration: 0 }).then(() => {
-                    currentDayRef.update({ activeSession: newRef.key });
-                    toastr.success('تم تسجيل حضورك');
+                    currentDayRef.update({ activeSession: newRef.key }); toastr.success('تم تسجيل حضورك');
                 });
             } else {
-                const sesId = data.activeSession;
-                const sesData = data.sessions[sesId];
-                const [h, m] = sesData.checkIn.split(':').map(Number);
+                const sesId = data.activeSession; const sesData = data.sessions[sesId]; const [h, m] = sesData.checkIn.split(':').map(Number);
                 let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
-                let diffHrs = (now - checkInDate) / (1000 * 60 * 60);
-                let deduction = data.breakDeduction || 0;
+                let diffHrs = (now - checkInDate) / (1000 * 60 * 60); let deduction = data.breakDeduction || 0;
                 if (deduction > 0) { diffHrs -= (deduction / 60); currentDayRef.update({ breakDeduction: 0 }); }
-                
                 currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: locData.loc, checkOutSuspicious: locData.suspicious, checkOutReason: locData.reason, duration: diffHrs.toFixed(2) }).then(() => {
                     const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
-                    currentDayRef.update({ activeSession: null, totalHours: newTotal });
-                    toastr.info('تم تسجيل الانصراف');
+                    currentDayRef.update({ activeSession: null, totalHours: newTotal }); toastr.info('تم تسجيل الانصراف');
                 });
             }
         }
@@ -464,70 +484,33 @@
                 const data = snap.val() || {};
                 if (!data.activeBreak) {
                     const startTime = Date.now();
-                    currentDayRef.update({ activeBreak: startTime }).then(() => {
-                        startBreakTimerUI(startTime);
-                        toastr.info('بدأت الاستراحة');
-                    });
+                    currentDayRef.update({ activeBreak: startTime }).then(() => { startBreakTimerUI(startTime); toastr.info('بدأت الاستراحة'); });
                 } else {
-                    const startTime = data.activeBreak;
-                    const elapsedMin = (Date.now() - startTime) / 60000;
-                    const deductionMin = Math.max(0, elapsedMin - 60);
-                    const oldDeduction = data.breakDeduction || 0;
-
-                    currentDayRef.update({
-                        breakDeduction: oldDeduction + deductionMin,
-                        activeBreak: null
-                    }).then(() => {
+                    const startTime = data.activeBreak; const elapsedMin = (Date.now() - startTime) / 60000; const deductionMin = Math.max(0, elapsedMin - 60); const oldDeduction = data.breakDeduction || 0;
+                    currentDayRef.update({ breakDeduction: oldDeduction + deductionMin, activeBreak: null }).then(() => {
                         stopBreakTimerUI();
-                        if (deductionMin > 0) toastr.warning(`تم خصم ${deductionMin.toFixed(0)} دقيقة من ساعات عملك`);
-                        else toastr.success('تم إنهاء الاستراحة في الوقت المحدد');
+                        if (deductionMin > 0) toastr.warning(`تم خصم ${deductionMin.toFixed(0)} دقيقة من ساعات عملك`); else toastr.success('تم إنهاء الاستراحة في الوقت المحدد');
                     });
                 }
             });
         }
 
         function startBreakTimerUI(startTime) {
-            const display = document.getElementById('breakTimerDisplay');
-            const btn = document.getElementById('breakBtn');
-            const attBtn = document.getElementById('attendanceBtn');
-
-            btn.className = 'btn btn-warning btn-lg text-white';
-            btn.innerText = 'إنهاء الاستراحة';
-            attBtn.disabled = true;
-            display.classList.remove('d-none');
-
+            const display = document.getElementById('breakTimerDisplay'); const btn = document.getElementById('breakBtn'); const attBtn = document.getElementById('attendanceBtn');
+            btn.className = 'btn btn-warning btn-lg text-white'; btn.innerText = 'إنهاء الاستراحة'; attBtn.disabled = true; display.classList.remove('d-none');
             if (breakInterval) clearInterval(breakInterval); 
-
             breakInterval = setInterval(() => {
                 const elapsed = (Date.now() - startTime) / 1000;
-                if (elapsed <= 3600) {
-                    const remaining = 3600 - elapsed;
-                    const m = Math.floor(remaining / 60).toString().padStart(2, '0');
-                    const s = Math.floor(remaining % 60).toString().padStart(2, '0');
-                    display.className = 'break-timer mb-3 text-primary';
-                    display.innerText = `متبقي: ${m}:${s}`;
-                } else {
-                    const exceeded = elapsed - 3600;
-                    const m = Math.floor(exceeded / 60).toString().padStart(2, '0');
-                    const s = Math.floor(exceeded % 60).toString().padStart(2, '0');
-                    display.className = 'break-timer mb-3 text-danger';
-                    display.innerText = `زيادة: ${m}:${s}`;
-                }
+                if (elapsed <= 3600) { const remaining = 3600 - elapsed; const m = Math.floor(remaining / 60).toString().padStart(2, '0'); const s = Math.floor(remaining % 60).toString().padStart(2, '0'); display.className = 'break-timer mb-3 text-primary'; display.innerText = `متبقي: ${m}:${s}`; } 
+                else { const exceeded = elapsed - 3600; const m = Math.floor(exceeded / 60).toString().padStart(2, '0'); const s = Math.floor(exceeded % 60).toString().padStart(2, '0'); display.className = 'break-timer mb-3 text-danger'; display.innerText = `زيادة: ${m}:${s}`; }
             }, 1000);
         }
 
         function stopBreakTimerUI() {
-            if (breakInterval) clearInterval(breakInterval);
-            breakInterval = null;
-            const btn = document.getElementById('breakBtn');
-            const display = document.getElementById('breakTimerDisplay');
-            const attBtn = document.getElementById('attendanceBtn');
-            if (btn) {
-                btn.className = 'btn btn-info btn-lg text-white';
-                btn.innerText = 'بدء استراحة (بريك)';
-            }
-            if (attBtn) attBtn.disabled = false;
-            if (display) display.classList.add('d-none');
+            if (breakInterval) clearInterval(breakInterval); breakInterval = null;
+            const btn = document.getElementById('breakBtn'); const display = document.getElementById('breakTimerDisplay'); const attBtn = document.getElementById('attendanceBtn');
+            if (btn) { btn.className = 'btn btn-info btn-lg text-white'; btn.innerText = 'بدء استراحة (بريك)'; }
+            if (attBtn) attBtn.disabled = false; if (display) display.classList.add('d-none');
         }
 
         function loadDailyTasks() {
@@ -535,45 +518,32 @@
             const today = new Date().toISOString().split('T')[0];
             currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${today}`);
             currentDailyTasksRef.on('value', snap => {
-                let html = '';
-                const tasks = snap.val() || {};
-                Object.values(tasks).sort((a,b) => a.startTime.localeCompare(b.startTime)).forEach(t => {
-                    html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`;
-                });
-                const listEl = document.getElementById('dailyTasksList');
-                if(listEl) listEl.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم بعد</p>';
-                const modalListEl = document.getElementById('todayTasksList');
-                if(modalListEl) modalListEl.innerHTML = html || '<p class="text-muted text-center">لا توجد مهام مسجلة اليوم بعد</p>';
+                let html = ''; const tasks = snap.val() || {};
+                Object.values(tasks).sort((a,b) => a.startTime.localeCompare(b.startTime)).forEach(t => { html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`; });
+                const listEl = document.getElementById('dailyTasksList'); if(listEl) listEl.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم بعد</p>';
+                const modalListEl = document.getElementById('todayTasksList'); if(modalListEl) modalListEl.innerHTML = html || '<p class="text-muted text-center">لا توجد مهام مسجلة اليوم بعد</p>';
             });
         }
 
         function openDailyTasksModal() {
             const today = new Date().toLocaleDateString('ar-EG');
-            document.getElementById('dtDate').value = today;
-            document.getElementById('dtStart').value = '';
-            document.getElementById('dtEnd').value = '';
-            document.getElementById('dtDetails').value = '';
+            document.getElementById('dtDate').value = today; document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = '';
             new bootstrap.Modal(document.getElementById('dailyTasksModal')).show();
         }
 
         function saveDailyTask() {
-            const start = document.getElementById('dtStart').value;
-            const end = document.getElementById('dtEnd').value;
-            const details = document.getElementById('dtDetails').value;
+            const start = document.getElementById('dtStart').value; const end = document.getElementById('dtEnd').value; const details = document.getElementById('dtDetails').value;
             if(!start || !end || !details.trim()) return toastr.warning('من فضلك أدخل الوقت والتفاصيل');
-            const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number);
-            const startMin = sh * 60 + sm; const endMin = eh * 60 + em;
+            const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number); const startMin = sh * 60 + sm; const endMin = eh * 60 + em;
             if (endMin <= startMin) return toastr.error('وقت الانتهاء يجب أن يكون بعد وقت البدء');
             if (endMin - startMin < 1) return toastr.error('الفرق بين البدء والانتهاء يجب ألا يقل عن دقيقة');
             currentDailyTasksRef.push({ startTime: start, endTime: end, details: details, timestamp: new Date().toLocaleString() }).then(() => {
-                toastr.success('تم إضافة المهمة');
-                document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = '';
+                toastr.success('تم إضافة المهمة'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = '';
             });
         }
 
         async function exportDailyTasksToExcel() {
-            const snap = await db.ref('dailyTasks').once('value');
-            let data = [];
+            const snap = await db.ref('dailyTasks').once('value'); let data = [];
             snap.forEach(userSnap => {
                 const userId = userSnap.key; const user = allUsers.find(u => u.id === userId); const userName = user ? user.name : 'غير معروف';
                 userSnap.forEach(dateSnap => {
@@ -593,15 +563,11 @@
         }
 
         function loadData() {
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager';
+            const role = currentUserData?.role; const isAdmin = role === 'admin'; const isManager = role === 'manager';
             const myDepts = currentUserData?.departments || (currentUserData?.deptName ? [currentUserData.deptName] : []);
 
             db.ref('users').on('value', snap => {
-                allUsers = [];
-                snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); });
-
+                allUsers = []; snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); });
                 if (can('view', 'users')) {
                     if(document.getElementById('statUsers')) document.getElementById('statUsers').innerText = snap.numChildren();
                     let html = '';
@@ -616,14 +582,12 @@
                     document.getElementById('usersTbody').innerHTML = html;
                     document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 }
-                
                 renderTeam();
             });
 
             if (can('view', 'departments')) {
                 db.ref('departments').on('value', snap => {
-                    let html = '';
-                    snap.forEach(child => { const d = child.val(); 
+                    let html = ''; snap.forEach(child => { const d = child.val(); 
                         let act = '';
                         if (can('edit', 'departments')) act += `<button onclick="openEditModal('department','${child.key}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'departments')) act += `<button onclick="openDeleteModal('${child.key}','departments')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
@@ -639,13 +603,9 @@
                 snap.forEach(child => { const t = child.val(); t.id = child.key; if(t.status === 'بانتظار اعتماد المدير') pendingApproval++; allTasks.push(t); });
                 
                 let visibleTasks = [];
-                if (isAdmin) {
-                    visibleTasks = allTasks;
-                } else if (isManager) {
-                    visibleTasks = allTasks.filter(t => t.createdById === currentUserData.id || (myDepts.includes(t.deptName) && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة'));
-                } else {
-                    visibleTasks = allTasks.filter(t => t.userId === currentUserData.id && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة');
-                }
+                if (isAdmin) visibleTasks = allTasks;
+                else if (isManager) visibleTasks = allTasks.filter(t => t.createdById === currentUserData.id || (myDepts.includes(t.deptName) && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة'));
+                else visibleTasks = allTasks.filter(t => t.userId === currentUserData.id && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة');
 
                 if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = isAdmin ? allTasks.filter(t => t.status === 'بانتظار اعتماد الإدارة').length : (isManager ? allTasks.filter(t => t.createdById === currentUserData.id && t.status === 'بانتظار اعتماد الإدارة').length : 0);
                 
@@ -654,14 +614,11 @@
                     let badge = 'secondary'; let late = '';
                     if(t.status === 'تم الاستلام' || t.status === 'جديدة') badge = 'primary';
                     if(t.status === 'قيد التنفيذ' || t.status === 'معلقة') badge = 'warning';
-                    if(t.status === 'بانتظار اعتماد الإدارة') badge = 'info';
-                    if(t.status === 'بانتظار اعتماد المدير') badge = 'info';
+                    if(t.status === 'بانتظار اعتماد الإدارة' || t.status === 'بانتظار اعتماد المدير') badge = 'info';
                     if(t.status === 'مكتملة') badge = 'success';
                     if(t.status === 'مرفوضة') badge = 'danger';
                     if(t.endDate && t.status !== 'مكتملة' && t.status !== 'مرفوضة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) late = '<span class="badge bg-danger ms-1">متأخرة</span>'; }
-                    
                     let adminDelete = (isAdmin || (isManager && t.createdById === currentUserData.id)) ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
-                    
                     html += `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${late}</p>${adminDelete}</div></div></div>`;
                 });
                 document.getElementById('tasksList').innerHTML = html || '<div class="col-12 text-center text-muted">لا توجد مهام</div>';
@@ -687,8 +644,7 @@
             });
             if (can('view', 'sales')) {
                 db.ref('sales').on('value', snap => {
-                    allSales = []; let html = '';
-                    snap.forEach(child => { const s = child.val(); s.id = child.key; allSales.push(s); 
+                    allSales = []; let html = ''; snap.forEach(child => { const s = child.val(); s.id = child.key; allSales.push(s); 
                         let act = '';
                         if (can('edit', 'sales')) act += `<button onclick="openEditModal('sale','${s.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'sales')) act += `<button onclick="openDeleteModal('${s.id}','sales')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
@@ -701,8 +657,7 @@
             }
             if (can('view', 'customers')) {
                 db.ref('customers').on('value', snap => {
-                    allCustomers = []; if(document.getElementById('statCustomers')) document.getElementById('statCustomers').innerText = snap.numChildren();
-                    let html = '';
+                    allCustomers = []; if(document.getElementById('statCustomers')) document.getElementById('statCustomers').innerText = snap.numChildren(); let html = '';
                     snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); 
                         let locBtn = c.location ? `<a href="https://www.google.com/maps?q=${c.location}" target="_blank" class="text-primary">${c.location}</a> ${c.locSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}` : '<span class="text-muted">لا يوجد</span>';
                         let act = '';
@@ -717,8 +672,7 @@
             }
             if (can('view', 'inventory')) {
                 db.ref('inventory').on('value', snap => {
-                    allInventory = []; let html = '';
-                    snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); 
+                    allInventory = []; let html = ''; snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); 
                         let act = '';
                         if (can('edit', 'inventory')) act += `<button onclick="openEditModal('inventory','${i.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'inventory')) act += `<button onclick="openDeleteModal('${i.id}','inventory')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
@@ -746,48 +700,29 @@
         function renderTeam() {
             const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             db.ref('attendance').once('value').then(attSnap => {
-                const allAtt = attSnap.val() || {};
-                let html = '';
+                const allAtt = attSnap.val() || {}; let html = '';
                 allUsers.forEach(u => {
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
                     const statusColor = isCheckedIn ? 'success' : 'warning';
                     const statusText = isCheckedIn ? 'في العمل (أونلاين)' : 'غير نشط (أوف لاين)';
                     const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
-                    
-                    html += `
-                        <div class="col-md-4 mb-3">
-                            <div class="card shadow-sm h-100">
-                                <div class="card-body text-center">
-                                    <div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div>
-                                    <h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5>
-                                    <p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p>
-                                    <p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p>
-                                    <p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p>
-                                    <p class="text-muted small mb-0"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p>
-                                </div>
-                            </div>
-                        </div>`;
+                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100"><div class="card-body text-center"><div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p><p class="text-muted small mb-0"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p></div></div></div>`;
                 });
                 document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
             });
         }
 
         async function loadPermissionsUI() {
-            const permSnap = await db.ref('permissions/employee').once('value');
-            const perms = permSnap.val() || {};
+            const permSnap = await db.ref('permissions/employee').once('value'); const perms = permSnap.val() || {};
             const sections = ['users', 'departments', 'sales', 'customers', 'inventory', 'reports'];
             const actions = ['view', 'add', 'edit', 'delete', 'export'];
             const actionsAr = { view: 'مشاهدة', add: 'إضافة', edit: 'تعديل', delete: 'حذف', export: 'إكسيل' };
             let html = '<table class="table table-bordered text-center"><thead><tr><th>القسم</th>';
-            actions.forEach(a => html += `<th>${actionsAr[a]}</th>`);
-            html += '</tr></thead><tbody>';
+            actions.forEach(a => html += `<th>${actionsAr[a]}</th>`); html += '</tr></thead><tbody>';
             sections.forEach(sec => {
                 html += `<tr><td class="fw-bold text-capitalize">${sec}</td>`;
-                actions.forEach(a => {
-                    const checked = perms[sec] && perms[sec][a] ? 'checked' : '';
-                    html += `<td><input type="checkbox" class="form-check-input" data-sec="${sec}" data-act="${a}" ${checked}></td>`;
-                });
+                actions.forEach(a => { const checked = perms[sec] && perms[sec][a] ? 'checked' : ''; html += `<td><input type="checkbox" class="form-check-input" data-sec="${sec}" data-act="${a}" ${checked}></td>`; });
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -798,14 +733,10 @@
             let updates = {};
             document.querySelectorAll('#permissionsContainer input[type="checkbox"]').forEach(cb => {
                 const sec = cb.dataset.sec; const act = cb.dataset.act;
-                if(!updates[sec]) updates[sec] = {};
-                updates[sec][act] = cb.checked;
+                if(!updates[sec]) updates[sec] = {}; updates[sec][act] = cb.checked;
             });
-            await db.ref('permissions/employee').set(updates);
-            toastr.success('تم حفظ الصلاحيات بنجاح');
-            userPermissions = updates;
-            applyPermissions();
-            loadData();
+            await db.ref('permissions/employee').set(updates); toastr.success('تم حفظ الصلاحيات بنجاح');
+            userPermissions = updates; applyPermissions(); loadData();
         }
 
         function resetUserPassword(email) {
@@ -816,11 +747,8 @@
         function openTaskChat(id) {
             const t = allTasks.find(task => task.id === id); if (!t) return;
             currentTaskChatId = id;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager';
-            const isCreator = t.createdById === currentUserData.id;
-            const isAssignedUser = t.userId === currentUserData.id;
+            const role = currentUserData?.role; const isAdmin = role === 'admin'; const isManager = role === 'manager';
+            const isCreator = t.createdById === currentUserData.id; const isAssignedUser = t.userId === currentUserData.id;
             const isDeptManager = isManager && (currentUserData.departments || [currentUserData.deptName]).includes(t.deptName);
             
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
@@ -832,8 +760,7 @@
                 chatHtml += `<div class="chat-msg"><small class="text-muted fw-bold">${msg.senderName}</small> <small class="float-left text-muted">${msg.time}</small><p class="mb-0 mt-1">${msg.text}</p>${followUpText}</div>`; 
             }); }
             document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات حتى الآن</p>';
-            document.getElementById('taskChatInput').value = '';
-            document.getElementById('taskNextFollowUp').value = '';
+            document.getElementById('taskChatInput').value = ''; document.getElementById('taskNextFollowUp').value = '';
             
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             
@@ -856,51 +783,60 @@
                     footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">حفظ التحديث والمتابعة</button>`;
                     if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء المهمة')">إنهاء المهمة</button>`;
                 }
-                if(isAdmin || isDeptManager) { 
-                    footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">إضافة تعليق كإدارة</button>`; 
-                }
+                if(isAdmin || isDeptManager) { footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">إضافة تعليق كإدارة</button>`; }
             }
             document.getElementById('taskChatFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
         }
 
-        function openEditTaskFromChat(id) {
-            bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide();
-            openEditModal('task', id);
-        }
+        function openEditTaskFromChat(id) { bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); openEditModal('task', id); }
 
         function addTaskComment() {
-            const text = document.getElementById('taskChatInput').value;
-            const nextFollowUp = document.getElementById('taskNextFollowUp').value;
+            const text = document.getElementById('taskChatInput').value; const nextFollowUp = document.getElementById('taskNextFollowUp').value;
             if(!text.trim() && !nextFollowUp) return toastr.warning('اكتب تعليقاً أو حدد تاريخ متابعة');
-            const t = allTasks.find(task => task.id === currentTaskChatId);
-            let newStatus = t.status;
+            const t = allTasks.find(task => task.id === currentTaskChatId); let newStatus = t.status;
             if(t.status === 'جديدة') newStatus = 'قيد التنفيذ';
             db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: text || '(تم تحديث تاريخ المتابعة)', time: new Date().toLocaleString(), nextFollowUp: nextFollowUp || '' }).then(() => {
-                let updates = { status: newStatus };
-                if(nextFollowUp) updates.nextFollowUp = nextFollowUp;
-                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { toastr.success('تم إضافة التحديث'); openTaskChat(currentTaskChatId); });
+                let updates = { status: newStatus }; if(nextFollowUp) updates.nextFollowUp = nextFollowUp;
+                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { 
+                    toastr.success('تم إضافة التحديث'); 
+                    // Send Notifications
+                    if (t.createdById && t.createdById !== currentUserData.id) sendNotification(t.createdById, `تعليق جديد على مهمة: ${t.title}`);
+                    if (t.userId !== currentUserData.id) sendNotification(t.userId, `تعليق جديد على مهمة: ${t.title}`);
+                    allUsers.filter(u => u.role === 'admin' && u.id !== currentUserData.id).forEach(admin => sendNotification(admin.id, `تعليق جديد من ${currentUserData.name} على مهمة: ${t.title}`));
+                    openTaskChat(currentTaskChatId); 
+                });
             });
         }
 
         function updateTaskStatus(newStatus, commentText) {
+            const t = allTasks.find(task => task.id === currentTaskChatId);
             db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: commentText, time: new Date().toLocaleString(), nextFollowUp: '' }).then(() => {
-                let updates = { status: newStatus };
-                if(newStatus === 'مكتملة') updates.approvedAt = new Date().toLocaleString();
-                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { toastr.success('تم تحديث الحالة'); bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); });
+                let updates = { status: newStatus }; if(newStatus === 'مكتملة') updates.approvedAt = new Date().toLocaleString();
+                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { 
+                    toastr.success('تم تحديث الحالة'); 
+                    // Send Notifications based on action
+                    if (newStatus === 'جديدة') { // Admin approved
+                        if (t.createdById) sendNotification(t.createdById, `تم اعتماد مهمتك: ${t.title}`);
+                        sendNotification(t.userId, `لديك مهمة جديدة معتمدة: ${t.title}`);
+                    } else if (newStatus === 'مرفوضة') { // Admin rejected
+                        if (t.createdById) sendNotification(t.createdById, `تم رفض المهمة التي أنشأتها: ${t.title}`);
+                    } else if (newStatus === 'بانتظار اعتماد المدير') { // User requested completion
+                        allUsers.filter(u => u.role === 'admin').forEach(admin => sendNotification(admin.id, `طلب اعتماد إنهاء مهمة: ${t.title}`));
+                        if (t.createdById && t.createdById !== currentUserData.id) sendNotification(t.createdById, `طلب اعتماد إنهاء مهمة: ${t.title}`);
+                    } else if (newStatus === 'مكتملة') { // Admin/Manager approved completion
+                        sendNotification(t.userId, `تم اعتماد إنهاء مهمتك: ${t.title}`);
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); 
+                });
             });
         }
 
         async function exportTasksToExcel() {
-            const snap = await db.ref('tasks').once('value');
-            let data = [];
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            
+            const snap = await db.ref('tasks').once('value'); let data = [];
+            const role = currentUserData?.role; const isAdmin = role === 'admin';
             snap.forEach(child => {
-                const t = child.val();
-                if (!isAdmin && t.createdById !== currentUserData.id) return; 
-
+                const t = child.val(); if (!isAdmin && t.createdById !== currentUserData.id) return; 
                 let lastComment = '';
                 if(t.chat) { const arr = Object.values(t.chat); if(arr.length) lastComment = `${arr[arr.length-1].text} (متابعة: ${arr[arr.length-1].nextFollowUp || 'لا'})`; }
                 data.push({ "العنوان": t.title, "الموظف": t.userName, "تاريخ البدء": t.startDate, "تاريخ الانتهاء": t.endDate, "المتابعة القادمة": t.nextFollowUp || '', "الحالة": t.status, "آخر تعليق": lastComment });
@@ -911,8 +847,7 @@
         }
 
         async function exportCustomersToExcel() {
-            const snap = await db.ref('customers').once('value');
-            let data = [];
+            const snap = await db.ref('customers').once('value'); let data = [];
             snap.forEach(child => { const c = child.val(); data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop, "طلبات العميل": c.requests, "الإحداثيات": c.location || "", "تحذير أمني": c.locSuspicious ? "مشبوه" : "" }); });
             if(!data.length) return toastr.warning("لا يوجد عملاء");
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
@@ -920,8 +855,7 @@
         }
 
         async function exportRequestsToExcel() {
-            const snap = await db.ref('requests').once('value');
-            let data = [];
+            const snap = await db.ref('requests').once('value'); let data = [];
             snap.forEach(child => { const r = child.val(); data.push({ "رقم": r.reqId, "الصنف": r.item, "طالب الطلب": r.empName, "القسم": r.targetDeptName, "الموظف المسؤول": r.assignedEmpName, "الحالة": r.status, "تعليق": r.comment }); });
             if(!data.length) return toastr.warning("لا توجد طلبات");
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
@@ -933,7 +867,11 @@
         function filterRequestEmployees(deptName) {
             const sel = document.getElementById('reqAssignedEmp');
             sel.innerHTML = '<option value="">-- اختر الموظف المسؤول --</option>';
-            allUsers.filter(u => (u.departments || [u.deptName]).includes(deptName)).forEach(u => {
+            if (!deptName) return;
+            allUsers.filter(u => {
+                const userDepts = u.departments || (u.deptName ? [u.deptName] : []);
+                return userDepts.includes(deptName);
+            }).forEach(u => {
                 sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
             });
         }
@@ -952,39 +890,24 @@
 
         function openEditMyProfileModal() {
             currentEdit = { id: currentUserData.id, type: 'users' };
-            const body = document.getElementById('addModalBody');
-            const title = document.getElementById('addModalTitle');
+            const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             title.innerText = 'تعديل بياناتي الشخصية';
-            body.innerHTML = `
-                <input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly>
-                <input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون">
-                <input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين">
-                <input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي">
-            `;
+            body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين"><input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي">`;
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEditMyProfile()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
         function confirmEditMyProfile() {
-            const upd = {
-                phone: document.getElementById('newPhone').value,
-                hireDate: document.getElementById('newHireDate').value,
-                jobTitle: document.getElementById('newJobTitle').value
-            };
+            const upd = { phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value };
             db.ref('users/' + currentUserData.id).update(upd).then(() => {
-                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-                toastr.success('تم تحديث بياناتك بنجاح');
-                currentUserData.phone = upd.phone;
-                currentUserData.hireDate = upd.hireDate;
-                currentUserData.jobTitle = upd.jobTitle;
-                renderTeam();
+                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تحديث بياناتك بنجاح');
+                currentUserData.phone = upd.phone; currentUserData.hireDate = upd.hireDate; currentUserData.jobTitle = upd.jobTitle; renderTeam();
             });
         }
 
         async function openAddModal(type) {
             currentAdd.type = type;
-            const body = document.getElementById('addModalBody');
-            const title = document.getElementById('addModalTitle');
+            const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             const depOptsData = (await db.ref('departments').once('value')).val() || {};
             
             if (type === 'user') {
@@ -1004,38 +927,14 @@
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
                 let depOpts = '<option value="">-- اختر القسم --</option>'; for(let d in depOptsData) depOpts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `
-                    <input type="hidden" id="reqEmpId" value="${currentUserData.id}">
-                    <input type="text" id="reqEmpName" class="form-control mb-2" value="${currentUserData.name} (طالب الطلب)" readonly>
-                    <select id="reqTargetDept" class="form-control mb-2" onchange="filterRequestEmployees(this.value)">${depOpts}</select>
-                    <select id="reqAssignedEmp" class="form-control mb-2"><option value="">-- اختر الموظف المسؤول --</option></select>
-                    <input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف">
-                    <input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية">
-                    <select id="reqPriority" class="form-control mb-2"><option>عادية</option><option>عاجلة</option></select>
-                    <textarea id="reqPurpose" class="form-control" placeholder="الغرض"></textarea>`;
+                body.innerHTML = `<input type="hidden" id="reqEmpId" value="${currentUserData.id}"><input type="text" id="reqEmpName" class="form-control mb-2" value="${currentUserData.name} (طالب الطلب)" readonly><select id="reqTargetDept" class="form-control mb-2" onchange="filterRequestEmployees(this.value)">${depOpts}</select><select id="reqAssignedEmp" class="form-control mb-2"><option value="">-- اختر القسم أولاً --</option></select><input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية"><select id="reqPriority" class="form-control mb-2"><option>عادية</option><option>عاجلة</option></select><textarea id="reqPurpose" class="form-control" placeholder="الغرض"></textarea>`;
             } else if (type === 'sale') {
                 title.innerText = 'بيع جديد';
                 let cOpts = '<option value="">--</option>'; allCustomers.forEach(c => cOpts += `<option value="${c.name}">${c.name}</option>`);
                 body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="saleCustomer" class="form-control mb-2">${cOpts}</select><input type="text" id="saleProduct" class="form-control mb-2" placeholder="نوع المنتج"><input type="number" id="saleQty" class="form-control mb-2" placeholder="الكمية"><input type="number" id="saleAmount" class="form-control mb-2" placeholder="المبلغ"><input type="text" id="saleAddress" class="form-control mb-2" placeholder="العنوان"><select id="saleStatus" class="form-control mb-2"><option>إنتاج</option><option>جارٍ التوصيل</option><option>تم التوصيل</option></select><textarea id="saleNotes" class="form-control" placeholder="ملاحظات"></textarea>`;
             } else if (type === 'customer') {
                 title.innerText = 'عميل جديد';
-                body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل">
-                <select id="custType" class="form-control mb-2"><option>تاجر</option><option>مزارع</option><option>جمعية</option><option>منفذ بيع</option></select>
-                <input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون">
-                <div class="row mb-2">
-                    <div class="col-7"><input type="number" id="custLand" class="form-control" placeholder="مساحة الأرض"></div>
-                    <div class="col-5"><select id="custLandUnit" class="form-control"><option>فدان</option><option>قيراط</option><option>متر</option></select></div>
-                </div>
-                <input type="text" id="custCrop" class="form-control mb-2" placeholder="المحصول">
-                <label>طلبات العميل</label>
-                <div id="productListContainer" class="mb-2"></div>
-                <button type="button" onclick="addProductRow()" class="btn btn-sm btn-info text-white mb-3"><i class="fas fa-plus"></i> إضافة منتج</button>
-                
-                <input type="hidden" id="custLocation">
-                <input type="hidden" id="custLocSuspicious">
-                <input type="hidden" id="custLocReason">
-                <button onclick="getLocationForCustomer()" class="btn btn-info btn-sm w-100 text-white mb-1"><i class="fas fa-map-marker-alt"></i> تحديد موقعي الحالي (GPS)</button>
-                <div id="locStatus" class="small text-muted mb-2"></div>`;
+                body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل"><select id="custType" class="form-control mb-2"><option>تاجر</option><option>مزارع</option><option>جمعية</option><option>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون"><div class="row mb-2"><div class="col-7"><input type="number" id="custLand" class="form-control" placeholder="مساحة الأرض"></div><div class="col-5"><select id="custLandUnit" class="form-control"><option>فدان</option><option>قيراط</option><option>متر</option></select></div></div><input type="text" id="custCrop" class="form-control mb-2" placeholder="المحصول"><label>طلبات العميل</label><div id="productListContainer" class="mb-2"></div><button type="button" onclick="addProductRow()" class="btn btn-sm btn-info text-white mb-3"><i class="fas fa-plus"></i> إضافة منتج</button><input type="hidden" id="custLocation"><input type="hidden" id="custLocSuspicious"><input type="hidden" id="custLocReason"><button onclick="getLocationForCustomer()" class="btn btn-info btn-sm w-100 text-white mb-1"><i class="fas fa-map-marker-alt"></i> تحديد موقعي الحالي (GPS)</button><div id="locStatus" class="small text-muted mb-2"></div>`;
                 addProductRow();
             } else if (type === 'inventory') {
                 title.innerText = 'صنف مخزن';
@@ -1052,96 +951,46 @@
         }
 
         function confirmAdd() {
-            const type = currentAdd.type;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
+            const type = currentAdd.type; const role = currentUserData?.role; const isAdmin = role === 'admin';
             
             if (type === 'user') { 
                 const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
                 auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ 
-                        name: document.getElementById('newName').value, 
-                        email: document.getElementById('newEmail').value, 
-                        phone: document.getElementById('newPhone').value,
-                        hireDate: document.getElementById('newHireDate').value,
-                        jobTitle: document.getElementById('newJobTitle').value,
-                        departments: selectedDepts, 
-                        role: document.getElementById('newRole').value 
-                    }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
+                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
                 }).catch(err => toastr.error(err.message)); 
             }
             else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
             else if (type === 'task') { 
-                const u = document.getElementById('taskUser'); 
-                const taskDept = document.getElementById('taskDept').value;
+                const u = document.getElementById('taskUser'); const taskDept = document.getElementById('taskDept').value;
                 if(!taskDept) return toastr.warning('من فضلك اختر القسم');
                 if(!u.value) return toastr.warning('من فضلك اختر الموظف');
-                
                 const initialStatus = isAdmin ? 'جديدة' : 'بانتظار اعتماد الإدارة';
-                
-                db.ref('tasks').push({ 
-                    title: document.getElementById('taskTitle').value, 
-                    userId: u.value, 
-                    userName: u.options[u.selectedIndex].text, 
-                    deptName: taskDept, 
-                    createdById: currentUserData.id,
-                    createdByName: currentUserData.name,
-                    startDate: document.getElementById('taskStart').value, 
-                    endDate: document.getElementById('taskEnd').value, 
-                    status: initialStatus, 
-                    chat: null, 
-                    nextFollowUp: '' 
-                }).then(() => { 
-                    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); 
-                    toastr.success('تم إضافة المهمة');
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, createdById: currentUserData.id, createdByName: currentUserData.name, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: initialStatus, chat: null, nextFollowUp: '' }).then(() => { 
+                    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة');
+                    // Notifications
+                    if (!isAdmin) { allUsers.filter(ad => ad.role === 'admin').forEach(admin => sendNotification(admin.id, `مهمة جديدة بانتظار الاعتماد: ${document.getElementById('taskTitle').value}`)); }
                 }); 
             }
             else if (type === 'request') { 
+                const targetDeptSel = document.getElementById('reqTargetDept'); const assignedEmpSel = document.getElementById('reqAssignedEmp');
+                if (!targetDeptSel.value) return toastr.warning('من فضلك اختر القسم!');
+                if (!assignedEmpSel.value) return toastr.warning('من فضلك اختر الموظف المسؤول!');
+                
                 db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
-                    const newId = res.snapshot.val();
-                    const formattedId = "#" + String(newId).padStart(4, '0'); 
-                    const targetDeptSel = document.getElementById('reqTargetDept');
-                    const assignedEmpSel = document.getElementById('reqAssignedEmp');
+                    const newId = res.snapshot.val(); const formattedId = "#" + String(newId).padStart(4, '0'); 
                     const assignedEmpName = assignedEmpSel.options[assignedEmpSel.selectedIndex].text;
-                    
-                    db.ref('requests').push({ 
-                        reqId: formattedId, 
-                        empId: currentUserData.id, 
-                        empName: currentUserData.name, 
-                        empDept: currentUserData.departments ? currentUserData.departments.join(', ') : currentUserData.deptName, 
-                        targetDeptName: targetDeptSel.value, 
-                        assignedEmpId: assignedEmpSel.value,
-                        assignedEmpName: assignedEmpName,
-                        item: document.getElementById('reqItem').value, 
-                        qty: document.getElementById('reqQty').value, 
-                        priority: document.getElementById('reqPriority').value, 
-                        purpose: document.getElementById('reqPurpose').value, 
-                        status: 'جديد', 
-                        comment: '', 
-                        timestamp: new Date().toLocaleDateString() 
-                    }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); 
+                    db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, empDept: currentUserData.departments ? currentUserData.departments.join(', ') : currentUserData.deptName, targetDeptName: targetDeptSel.value, assignedEmpId: assignedEmpSel.value, assignedEmpName: assignedEmpName, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => { 
+                        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId);
+                        // Notifications to Admins and Department Managers
+                        allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${currentUserData.name}`));
+                    }); 
                 }); 
             }
             else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
             else if (type === 'customer') {
-                let products = [];
-                document.querySelectorAll('#productListContainer .product-row').forEach(row => { const name = row.querySelector('.prod-name').value; const unit = row.querySelector('.prod-unit').value; const qty = row.querySelector('.prod-qty').value; if(name && qty) products.push(`${name} (${qty} ${unit})`); });
+                let products = []; document.querySelectorAll('#productListContainer .product-row').forEach(row => { const name = row.querySelector('.prod-name').value; const unit = row.querySelector('.prod-unit').value; const qty = row.querySelector('.prod-qty').value; if(name && qty) products.push(`${name} (${qty} ${unit})`); });
                 const landArea = document.getElementById('custLand').value + ' ' + document.getElementById('custLandUnit').value;
-                db.ref('customers').push({ 
-                    repId: currentUserData.id, 
-                    repName: currentUserData.name, 
-                    name: document.getElementById('custName').value, 
-                    type: document.getElementById('custType').value, 
-                    phone: document.getElementById('custPhone').value, 
-                    landArea: landArea, 
-                    crop: document.getElementById('custCrop').value, 
-                    requests: products.join(' | '), 
-                    location: document.getElementById('custLocation').value, 
-                    locSuspicious: document.getElementById('custLocSuspicious').value === 'true',
-                    locReason: document.getElementById('custLocReason').value,
-                    followUps: [], 
-                    timestamp: new Date().toLocaleString() 
-                }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
+                db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: landArea, crop: document.getElementById('custCrop').value, requests: products.join(' | '), location: document.getElementById('custLocation').value, locSuspicious: document.getElementById('custLocSuspicious').value === 'true', locReason: document.getElementById('custLocReason').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
             }
             else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
@@ -1149,21 +998,14 @@
         async function getLocationForCustomer() {
             document.getElementById('locStatus').innerHTML = '<span class="text-info">جاري تحديد موقعك... برجاء الانتظار والسماح بالإذن.</span>';
             const locData = await getSecureLocation();
-            document.getElementById('custLocation').value = locData.loc;
-            document.getElementById('custLocSuspicious').value = locData.suspicious;
-            document.getElementById('custLocReason').value = locData.reason;
-            
-            if (locData.suspicious) {
-                document.getElementById('locStatus').innerHTML = `<span class="text-warning">تم تسجيل الموقع، لكن تم وضع علامة (مشبوه) للمراجعة: ${locData.reason}</span>`;
-            } else {
-                document.getElementById('locStatus').innerHTML = `<a href="https://www.google.com/maps?q=${locData.loc.split('q=')[1]}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للمعاينة)</a>`;
-            }
+            document.getElementById('custLocation').value = locData.loc; document.getElementById('custLocSuspicious').value = locData.suspicious; document.getElementById('custLocReason').value = locData.reason;
+            if (locData.suspicious) { document.getElementById('locStatus').innerHTML = `<span class="text-warning">تم تسجيل الموقع، لكن تم وضع علامة (مشبوه) للمراجعة: ${locData.reason}</span>`; } 
+            else { document.getElementById('locStatus').innerHTML = `<a href="https://www.google.com/maps?q=${locData.loc.split('q=')[1]}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للمعاينة)</a>`; }
         }
 
         async function openRequestDetails(id) {
             const r = allRequests.find(req => req.id === id); if (!r) return;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
+            const role = currentUserData?.role; const isAdmin = role === 'admin';
             const isManager = role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(r.targetDeptName);
             const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
             
@@ -1179,7 +1021,14 @@
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
 
-        function updateReqStatus(id, status) { const comment = document.getElementById('detailComment').value; db.ref('requests/' + id).update({ status, comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); }); }
+        function updateReqStatus(id, status) { 
+            const comment = document.getElementById('detailComment').value; 
+            db.ref('requests/' + id).update({ status, comment }).then(() => { 
+                bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); 
+                const r = allRequests.find(req => req.id === id);
+                if (r && r.empId !== currentUserData.id) sendNotification(r.empId, `تم تحديث حالة طلبك ${r.reqId} إلى: ${status}`);
+            }); 
+        }
 
         function addFollowUp(custId) { const note = prompt("اكتب ملاحظة المتابعة لهذا العميل:"); if (note) { db.ref('customers/' + custId + '/followUps').push({ date: new Date().toLocaleString(), note: note, repId: currentUserData.id }).then(() => toastr.success('تمت إضافة المتابعة')); } }
         
@@ -1188,22 +1037,16 @@
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             if (type === 'user') { 
-                const deps = (await db.ref('departments').once('value')).val() || {}; 
-                const userDepts = data.departments || (data.deptName ? [data.deptName] : []);
+                const deps = (await db.ref('departments').once('value')).val() || {}; const userDepts = data.departments || (data.deptName ? [data.deptName] : []);
                 let depCheckboxes = '';
-                Object.values(deps).forEach(d => { 
-                    const checked = userDepts.includes(d.name) ? 'checked' : ''; 
-                    depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}" ${checked}><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; 
-                });
+                Object.values(deps).forEach(d => { const checked = userDepts.includes(d.name) ? 'checked' : ''; depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}" ${checked}><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; });
                 title.innerText='تعديل مستخدم'; 
                 body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}" placeholder="تاريخ التعيين"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}" placeholder="المسمى الوظيفي"><label class="small text-muted">الأقسام</label><div class="mb-2 border p-2 rounded" style="max-height:150px; overflow-y:auto;">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; 
             }
             else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
             else if (type === 'task') { 
-                const users = (await db.ref('users').once('value')).val() || {}; 
-                let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; 
-                title.innerText='تعديل مهمة'; 
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; 
+                const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; 
+                title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; 
             }
             else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
             else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
@@ -1214,9 +1057,7 @@
 
         function confirmEdit() {
             const t = currentEdit.type; const id = currentEdit.id; let upd = {};
-            if (t === 'users') { 
-                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; 
-            }
+            if (t === 'users') { upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; }
             else if (t === 'departments') { upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }; }
             else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
             else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
@@ -1242,24 +1083,12 @@
                         for (const day in att[u.id][m]) { 
                             if(att[u.id][m][day].sessions) {
                                 Object.values(att[u.id][m][day].sessions).forEach(s => {
-                                    r.push({ 
-                                        "التاريخ": `${day}-${m}`, 
-                                        "حضور": formatTime(s.checkIn), 
-                                        "موقع الحضور": s.checkInLoc || '',
-                                        "تحذير الحضور": s.checkInSuspicious ? "مشبوه: " + (s.checkInReason||'') : "",
-                                        "انصراف": s.checkOut ? formatTime(s.checkOut) : "", 
-                                        "موقع الانصراف": s.checkOutLoc || '',
-                                        "تحذير الانصراف": s.checkOutSuspicious ? "مشبوه: " + (s.checkOutReason||'') : "",
-                                        "المدة": s.duration||0 
-                                    }); 
+                                    r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "موقع الحضور": s.checkInLoc || '', "تحذير الحضور": s.checkInSuspicious ? "مشبوه: " + (s.checkInReason||'') : "", "انصراف": s.checkOut ? formatTime(s.checkOut) : "", "موقع الانصراف": s.checkOutLoc || '', "تحذير الانصراف": s.checkOutSuspicious ? "مشبوه: " + (s.checkOutReason||'') : "", "المدة": s.duration||0 }); 
                                 }); 
                             }
                         } 
                     } 
-                    if(r.length) { 
-                        const ws = XLSX.utils.json_to_sheet(r); 
-                        XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); 
-                    } 
+                    if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } 
                 });
             }
             XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
