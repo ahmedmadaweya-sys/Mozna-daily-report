@@ -355,10 +355,11 @@
         }
 
         function sendNotification(userId, text) {
-            if (!userId || userId === currentUserData.id) return; 
+            if (!userId) return;
+            if (userId === currentUserData.id) return; // Don't send to self
             db.ref('notifications/' + userId).push({
                 text: text,
-                timestamp: Date.now(),
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
                 read: false
             });
         }
@@ -383,18 +384,18 @@
 
                 let html = '';
                 notifs.reverse().forEach(n => {
+                    const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleString('ar-EG') : '';
                     html += `<div class="notif-item ${!n.read ? 'notif-unread' : ''}" onclick="markNotifRead('${n.id}')">
                         <span class="${n.read ? 'text-muted' : 'text-dark'}">${n.text}</span>
-                        <br><small class="text-muted">${new Date(n.timestamp).toLocaleString('ar-EG')}</small>
+                        <br><small class="text-muted">${dateStr}</small>
                     </div>`;
                 });
                 document.getElementById('notifList').innerHTML = html || '<div class="p-3 text-center text-muted">لا توجد إشعارات</div>';
             });
 
-            // Listen for new notifications only for Sound & Toastr
             db.ref('notifications/' + currentUserData.id).limitToLast(1).on('child_added', snap => {
                 const n = snap.val();
-                if (n.timestamp > Date.now() - 5000) { // Only trigger if very recent (last 5 secs)
+                if (n.timestamp && Date.now() - n.timestamp < 5000) { 
                     playBeep();
                     toastr.info(n.text);
                 }
@@ -800,7 +801,6 @@
                 let updates = { status: newStatus }; if(nextFollowUp) updates.nextFollowUp = nextFollowUp;
                 db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { 
                     toastr.success('تم إضافة التحديث'); 
-                    // Send Notifications
                     if (t.createdById && t.createdById !== currentUserData.id) sendNotification(t.createdById, `تعليق جديد على مهمة: ${t.title}`);
                     if (t.userId !== currentUserData.id) sendNotification(t.userId, `تعليق جديد على مهمة: ${t.title}`);
                     allUsers.filter(u => u.role === 'admin' && u.id !== currentUserData.id).forEach(admin => sendNotification(admin.id, `تعليق جديد من ${currentUserData.name} على مهمة: ${t.title}`));
@@ -815,7 +815,6 @@
                 let updates = { status: newStatus }; if(newStatus === 'مكتملة') updates.approvedAt = new Date().toLocaleString();
                 db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { 
                     toastr.success('تم تحديث الحالة'); 
-                    // Send Notifications based on action
                     if (newStatus === 'جديدة') { // Admin approved
                         if (t.createdById) sendNotification(t.createdById, `تم اعتماد مهمتك: ${t.title}`);
                         sendNotification(t.userId, `لديك مهمة جديدة معتمدة: ${t.title}`);
@@ -968,7 +967,11 @@
                 db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, createdById: currentUserData.id, createdByName: currentUserData.name, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: initialStatus, chat: null, nextFollowUp: '' }).then(() => { 
                     bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة');
                     // Notifications
-                    if (!isAdmin) { allUsers.filter(ad => ad.role === 'admin').forEach(admin => sendNotification(admin.id, `مهمة جديدة بانتظار الاعتماد: ${document.getElementById('taskTitle').value}`)); }
+                    if (isAdmin) {
+                        sendNotification(u.value, `لديك مهمة جديدة: ${document.getElementById('taskTitle').value}`);
+                    } else {
+                        allUsers.filter(ad => ad.role === 'admin').forEach(admin => sendNotification(admin.id, `مهمة جديدة بانتظار الاعتماد: ${document.getElementById('taskTitle').value}`));
+                    }
                 }); 
             }
             else if (type === 'request') { 
@@ -981,7 +984,6 @@
                     const assignedEmpName = assignedEmpSel.options[assignedEmpSel.selectedIndex].text;
                     db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, empDept: currentUserData.departments ? currentUserData.departments.join(', ') : currentUserData.deptName, targetDeptName: targetDeptSel.value, assignedEmpId: assignedEmpSel.value, assignedEmpName: assignedEmpName, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => { 
                         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId);
-                        // Notifications to Admins and Department Managers
                         allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${currentUserData.name}`));
                     }); 
                 }); 
