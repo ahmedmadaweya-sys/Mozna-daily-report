@@ -261,7 +261,10 @@
         });
 
         function can(action, section) {
-            if (currentUserData?.role === 'admin' || currentUserData?.role === 'manager') return true; // Managers have full access to their department's modules
+            if (currentUserData?.role === 'admin') return true;
+            if (currentUserData?.role === 'manager') {
+                return section === 'tasks' || section === 'requests'; 
+            }
             return userPermissions[section] && userPermissions[section][action];
         }
 
@@ -270,14 +273,22 @@
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
             
-            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions'].forEach(nav => document.getElementById('nav'+nav).style.display = isAdmin ? 'block' : 'none');
-            document.getElementById('navTasks').style.display = 'block';
-            document.getElementById('navRequests').style.display = 'block';
-            ['Sales', 'Customers'].forEach(nav => {
-                const sectionName = nav.toLowerCase();
-                const navEl = document.getElementById('nav'+nav);
-                if (navEl) navEl.style.display = can('view', sectionName) ? 'block' : 'none';
-            });
+            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'Sales', 'Customers'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
+            
+            if (isAdmin) {
+                ['Users', 'Departments', 'Tasks', 'Requests', 'Sales', 'Customers', 'Inventory', 'Reports', 'Permissions'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
+            } else if (isManager) {
+                document.getElementById('navTasks').style.display = 'block';
+                document.getElementById('navRequests').style.display = 'block';
+            } else { 
+                document.getElementById('navTasks').style.display = 'block';
+                document.getElementById('navRequests').style.display = 'block';
+                ['Sales', 'Customers'].forEach(nav => {
+                    const sectionName = nav.toLowerCase();
+                    const navEl = document.getElementById('nav'+nav);
+                    if (navEl) navEl.style.display = can('view', sectionName) ? 'block' : 'none';
+                });
+            }
 
             let cardsHtml = '';
             if (can('view', 'requests')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>طلبات تنتظر موافقتك</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div><i class="fas fa-bell fa-2x opacity-50"></i></div></div></div>`;
@@ -286,8 +297,8 @@
             if (can('view', 'customers')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>العملاء</h6><h2 id="statCustomers" class="display-6 mb-0">0</h2></div><i class="fas fa-address-book fa-2x opacity-50"></i></div></div></div>`;
             document.getElementById('dashboardCards').innerHTML = cardsHtml;
 
-            document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
-            document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin);
+            document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin || isManager);
+            document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin || isManager);
             
             showSection('dashboard', null);
         }
@@ -304,7 +315,7 @@
         function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
 
         function loadAttendanceStatus() {
-            if (!currentUserData || currentUserData.role === 'admin') return;
+            if (!currentUserData || currentUserData.role === 'admin' || currentUserData.role === 'manager') return;
             const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             currentDayRef = db.ref(`attendance/${currentUserData.id}/${monthYear}/${day}`);
             currentDayRef.on('value', snap => {
@@ -458,7 +469,7 @@
         }
 
         function loadDailyTasks() {
-            if (!currentUserData || currentUserData.role === 'admin') return;
+            if (!currentUserData || currentUserData.role === 'admin' || currentUserData.role === 'manager') return;
             const today = new Date().toISOString().split('T')[0];
             currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${today}`);
             currentDailyTasksRef.on('value', snap => {
@@ -559,7 +570,6 @@
                 allTasks = []; let pendingApproval = 0;
                 snap.forEach(child => { const t = child.val(); t.id = child.key; if(t.status === 'بانتظار اعتماد المدير') pendingApproval++; allTasks.push(t); });
                 
-                // Filter tasks based on role
                 let visibleTasks = [];
                 if (isAdmin) visibleTasks = allTasks;
                 else if (isManager) visibleTasks = allTasks.filter(t => t.deptName === myDept);
@@ -587,7 +597,6 @@
                 allRequests = []; let pending = 0;
                 snap.forEach(child => { const r = child.val(); r.id = child.key; if(r.status === 'جديد') pending++; allRequests.push(r); });
                 
-                // Filter requests based on role
                 let visibleRequests = [];
                 if (isAdmin) visibleRequests = allRequests;
                 else if (isManager) visibleRequests = allRequests.filter(r => r.targetDeptName === myDept || r.empId === currentUserData.id);
@@ -697,345 +706,4 @@
 
         function resetUserPassword(email) {
             if(!confirm(`هل أنت متأكد من إرسال رابط إعادة تعيين كلمة المرور إلى ${email}؟`)) return;
-            auth.sendPasswordResetEmail(email).then(() => toastr.success('تم إرسال رابط إعادة التعيين')).catch(err => toastr.error('خطأ: ' + err.message));
-        }
-
-        function openTaskChat(id) {
-            const t = allTasks.find(task => task.id === id); if (!t) return;
-            currentTaskChatId = id;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager' && t.deptName === currentUserData.deptName;
-            const isAssignedUser = t.userId === currentUserData.id;
-            
-            document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
-            document.getElementById('taskChatInfo').innerHTML = `<p><b>الموظف:</b> ${t.userName} | <b>الحالة:</b> ${t.status}</p><p><b>تاريخ البدء:</b> ${t.startDate || 'غير محدد'} | <b>تاريخ الانتهاء:</b> ${t.endDate || 'غير محدد'}</p><p><b>المتابعة القادمة:</b> ${t.nextFollowUp || 'غير محدد'}</p>`;
-            
-            let chatHtml = '';
-            if(t.chat) { Object.values(t.chat).forEach(msg => { 
-                let followUpText = msg.nextFollowUp ? `<br><small class="text-primary"><i class="fas fa-calendar-alt"></i> متابعة قادمة: ${msg.nextFollowUp}</small>` : '';
-                chatHtml += `<div class="chat-msg"><small class="text-muted fw-bold">${msg.senderName}</small> <small class="float-left text-muted">${msg.time}</small><p class="mb-0 mt-1">${msg.text}</p>${followUpText}</div>`; 
-            }); }
-            document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات حتى الآن</p>';
-            document.getElementById('taskChatInput').value = '';
-            document.getElementById('taskNextFollowUp').value = '';
-            
-            let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            
-            if(t.status !== 'مكتملة') {
-                if((isAdmin || isManager) && t.status === 'بانتظار اعتماد المدير') {
-                    footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة')">اعتماد الإنهاء</button>`;
-                    footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('قيد التنفيذ', 'تم رفض الإنهاء')">رفض الإنهاء</button>`;
-                }
-                if(isAssignedUser) {
-                    if(t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة')">استلمت المهمة</button>`;
-                    footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">حفظ التحديث والمتابعة</button>`;
-                    if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء المهمة')">إنهاء المهمة</button>`;
-                }
-                if(isAdmin || isManager) { 
-                    footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">إضافة تعليق كإدارة</button>`; 
-                }
-            }
-            document.getElementById('taskChatFooter').innerHTML = footer;
-            new bootstrap.Modal(document.getElementById('taskChatModal')).show();
-        }
-
-        function addTaskComment() {
-            const text = document.getElementById('taskChatInput').value;
-            const nextFollowUp = document.getElementById('taskNextFollowUp').value;
-            if(!text.trim() && !nextFollowUp) return toastr.warning('اكتب تعليقاً أو حدد تاريخ متابعة');
-            const t = allTasks.find(task => task.id === currentTaskChatId);
-            let newStatus = t.status;
-            if(t.status === 'جديدة') newStatus = 'قيد التنفيذ';
-            db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: text || '(تم تحديث تاريخ المتابعة)', time: new Date().toLocaleString(), nextFollowUp: nextFollowUp || '' }).then(() => {
-                let updates = { status: newStatus };
-                if(nextFollowUp) updates.nextFollowUp = nextFollowUp;
-                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { toastr.success('تم إضافة التحديث'); openTaskChat(currentTaskChatId); });
-            });
-        }
-
-        function updateTaskStatus(newStatus, commentText) {
-            db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: commentText, time: new Date().toLocaleString(), nextFollowUp: '' }).then(() => {
-                let updates = { status: newStatus };
-                if(newStatus === 'مكتملة') updates.approvedAt = new Date().toLocaleString();
-                db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { toastr.success('تم تحديث الحالة'); bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); });
-            });
-        }
-
-        async function exportTasksToExcel() {
-            const snap = await db.ref('tasks').once('value');
-            let data = [];
-            snap.forEach(child => {
-                const t = child.val();
-                let lastComment = '';
-                if(t.chat) { const arr = Object.values(t.chat); if(arr.length) lastComment = `${arr[arr.length-1].text} (متابعة: ${arr[arr.length-1].nextFollowUp || 'لا'})`; }
-                data.push({ "العنوان": t.title, "الموظف": t.userName, "تاريخ البدء": t.startDate, "تاريخ الانتهاء": t.endDate, "المتابعة القادمة": t.nextFollowUp || '', "الحالة": t.status, "آخر تعليق": lastComment });
-            });
-            if(!data.length) return toastr.warning("لا توجد مهام");
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Tasks"); XLSX.writeFile(wb, "Tasks_Report.xlsx"); toastr.success("تم التصدير");
-        }
-
-        async function exportCustomersToExcel() {
-            const snap = await db.ref('customers').once('value');
-            let data = [];
-            snap.forEach(child => { const c = child.val(); data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop, "طلبات العميل": c.requests, "الإحداثيات": c.location || "" }); });
-            if(!data.length) return toastr.warning("لا يوجد عملاء");
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Customers"); XLSX.writeFile(wb, "Customers_Report.xlsx"); toastr.success("تم التصدير");
-        }
-
-        async function exportRequestsToExcel() {
-            const snap = await db.ref('requests').once('value');
-            let data = [];
-            snap.forEach(child => { const r = child.val(); data.push({ "رقم": r.reqId, "الصنف": r.item, "طالب الطلب": r.empName, "القسم": r.targetDeptName, "الموظف المسؤول": r.assignedEmpName, "الحالة": r.status, "تعليق": r.comment }); });
-            if(!data.length) return toastr.warning("لا توجد طلبات");
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Requests"); XLSX.writeFile(wb, "Requests.xlsx"); toastr.success("تم التصدير");
-        }
-
-        function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
-
-        function filterRequestEmployees(deptName) {
-            const sel = document.getElementById('reqAssignedEmp');
-            sel.innerHTML = '<option value="">-- اختر الموظف المسؤول --</option>';
-            allUsers.filter(u => u.deptName === deptName).forEach(u => {
-                sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
-            });
-        }
-
-        async function openAddModal(type) {
-            currentAdd.type = type;
-            const body = document.getElementById('addModalBody');
-            const title = document.getElementById('addModalTitle');
-            const depOptsData = (await db.ref('departments').once('value')).val() || {};
-            const userOpts = allUsers;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager';
-            const myDept = currentUserData?.deptName;
-            
-            if (type === 'user') {
-                title.innerText = 'إضافة مستخدم';
-                let opts = '<option value="">--</option>'; for(let d in depOptsData) opts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
-            } else if (type === 'department') {
-                title.innerText = 'إضافة قسم';
-                let opts = '<option value="">--</option>'; userOpts.forEach(u => opts += `<option value="${u.name}">${u.name}</option>`);
-                body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
-            } else if (type === 'task') {
-                title.innerText = 'إضافة مهمة';
-                // Managers can only assign to their department
-                let uOpts = '<option value="">--</option>'; 
-                allUsers.filter(u => isAdmin || u.deptName === myDept).forEach(u => uOpts += `<option value="${u.id}" data-dept="${u.deptName}">${u.name}</option>`);
-                const today = new Date().toISOString().split('T')[0];
-                let deptField = isAdmin ? `<select id="taskDept" class="form-control mb-2" onchange="filterTaskUsers(this.value)"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>` : `<input type="hidden" id="taskDept" value="${myDept}"><input type="text" class="form-control mb-2" value="القسم: ${myDept}" readonly>`;
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2">${uOpts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
-            } else if (type === 'request') {
-                title.innerText = 'طلب شراء جديد';
-                let depOpts = '<option value="">-- اختر القسم --</option>'; for(let d in depOptsData) depOpts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `
-                    <input type="hidden" id="reqEmpId" value="${currentUserData.id}">
-                    <input type="text" id="reqEmpName" class="form-control mb-2" value="${currentUserData.name} (طالب الطلب)" readonly>
-                    <select id="reqTargetDept" class="form-control mb-2" onchange="filterRequestEmployees(this.value)">${depOpts}</select>
-                    <select id="reqAssignedEmp" class="form-control mb-2"><option value="">-- اختر الموظف المسؤول --</option></select>
-                    <input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف">
-                    <input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية">
-                    <select id="reqPriority" class="form-control mb-2"><option>عادية</option><option>عاجلة</option></select>
-                    <textarea id="reqPurpose" class="form-control" placeholder="الغرض"></textarea>`;
-            } else if (type === 'sale') {
-                title.innerText = 'بيع جديد';
-                let cOpts = '<option value="">--</option>'; allCustomers.forEach(c => cOpts += `<option value="${c.name}">${c.name}</option>`);
-                body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="saleCustomer" class="form-control mb-2">${cOpts}</select><input type="text" id="saleProduct" class="form-control mb-2" placeholder="نوع المنتج"><input type="number" id="saleQty" class="form-control mb-2" placeholder="الكمية"><input type="number" id="saleAmount" class="form-control mb-2" placeholder="المبلغ"><input type="text" id="saleAddress" class="form-control mb-2" placeholder="العنوان"><select id="saleStatus" class="form-control mb-2"><option>إنتاج</option><option>جارٍ التوصيل</option><option>تم التوصيل</option></select><textarea id="saleNotes" class="form-control" placeholder="ملاحظات"></textarea>`;
-            } else if (type === 'customer') {
-                title.innerText = 'عميل جديد';
-                body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل">
-                <select id="custType" class="form-control mb-2"><option>تاجر</option><option>مزارع</option><option>جمعية</option><option>منفذ بيع</option></select>
-                <input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون">
-                <div class="row mb-2">
-                    <div class="col-7"><input type="number" id="custLand" class="form-control" placeholder="مساحة الأرض"></div>
-                    <div class="col-5"><select id="custLandUnit" class="form-control"><option>فدان</option><option>قيراط</option><option>متر</option></select></div>
-                </div>
-                <input type="text" id="custCrop" class="form-control mb-2" placeholder="المحصول">
-                <label>طلبات العميل</label>
-                <div id="productListContainer" class="mb-2"></div>
-                <button type="button" onclick="addProductRow()" class="btn btn-sm btn-info text-white mb-3"><i class="fas fa-plus"></i> إضافة منتج</button>
-                
-                <input type="hidden" id="custLocation">
-                <button onclick="getLocationForCustomer()" class="btn btn-info btn-sm w-100 text-white mb-1"><i class="fas fa-map-marker-alt"></i> تحديد موقعي الحالي (GPS)</button>
-                <div id="locStatus" class="small text-muted mb-2"></div>`;
-                addProductRow();
-            } else if (type === 'inventory') {
-                title.innerText = 'صنف مخزن';
-                body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" placeholder="اسم الصنف"><select id="invCategory" class="form-control mb-2"><option>منتج نهائي</option><option>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" placeholder="الكمية"><input type="text" id="invUnit" class="form-control mb-2" placeholder="الوحدة" value="قطعة">`;
-            }
-            document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
-            new bootstrap.Modal(document.getElementById('addModal')).show();
-        }
-
-        function filterTaskUsers(deptName) {
-            const sel = document.getElementById('taskUser');
-            sel.innerHTML = '<option value="">-- اختر الموظف --</option>';
-            allUsers.filter(u => u.deptName === deptName).forEach(u => {
-                sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
-            });
-        }
-
-        function addProductRow() {
-            const container = document.getElementById('productListContainer');
-            const html = `<div class="row mb-1 product-row"><div class="col-5"><input type="text" class="form-control form-control-sm prod-name" placeholder="اسم المنتج"></div><div class="col-4"><select class="form-control form-control-sm prod-unit"><option>لتر</option><option>طن</option><option>كيلو</option><option>عبوة</option><option>قطعة</option></select></div><div class="col-3"><input type="number" class="form-control form-control-sm prod-qty" placeholder="الكمية"></div></div>`;
-            container.insertAdjacentHTML('beforeend', html);
-        }
-
-        function confirmAdd() {
-            const type = currentAdd.type;
-            if (type === 'user') { 
-                const deptName = document.getElementById('newDept').value; 
-                auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, deptName: deptName, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
-                }).catch(err => toastr.error(err.message)); 
-            }
-            else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
-            else if (type === 'task') { 
-                const u = document.getElementById('taskUser'); 
-                const taskDept = document.getElementById('taskDept').value;
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: 'جديدة', chat: null, nextFollowUp: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
-            }
-            else if (type === 'request') { 
-                db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
-                    const newId = res.snapshot.val();
-                    const formattedId = "#" + String(newId).padStart(4, '0'); 
-                    const targetDeptSel = document.getElementById('reqTargetDept');
-                    const assignedEmpSel = document.getElementById('reqAssignedEmp');
-                    const assignedEmpName = assignedEmpSel.options[assignedEmpSel.selectedIndex].text;
-                    
-                    db.ref('requests').push({ 
-                        reqId: formattedId, 
-                        empId: currentUserData.id, 
-                        empName: currentUserData.name, 
-                        empDept: currentUserData.deptName, 
-                        targetDeptName: targetDeptSel.value, 
-                        assignedEmpId: assignedEmpSel.value,
-                        assignedEmpName: assignedEmpName,
-                        item: document.getElementById('reqItem').value, 
-                        qty: document.getElementById('reqQty').value, 
-                        priority: document.getElementById('reqPriority').value, 
-                        purpose: document.getElementById('reqPurpose').value, 
-                        status: 'جديد', 
-                        comment: '', 
-                        timestamp: new Date().toLocaleDateString() 
-                    }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); 
-                }); 
-            }
-            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
-            else if (type === 'customer') {
-                let products = [];
-                document.querySelectorAll('#productListContainer .product-row').forEach(row => { const name = row.querySelector('.prod-name').value; const unit = row.querySelector('.prod-unit').value; const qty = row.querySelector('.prod-qty').value; if(name && qty) products.push(`${name} (${qty} ${unit})`); });
-                const landArea = document.getElementById('custLand').value + ' ' + document.getElementById('custLandUnit').value;
-                db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: landArea, crop: document.getElementById('custCrop').value, requests: products.join(' | '), location: document.getElementById('custLocation').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
-            }
-            else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
-        }
-
-        function getLocationForCustomer() {
-            if (!navigator.geolocation) { return toastr.error("المتصفح لا يدعم تحديد الموقع."); }
-            document.getElementById('locStatus').innerHTML = '<span class="text-info">جاري تحديد موقعك... برجاء الانتظار والسماح بالإذن.</span>';
-            navigator.geolocation.getCurrentPosition(pos => {
-                const lat = pos.coords.latitude; const lng = pos.coords.longitude; const coords = `${lat},${lng}`;
-                document.getElementById('custLocation').value = coords;
-                document.getElementById('locStatus').innerHTML = `<a href="https://www.google.com/maps?q=${coords}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للمعاينة)</a>`;
-            }, err => {
-                let msg = "تعذر الحصول على الموقع. برجاء المحاولة مرة أخرى.";
-                if(err.code === 1) msg = "تم رفض الإذن. برجاء السماح للموقع بالوصول إلى الموقع.";
-                document.getElementById('locStatus').innerHTML = `<span class="text-danger">${msg}</span>`;
-            }, { enableHighAccuracy: true, timeout: 10000 });
-        }
-
-        async function openRequestDetails(id) {
-            const r = allRequests.find(req => req.id === id); if (!r) return;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager' && r.targetDeptName === currentUserData.deptName;
-            const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
-            
-            document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
-            document.getElementById('detailsModalBody').innerHTML = `<h5>${r.item}</h5><p>الكمية: ${r.qty} | الأولوية: ${r.priority}</p><p>التفاصيل: ${r.purpose || ''}</p><hr><textarea class="form-control" id="detailComment" placeholder="تعليق" ${isAdmin || (isManager && canPurchasingTakeAction) ? '' : 'readonly'}>${r.comment || ''}</textarea>`;
-            
-            let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            if ((isAdmin || isManager) && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
-            if (isManager && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
-            if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
-            
-            document.getElementById('detailsModalFooter').innerHTML = footer;
-            new bootstrap.Modal(document.getElementById('detailsModal')).show();
-        }
-
-        function updateReqStatus(id, status) { const comment = document.getElementById('detailComment').value; db.ref('requests/' + id).update({ status, comment }).then(() => { bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); }); }
-
-        function addFollowUp(custId) { const note = prompt("اكتب ملاحظة المتابعة لهذا العميل:"); if (note) { db.ref('customers/' + custId + '/followUps').push({ date: new Date().toLocaleString(), note: note, repId: currentUserData.id }).then(() => toastr.success('تمت إضافة المتابعة')); } }
-        
-        async function openEditModal(type, id) {
-            const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
-            currentEdit = { id, type: type + 's' };
-            const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            if (type === 'user') { const deps = (await db.ref('departments').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let d in deps) opts += `<option value="${deps[d].name}" ${data.deptName===deps[d].name?'selected':''}>${deps[d].name}</option>`; title.innerText='تعديل مستخدم'; body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; }
-            else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
-            else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
-            else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
-            else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
-            else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option><option ${data.category==='مادة خام'?'selected':''}>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}"><input type="text" id="invUnit" class="form-control mb-2" value="${data.unit}">`; }
-            document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
-            new bootstrap.Modal(document.getElementById('addModal')).show();
-        }
-
-        function confirmEdit() {
-            const t = currentEdit.type; const id = currentEdit.id; let upd = {};
-            if (t === 'users') { upd = { name: document.getElementById('newName').value, deptName: document.getElementById('newDept').value, role: document.getElementById('newRole').value }; }
-            else if (t === 'departments') { upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }; }
-            else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
-            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
-            else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
-            else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
-            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
-        }
-
-        function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
-        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
-
-        function openAttendanceReportModal() { const sel = document.getElementById('reportEmployees'); sel.innerHTML = ''; allUsers.forEach(u => sel.appendChild(new Option(u.name, u.id))); new bootstrap.Modal(document.getElementById('attendanceReportModal')).show(); }
-        async function generateAttendanceReport() {
-            const sel = document.getElementById('reportEmployees'); const users = Array.from(sel.selectedOptions).map(o => ({ id: o.value, name: o.text })); if (!users.length) return toastr.warning('اختر موظف');
-            const att = (await db.ref('attendance').once('value')).val() || {}; const wb = XLSX.utils.book_new();
-            if (document.querySelector('input[name="reportType"]:checked').value === 'summary') {
-                let d = []; users.forEach(u => { for (const m in (att[u.id]||{})) { let t=0; for (const day in att[u.id][m]) if(att[u.id][m][day].totalHours) t+=parseFloat(att[u.id][m][day].totalHours); d.push({ "الموظف": u.name, "الشهر": m, "الساعات": t.toFixed(2) }); } });
-                const ws = XLSX.utils.json_to_sheet(d); XLSX.utils.book_append_sheet(wb, ws, "ملخص");
-            } else {
-                users.forEach(u => { 
-                    let r=[]; 
-                    for (const m in (att[u.id]||{})) { 
-                        for (const day in att[u.id][m]) { 
-                            if(att[u.id][m][day].sessions) {
-                                Object.values(att[u.id][m][day].sessions).forEach(s => {
-                                    r.push({ 
-                                        "التاريخ": `${day}-${m}`, 
-                                        "حضور": formatTime(s.checkIn), 
-                                        "موقع الحضور": s.checkInLoc || '',
-                                        "انصراف": s.checkOut ? formatTime(s.checkOut) : "", 
-                                        "موقع الانصراف": s.checkOutLoc || '',
-                                        "المدة": s.duration||0 
-                                    }); 
-                                }); 
-                            }
-                        } 
-                    } 
-                    if(r.length) { 
-                        const ws = XLSX.utils.json_to_sheet(r); 
-                        XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); 
-                    } 
-                });
-            }
-            XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
-        }
-    </script>
-</body>
-</html>
+            auth.sendPasswordResetEmail(email).then()
