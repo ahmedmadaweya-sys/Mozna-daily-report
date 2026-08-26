@@ -327,6 +327,66 @@
 
         function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
 
+        // ===== Anti-Spoofing Security Layer =====
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        async function getSecureLocation() {
+            return new Promise(async (resolve) => {
+                if (!navigator.geolocation) { resolve({ loc: 'غير متاح', suspicious: true, reason: 'Geolocation not supported' }); return; }
+                
+                const startTime = Date.now();
+                let ipLoc = null;
+                
+                // Fetch IP Location for cross-verification
+                try {
+                    const ipRes = await fetch('https://ipapi.co/json/');
+                    const ipData = await ipRes.json();
+                    if (ipData.latitude && ipData.longitude) ipLoc = { lat: ipData.latitude, lon: ipData.longitude };
+                } catch (e) { /* Ignore IP error */ }
+
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const endTime = Date.now();
+                    const responseTime = endTime - startTime;
+                    const accuracy = pos.coords.accuracy;
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    
+                    let suspicious = false;
+                    let reasons = [];
+
+                    // 1. Accuracy Check (Fake GPS usually has 0-5m accuracy)
+                    if (accuracy < 5) { suspicious = true; reasons.push("دقة GPS غير واقعية"); }
+                    
+                    // 2. Response Time Check (Fake GPS responds instantly)
+                    if (responseTime < 1000) { suspicious = true; reasons.push("استجابة سريعة جداً"); }
+                    
+                    // 3. IP Cross-Verification
+                    if (ipLoc) {
+                        const dist = calculateDistance(lat, lon, ipLoc.lat, ipLoc.lon);
+                        if (dist > 50) { suspicious = true; reasons.push("تباين كبير بين GPS و IP"); }
+                    }
+
+                    resolve({
+                        loc: `https://maps.google.com/?q=${lat},${lon}`,
+                        suspicious: suspicious,
+                        reason: suspicious ? reasons.join(' | ') : ''
+                    });
+                }, err => {
+                    resolve({ loc: 'مرفوض أو غير متاح', suspicious: true, reason: err.message });
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            });
+        }
+        // ==========================================
+
         function loadAttendanceStatus() {
             if (!currentUserData || currentUserData.role === 'admin' || currentUserData.role === 'manager') return;
             const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
@@ -369,44 +429,33 @@
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
 
-        function toggleAttendance() {
+        async function toggleAttendance() {
             if (!currentDayRef) return;
-            currentDayRef.once('value').then(snap => {
-                const data = snap.val() || {}; const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const data = (await currentDayRef.once('value')).val() || {};
+            const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const locData = await getSecureLocation();
 
-                const handleLocation = (callback) => {
-                    if (!navigator.geolocation) { callback('غير متاح'); return; }
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        callback(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`);
-                    }, err => { callback('مرفوض أو غير متاح'); }, { enableHighAccuracy: true, timeout: 10000 });
-                };
-
-                if (!data.activeSession) {
-                    handleLocation(loc => {
-                        const newRef = currentDayRef.child('sessions').push();
-                        newRef.set({ checkIn: timeStr, checkInLoc: loc, checkOut: null, checkOutLoc: '', duration: 0 }).then(() => {
-                            currentDayRef.update({ activeSession: newRef.key });
-                            toastr.success('تم تسجيل حضورك');
-                        });
-                    });
-                } else {
-                    handleLocation(loc => {
-                        const sesId = data.activeSession;
-                        const sesData = data.sessions[sesId];
-                        const [h, m] = sesData.checkIn.split(':').map(Number);
-                        let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
-                        let diffHrs = (now - checkInDate) / (1000 * 60 * 60);
-                        let deduction = data.breakDeduction || 0;
-                        if (deduction > 0) { diffHrs -= (deduction / 60); currentDayRef.update({ breakDeduction: 0 }); }
-                        
-                        currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: loc, duration: diffHrs.toFixed(2) }).then(() => {
-                            const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
-                            currentDayRef.update({ activeSession: null, totalHours: newTotal });
-                            toastr.info('تم تسجيل الانصراف');
-                        });
-                    });
-                }
-            });
+            if (!data.activeSession) {
+                const newRef = currentDayRef.child('sessions').push();
+                newRef.set({ checkIn: timeStr, checkInLoc: locData.loc, checkInSuspicious: locData.suspicious, checkInReason: locData.reason, checkOut: null, checkOutLoc: '', duration: 0 }).then(() => {
+                    currentDayRef.update({ activeSession: newRef.key });
+                    toastr.success('تم تسجيل حضورك');
+                });
+            } else {
+                const sesId = data.activeSession;
+                const sesData = data.sessions[sesId];
+                const [h, m] = sesData.checkIn.split(':').map(Number);
+                let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
+                let diffHrs = (now - checkInDate) / (1000 * 60 * 60);
+                let deduction = data.breakDeduction || 0;
+                if (deduction > 0) { diffHrs -= (deduction / 60); currentDayRef.update({ breakDeduction: 0 }); }
+                
+                currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: locData.loc, checkOutSuspicious: locData.suspicious, checkOutReason: locData.reason, duration: diffHrs.toFixed(2) }).then(() => {
+                    const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
+                    currentDayRef.update({ activeSession: null, totalHours: newTotal });
+                    toastr.info('تم تسجيل الانصراف');
+                });
+            }
         }
 
         function toggleBreak() {
@@ -655,7 +704,7 @@
                     allCustomers = []; if(document.getElementById('statCustomers')) document.getElementById('statCustomers').innerText = snap.numChildren();
                     let html = '';
                     snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); 
-                        let locBtn = c.location ? `<a href="https://www.google.com/maps?q=${c.location}" target="_blank" class="text-primary">${c.location}</a>` : '<span class="text-muted">لا يوجد</span>';
+                        let locBtn = c.location ? `<a href="https://www.google.com/maps?q=${c.location}" target="_blank" class="text-primary">${c.location}</a> ${c.locSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}` : '<span class="text-muted">لا يوجد</span>';
                         let act = '';
                         if (can('edit', 'customers')) act += `<button onclick="openEditModal('customer','${c.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'customers')) act += `<button onclick="openDeleteModal('${c.id}','customers')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
@@ -788,18 +837,15 @@
             
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             
-            // Task Approval Flow
             if(isAdmin && t.status === 'بانتظار اعتماد الإدارة') {
                 footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('جديدة', 'تم اعتماد المهمة من قبل الإدارة')">اعتماد المهمة</button>`;
                 footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('مرفوضة', 'تم رفض المهمة من قبل الإدارة')">رفض المهمة</button>`;
             }
 
-            // Edit Button
             if (isAdmin || isCreator) {
                 footer += `<button type="button" class="btn btn-warning" onclick="openEditTaskFromChat('${t.id}')"><i class="fas fa-edit"></i> تعديل المهمة</button>`;
             }
 
-            // Task Completion Flow
             if(t.status !== 'مكتملة' && t.status !== 'مرفوضة' && t.status !== 'بانتظار اعتماد الإدارة') {
                 if((isAdmin || isDeptManager) && t.status === 'بانتظار اعتماد المدير') {
                     footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة')">اعتماد الإنهاء</button>`;
@@ -853,7 +899,6 @@
             
             snap.forEach(child => {
                 const t = child.val();
-                // Manager only exports tasks they created
                 if (!isAdmin && t.createdById !== currentUserData.id) return; 
 
                 let lastComment = '';
@@ -868,7 +913,7 @@
         async function exportCustomersToExcel() {
             const snap = await db.ref('customers').once('value');
             let data = [];
-            snap.forEach(child => { const c = child.val(); data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop, "طلبات العميل": c.requests, "الإحداثيات": c.location || "" }); });
+            snap.forEach(child => { const c = child.val(); data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop, "طلبات العميل": c.requests, "الإحداثيات": c.location || "", "تحذير أمني": c.locSuspicious ? "مشبوه" : "" }); });
             if(!data.length) return toastr.warning("لا يوجد عملاء");
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Customers"); XLSX.writeFile(wb, "Customers_Report.xlsx"); toastr.success("تم التصدير");
@@ -987,6 +1032,8 @@
                 <button type="button" onclick="addProductRow()" class="btn btn-sm btn-info text-white mb-3"><i class="fas fa-plus"></i> إضافة منتج</button>
                 
                 <input type="hidden" id="custLocation">
+                <input type="hidden" id="custLocSuspicious">
+                <input type="hidden" id="custLocReason">
                 <button onclick="getLocationForCustomer()" class="btn btn-info btn-sm w-100 text-white mb-1"><i class="fas fa-map-marker-alt"></i> تحديد موقعي الحالي (GPS)</button>
                 <div id="locStatus" class="small text-muted mb-2"></div>`;
                 addProductRow();
@@ -1008,7 +1055,6 @@
             const type = currentAdd.type;
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
-            const isManager = role === 'manager';
             
             if (type === 'user') { 
                 const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
@@ -1031,7 +1077,6 @@
                 if(!taskDept) return toastr.warning('من فضلك اختر القسم');
                 if(!u.value) return toastr.warning('من فضلك اختر الموظف');
                 
-                // If Admin creates task -> "جديدة". If Manager creates -> "بانتظار اعتماد الإدارة"
                 const initialStatus = isAdmin ? 'جديدة' : 'بانتظار اعتماد الإدارة';
                 
                 db.ref('tasks').push({ 
@@ -1082,23 +1127,37 @@
                 let products = [];
                 document.querySelectorAll('#productListContainer .product-row').forEach(row => { const name = row.querySelector('.prod-name').value; const unit = row.querySelector('.prod-unit').value; const qty = row.querySelector('.prod-qty').value; if(name && qty) products.push(`${name} (${qty} ${unit})`); });
                 const landArea = document.getElementById('custLand').value + ' ' + document.getElementById('custLandUnit').value;
-                db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: landArea, crop: document.getElementById('custCrop').value, requests: products.join(' | '), location: document.getElementById('custLocation').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
+                db.ref('customers').push({ 
+                    repId: currentUserData.id, 
+                    repName: currentUserData.name, 
+                    name: document.getElementById('custName').value, 
+                    type: document.getElementById('custType').value, 
+                    phone: document.getElementById('custPhone').value, 
+                    landArea: landArea, 
+                    crop: document.getElementById('custCrop').value, 
+                    requests: products.join(' | '), 
+                    location: document.getElementById('custLocation').value, 
+                    locSuspicious: document.getElementById('custLocSuspicious').value === 'true',
+                    locReason: document.getElementById('custLocReason').value,
+                    followUps: [], 
+                    timestamp: new Date().toLocaleString() 
+                }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
             }
             else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
 
-        function getLocationForCustomer() {
-            if (!navigator.geolocation) { return toastr.error("المتصفح لا يدعم تحديد الموقع."); }
+        async function getLocationForCustomer() {
             document.getElementById('locStatus').innerHTML = '<span class="text-info">جاري تحديد موقعك... برجاء الانتظار والسماح بالإذن.</span>';
-            navigator.geolocation.getCurrentPosition(pos => {
-                const lat = pos.coords.latitude; const lng = pos.coords.longitude; const coords = `${lat},${lng}`;
-                document.getElementById('custLocation').value = coords;
-                document.getElementById('locStatus').innerHTML = `<a href="https://www.google.com/maps?q=${coords}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للمعاينة)</a>`;
-            }, err => {
-                let msg = "تعذر الحصول على الموقع. برجاء المحاولة مرة أخرى.";
-                if(err.code === 1) msg = "تم رفض الإذن. برجاء السماح للموقع بالوصول إلى الموقع.";
-                document.getElementById('locStatus').innerHTML = `<span class="text-danger">${msg}</span>`;
-            }, { enableHighAccuracy: true, timeout: 10000 });
+            const locData = await getSecureLocation();
+            document.getElementById('custLocation').value = locData.loc;
+            document.getElementById('custLocSuspicious').value = locData.suspicious;
+            document.getElementById('custLocReason').value = locData.reason;
+            
+            if (locData.suspicious) {
+                document.getElementById('locStatus').innerHTML = `<span class="text-warning">تم تسجيل الموقع، لكن تم وضع علامة (مشبوه) للمراجعة: ${locData.reason}</span>`;
+            } else {
+                document.getElementById('locStatus').innerHTML = `<a href="https://www.google.com/maps?q=${locData.loc.split('q=')[1]}" target="_blank" class="text-success">تم تسجيل الموقع بنجاح (اضغط للمعاينة)</a>`;
+            }
         }
 
         async function openRequestDetails(id) {
@@ -1187,8 +1246,10 @@
                                         "التاريخ": `${day}-${m}`, 
                                         "حضور": formatTime(s.checkIn), 
                                         "موقع الحضور": s.checkInLoc || '',
+                                        "تحذير الحضور": s.checkInSuspicious ? "مشبوه: " + (s.checkInReason||'') : "",
                                         "انصراف": s.checkOut ? formatTime(s.checkOut) : "", 
                                         "موقع الانصراف": s.checkOutLoc || '',
+                                        "تحذير الانصراف": s.checkOutSuspicious ? "مشبوه: " + (s.checkOutReason||'') : "",
                                         "المدة": s.duration||0 
                                     }); 
                                 }); 
