@@ -25,6 +25,7 @@
         .chat-box { max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6; }
         .chat-msg { margin-bottom: 10px; padding: 8px; border-radius: 8px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .break-timer { font-size: 2rem; font-weight: bold; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -44,6 +45,7 @@
             <div class="sidebar" style="width: 230px;">
                 <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
+                <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
                 <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
@@ -89,6 +91,12 @@
                     </div>
 
                     <div class="alert alert-info"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
+                </div>
+
+                <!-- Team -->
+                <div id="teamSection" style="display: none;">
+                    <h2 class="mb-4">الفريق</h2>
+                    <div class="row" id="teamList"></div>
                 </div>
 
                 <!-- Users -->
@@ -238,6 +246,7 @@
         let userPermissions = {};
         let currentDailyTasksRef = null;
         let breakInterval = null;
+        let todayAttSnap = null; // لتخزين حضور اليوم لكل الموظفين
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
@@ -273,6 +282,8 @@
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
             
+            document.getElementById('navTeam').style.display = 'block'; // الفريق تظهر للكل
+            
             ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'Sales', 'Customers'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
             
             if (isAdmin) {
@@ -304,7 +315,7 @@
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'users', 'departments', 'tasks', 'requests', 'sales', 'customers', 'inventory', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
+            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'sales', 'customers', 'inventory', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             if(evt && evt.target.closest('a')) evt.target.closest('a').classList.add('active');
@@ -530,11 +541,11 @@
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks"); XLSX.writeFile(wb, "Daily_Tasks_Report.xlsx"); toastr.success("تم التصدير");
         }
 
-        function loadData() {
+        async function loadData() {
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
-            const myDept = currentUserData?.deptName;
+            const myDepts = currentUserData?.departments || (currentUserData?.deptName ? [currentUserData.deptName] : []);
 
             if (can('view', 'users')) {
                 db.ref('users').on('value', snap => {
@@ -546,10 +557,11 @@
                         if (can('edit', 'users')) act += `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'users')) act += `<button onclick="openDeleteModal('${u.id}','users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
                         if (!act) act = '<span class="text-muted">مقيد</span>';
-                        html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.deptName || ''}</td><td>${u.role}</td><td>${act}</td></tr>`; 
+                        html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.role}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('usersTbody').innerHTML = html;
                     document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                    renderTeam();
                 });
             }
             if (can('view', 'departments')) {
@@ -572,7 +584,7 @@
                 
                 let visibleTasks = [];
                 if (isAdmin) visibleTasks = allTasks;
-                else if (isManager) visibleTasks = allTasks.filter(t => t.deptName === myDept);
+                else if (isManager) visibleTasks = allTasks.filter(t => myDepts.includes(t.deptName));
                 else visibleTasks = allTasks.filter(t => t.userId === currentUserData.id);
 
                 if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = (isAdmin || isManager) ? visibleTasks.filter(t => t.status === 'بانتظار اعتماد المدير').length : 0;
@@ -586,7 +598,7 @@
                     if(t.status === 'مكتملة') badge = 'success';
                     if(t.endDate && t.status !== 'مكتملة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) late = '<span class="badge bg-danger ms-1">متأخرة</span>'; }
                     
-                    let adminDelete = (isAdmin || (isManager && t.deptName === myDept)) ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
+                    let adminDelete = (isAdmin || (isManager && myDepts.includes(t.deptName))) ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
                     
                     html += `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${late}</p>${adminDelete}</div></div></div>`;
                 });
@@ -599,7 +611,7 @@
                 
                 let visibleRequests = [];
                 if (isAdmin) visibleRequests = allRequests;
-                else if (isManager) visibleRequests = allRequests.filter(r => r.targetDeptName === myDept || r.empId === currentUserData.id);
+                else if (isManager) visibleRequests = allRequests.filter(r => myDepts.includes(r.targetDeptName) || r.empId === currentUserData.id);
                 else visibleRequests = allRequests.filter(r => r.empId === currentUserData.id);
 
                 if(document.getElementById('statPendingReq')) document.getElementById('statPendingReq').innerText = (isAdmin || isManager) ? visibleRequests.filter(r => r.status === 'جديد').length : 0;
@@ -669,6 +681,37 @@
             document.getElementById('reportsList').innerHTML = repHtml || '<div class="col-12 text-center text-muted">لا توجد تقارير متاحة لك</div>';
         }
 
+        // ===== Team Page Logic =====
+        function renderTeam() {
+            const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            db.ref('attendance').once('value').then(attSnap => {
+                const allAtt = attSnap.val() || {};
+                let html = '';
+                allUsers.forEach(u => {
+                    const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
+                    const isCheckedIn = userAtt && userAtt.activeSession;
+                    const statusColor = isCheckedIn ? 'success' : 'warning';
+                    const statusText = isCheckedIn ? 'في العمل (أونلاين)' : 'غير نشط (أوف لاين)';
+                    const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
+                    
+                    html += `
+                        <div class="col-md-4 mb-3">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div>
+                                    <h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5>
+                                    <p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p>
+                                    <p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p>
+                                    <p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p>
+                                    <p class="text-muted small mb-0"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
+            });
+        }
+
         async function loadPermissionsUI() {
             const permSnap = await db.ref('permissions/employee').once('value');
             const perms = permSnap.val() || {};
@@ -714,7 +757,7 @@
             currentTaskChatId = id;
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
-            const isManager = role === 'manager' && t.deptName === currentUserData.deptName;
+            const isManager = role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(t.deptName);
             const isAssignedUser = t.userId === currentUserData.id;
             
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
@@ -808,7 +851,7 @@
         function filterRequestEmployees(deptName) {
             const sel = document.getElementById('reqAssignedEmp');
             sel.innerHTML = '<option value="">-- اختر الموظف المسؤول --</option>';
-            allUsers.filter(u => u.deptName === deptName).forEach(u => {
+            allUsers.filter(u => (u.departments || [u.deptName]).includes(deptName)).forEach(u => {
                 sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
             });
         }
@@ -818,26 +861,23 @@
             const body = document.getElementById('addModalBody');
             const title = document.getElementById('addModalTitle');
             const depOptsData = (await db.ref('departments').once('value')).val() || {};
-            const userOpts = allUsers;
-            const role = currentUserData?.role;
-            const isAdmin = role === 'admin';
-            const isManager = role === 'manager';
-            const myDept = currentUserData?.deptName;
             
             if (type === 'user') {
                 title.innerText = 'إضافة مستخدم';
-                let opts = '<option value="">--</option>'; for(let d in depOptsData) opts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
+                let depCheckboxes = '';
+                Object.values(depOptsData).forEach(d => { depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}"><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; });
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><input type="text" id="newPhone" class="form-control mb-2" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" placeholder="تاريخ التعيين"><input type="text" id="newJobTitle" class="form-control mb-2" placeholder="المسمى الوظيفي"><label class="small text-muted">الأقسام</label><div class="mb-2 border p-2 rounded" style="max-height:150px; overflow-y:auto;">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
-                let opts = '<option value="">--</option>'; userOpts.forEach(u => opts += `<option value="${u.name}">${u.name}</option>`);
+                let opts = '<option value="">--</option>'; allUsers.forEach(u => opts += `<option value="${u.name}">${u.name}</option>`);
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
+                // Filter out Sales users from task assignment
                 let uOpts = '<option value="">--</option>'; 
-                allUsers.filter(u => isAdmin || u.deptName === myDept).forEach(u => uOpts += `<option value="${u.id}" data-dept="${u.deptName}">${u.name}</option>`);
+                allUsers.filter(u => !(u.departments || [u.deptName]).includes('المبيعات')).forEach(u => uOpts += `<option value="${u.id}">${u.name}</option>`);
                 const today = new Date().toISOString().split('T')[0];
-                let deptField = isAdmin ? `<select id="taskDept" class="form-control mb-2" onchange="filterTaskUsers(this.value)"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>` : `<input type="hidden" id="taskDept" value="${myDept}"><input type="text" class="form-control mb-2" value="القسم: ${myDept}" readonly>`;
+                let deptField = `<select id="taskDept" class="form-control mb-2"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>`;
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2">${uOpts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
@@ -881,14 +921,6 @@
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
-        function filterTaskUsers(deptName) {
-            const sel = document.getElementById('taskUser');
-            sel.innerHTML = '<option value="">-- اختر الموظف --</option>';
-            allUsers.filter(u => u.deptName === deptName).forEach(u => {
-                sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
-            });
-        }
-
         function addProductRow() {
             const container = document.getElementById('productListContainer');
             const html = `<div class="row mb-1 product-row"><div class="col-5"><input type="text" class="form-control form-control-sm prod-name" placeholder="اسم المنتج"></div><div class="col-4"><select class="form-control form-control-sm prod-unit"><option>لتر</option><option>طن</option><option>كيلو</option><option>عبوة</option><option>قطعة</option></select></div><div class="col-3"><input type="number" class="form-control form-control-sm prod-qty" placeholder="الكمية"></div></div>`;
@@ -898,9 +930,17 @@
         function confirmAdd() {
             const type = currentAdd.type;
             if (type === 'user') { 
-                const deptName = document.getElementById('newDept').value; 
+                const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
                 auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, deptName: deptName, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
+                    db.ref('users/' + userRec.user.uid).set({ 
+                        name: document.getElementById('newName').value, 
+                        email: document.getElementById('newEmail').value, 
+                        phone: document.getElementById('newPhone').value,
+                        hireDate: document.getElementById('newHireDate').value,
+                        jobTitle: document.getElementById('newJobTitle').value,
+                        departments: selectedDepts, 
+                        role: document.getElementById('newRole').value 
+                    }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
                 }).catch(err => toastr.error(err.message)); 
             }
             else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
@@ -921,7 +961,7 @@
                         reqId: formattedId, 
                         empId: currentUserData.id, 
                         empName: currentUserData.name, 
-                        empDept: currentUserData.deptName, 
+                        empDept: currentUserData.departments ? currentUserData.departments.join(', ') : currentUserData.deptName, 
                         targetDeptName: targetDeptSel.value, 
                         assignedEmpId: assignedEmpSel.value,
                         assignedEmpName: assignedEmpName,
@@ -963,7 +1003,7 @@
             const r = allRequests.find(req => req.id === id); if (!r) return;
             const role = currentUserData?.role;
             const isAdmin = role === 'admin';
-            const isManager = role === 'manager' && r.targetDeptName === currentUserData.deptName;
+            const isManager = role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(r.targetDeptName);
             const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
             
             document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
@@ -986,7 +1026,17 @@
             const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            if (type === 'user') { const deps = (await db.ref('departments').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let d in deps) opts += `<option value="${deps[d].name}" ${data.deptName===deps[d].name?'selected':''}>${deps[d].name}</option>`; title.innerText='تعديل مستخدم'; body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; }
+            if (type === 'user') { 
+                const deps = (await db.ref('departments').once('value')).val() || {}; 
+                const userDepts = data.departments || (data.deptName ? [data.deptName] : []);
+                let depCheckboxes = '';
+                Object.values(deps).forEach(d => { 
+                    const checked = userDepts.includes(d.name) ? 'checked' : ''; 
+                    depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}" ${checked}><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; 
+                });
+                title.innerText='تعديل مستخدم'; 
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}" placeholder="تاريخ التعيين"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}" placeholder="المسمى الوظيفي"><label class="small text-muted">الأقسام</label><div class="mb-2 border p-2 rounded" style="max-height:150px; overflow-y:auto;">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; 
+            }
             else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
             else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
             else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
@@ -998,7 +1048,9 @@
 
         function confirmEdit() {
             const t = currentEdit.type; const id = currentEdit.id; let upd = {};
-            if (t === 'users') { upd = { name: document.getElementById('newName').value, deptName: document.getElementById('newDept').value, role: document.getElementById('newRole').value }; }
+            if (t === 'users') { 
+                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; 
+            }
             else if (t === 'departments') { upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }; }
             else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
             else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
