@@ -261,12 +261,15 @@
         });
 
         function can(action, section) {
-            if (currentUserData?.role === 'admin') return true;
+            if (currentUserData?.role === 'admin' || currentUserData?.role === 'manager') return true; // Managers have full access to their department's modules
             return userPermissions[section] && userPermissions[section][action];
         }
 
         function applyPermissions() {
-            const isAdmin = currentUserData?.role === 'admin';
+            const role = currentUserData?.role;
+            const isAdmin = role === 'admin';
+            const isManager = role === 'manager';
+            
             ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions'].forEach(nav => document.getElementById('nav'+nav).style.display = isAdmin ? 'block' : 'none');
             document.getElementById('navTasks').style.display = 'block';
             document.getElementById('navRequests').style.display = 'block';
@@ -313,12 +316,11 @@
                 if (data.activeSession && data.sessions && data.sessions[data.activeSession]) {
                     const activeSes = data.sessions[data.activeSession];
                     btn.className = 'btn btn-danger btn-lg'; btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل انصراف';
-                    btn.disabled = false; // Ensure it's enabled unless break is active
+                    btn.disabled = false; 
                     breakBtn.classList.remove('d-none');
                     document.getElementById('checkInTime').innerText = formatTime(activeSes.checkIn);
                     document.getElementById('checkOutTime').innerText = '--:--';
 
-                    // Check if break is active
                     if (data.activeBreak) {
                         startBreakTimerUI(data.activeBreak);
                         btn.disabled = true;
@@ -383,20 +385,17 @@
             });
         }
 
-        // ===== Break Logic (With Persistent Timer) =====
         function toggleBreak() {
             if (!currentDayRef) return;
             currentDayRef.once('value').then(snap => {
                 const data = snap.val() || {};
                 if (!data.activeBreak) {
-                    // Start Break
                     const startTime = Date.now();
                     currentDayRef.update({ activeBreak: startTime }).then(() => {
                         startBreakTimerUI(startTime);
                         toastr.info('بدأت الاستراحة');
                     });
                 } else {
-                    // End Break
                     const startTime = data.activeBreak;
                     const elapsedMin = (Date.now() - startTime) / 60000;
                     const deductionMin = Math.max(0, elapsedMin - 60);
@@ -424,7 +423,7 @@
             attBtn.disabled = true;
             display.classList.remove('d-none');
 
-            if (breakInterval) clearInterval(breakInterval); // Clear any existing timer
+            if (breakInterval) clearInterval(breakInterval); 
 
             breakInterval = setInterval(() => {
                 const elapsed = (Date.now() - startTime) / 1000;
@@ -521,7 +520,11 @@
         }
 
         function loadData() {
-            const isAdmin = currentUserData?.role === 'admin';
+            const role = currentUserData?.role;
+            const isAdmin = role === 'admin';
+            const isManager = role === 'manager';
+            const myDept = currentUserData?.deptName;
+
             if (can('view', 'users')) {
                 db.ref('users').on('value', snap => {
                     allUsers = []; if(document.getElementById('statUsers')) document.getElementById('statUsers').innerText = snap.numChildren();
@@ -555,9 +558,17 @@
             db.ref('tasks').on('value', snap => {
                 allTasks = []; let pendingApproval = 0;
                 snap.forEach(child => { const t = child.val(); t.id = child.key; if(t.status === 'بانتظار اعتماد المدير') pendingApproval++; allTasks.push(t); });
-                if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = isAdmin ? pendingApproval : 0;
+                
+                // Filter tasks based on role
+                let visibleTasks = [];
+                if (isAdmin) visibleTasks = allTasks;
+                else if (isManager) visibleTasks = allTasks.filter(t => t.deptName === myDept);
+                else visibleTasks = allTasks.filter(t => t.userId === currentUserData.id);
+
+                if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = (isAdmin || isManager) ? visibleTasks.filter(t => t.status === 'بانتظار اعتماد المدير').length : 0;
+                
                 let html = '';
-                allTasks.filter(t => isAdmin || t.userId === currentUserData.id).forEach(t => {
+                visibleTasks.forEach(t => {
                     let badge = 'secondary'; let late = '';
                     if(t.status === 'تم الاستلام') badge = 'primary';
                     if(t.status === 'قيد التنفيذ' || t.status === 'معلقة') badge = 'warning';
@@ -565,7 +576,7 @@
                     if(t.status === 'مكتملة') badge = 'success';
                     if(t.endDate && t.status !== 'مكتملة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) late = '<span class="badge bg-danger ms-1">متأخرة</span>'; }
                     
-                    let adminDelete = isAdmin ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
+                    let adminDelete = (isAdmin || (isManager && t.deptName === myDept)) ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
                     
                     html += `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${late}</p>${adminDelete}</div></div></div>`;
                 });
@@ -575,9 +586,17 @@
             db.ref('requests').on('value', snap => {
                 allRequests = []; let pending = 0;
                 snap.forEach(child => { const r = child.val(); r.id = child.key; if(r.status === 'جديد') pending++; allRequests.push(r); });
-                if(document.getElementById('statPendingReq')) document.getElementById('statPendingReq').innerText = isAdmin ? pending : 0;
+                
+                // Filter requests based on role
+                let visibleRequests = [];
+                if (isAdmin) visibleRequests = allRequests;
+                else if (isManager) visibleRequests = allRequests.filter(r => r.targetDeptName === myDept || r.empId === currentUserData.id);
+                else visibleRequests = allRequests.filter(r => r.empId === currentUserData.id);
+
+                if(document.getElementById('statPendingReq')) document.getElementById('statPendingReq').innerText = (isAdmin || isManager) ? visibleRequests.filter(r => r.status === 'جديد').length : 0;
+                
                 let html = '';
-                allRequests.filter(r => isAdmin || r.empId === currentUserData.id || r.targetDeptName === currentUserData.deptName).forEach(r => {
+                visibleRequests.forEach(r => {
                     html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item}</td><td>${r.empName}</td><td>${r.targetDeptName || ''}</td><td>${r.assignedEmpName || '-'}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':r.status==='مرفوض'?'danger':r.status==='موافقة الإدارة'?'info':'secondary'}">${r.status}</span></td></tr>`;
                 });
                 document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات</td></tr>';
@@ -684,9 +703,14 @@
         function openTaskChat(id) {
             const t = allTasks.find(task => task.id === id); if (!t) return;
             currentTaskChatId = id;
-            const isAdmin = currentUserData?.role === 'admin';
+            const role = currentUserData?.role;
+            const isAdmin = role === 'admin';
+            const isManager = role === 'manager' && t.deptName === currentUserData.deptName;
+            const isAssignedUser = t.userId === currentUserData.id;
+            
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
             document.getElementById('taskChatInfo').innerHTML = `<p><b>الموظف:</b> ${t.userName} | <b>الحالة:</b> ${t.status}</p><p><b>تاريخ البدء:</b> ${t.startDate || 'غير محدد'} | <b>تاريخ الانتهاء:</b> ${t.endDate || 'غير محدد'}</p><p><b>المتابعة القادمة:</b> ${t.nextFollowUp || 'غير محدد'}</p>`;
+            
             let chatHtml = '';
             if(t.chat) { Object.values(t.chat).forEach(msg => { 
                 let followUpText = msg.nextFollowUp ? `<br><small class="text-primary"><i class="fas fa-calendar-alt"></i> متابعة قادمة: ${msg.nextFollowUp}</small>` : '';
@@ -695,16 +719,22 @@
             document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات حتى الآن</p>';
             document.getElementById('taskChatInput').value = '';
             document.getElementById('taskNextFollowUp').value = '';
+            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+            
             if(t.status !== 'مكتملة') {
-                if(isAdmin && t.status === 'بانتظار اعتماد المدير') {
-                    footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة من قبل الإدارة')">اعتماد الإنهاء</button>`;
-                    footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('قيد التنفيذ', 'تم رفض الإنهاء من قبل الإدارة')">رفض الإنهاء</button>`;
-                } else if(!isAdmin && t.userId === currentUserData.id) {
-                    if(t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة من قبل الموظف')">استلمت المهمة</button>`;
+                if((isAdmin || isManager) && t.status === 'بانتظار اعتماد المدير') {
+                    footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة')">اعتماد الإنهاء</button>`;
+                    footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('قيد التنفيذ', 'تم رفض الإنهاء')">رفض الإنهاء</button>`;
+                }
+                if(isAssignedUser) {
+                    if(t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة')">استلمت المهمة</button>`;
                     footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">حفظ التحديث والمتابعة</button>`;
-                    if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب الموظف اعتماد إنهاء المهمة')">إنهاء المهمة</button>`;
-                } else if(isAdmin) { footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">حفظ التعليق</button>`; }
+                    if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء المهمة')">إنهاء المهمة</button>`;
+                }
+                if(isAdmin || isManager) { 
+                    footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">إضافة تعليق كإدارة</button>`; 
+                }
             }
             document.getElementById('taskChatFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
@@ -780,20 +810,27 @@
             const title = document.getElementById('addModalTitle');
             const depOptsData = (await db.ref('departments').once('value')).val() || {};
             const userOpts = allUsers;
+            const role = currentUserData?.role;
+            const isAdmin = role === 'admin';
+            const isManager = role === 'manager';
+            const myDept = currentUserData?.deptName;
             
             if (type === 'user') {
                 title.innerText = 'إضافة مستخدم';
                 let opts = '<option value="">--</option>'; for(let d in depOptsData) opts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="admin">مدير</option></select>`;
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
                 let opts = '<option value="">--</option>'; userOpts.forEach(u => opts += `<option value="${u.name}">${u.name}</option>`);
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
-                let uOpts = '<option value="">--</option>'; userOpts.forEach(u => uOpts += `<option value="${u.id}">${u.name}</option>`);
+                // Managers can only assign to their department
+                let uOpts = '<option value="">--</option>'; 
+                allUsers.filter(u => isAdmin || u.deptName === myDept).forEach(u => uOpts += `<option value="${u.id}" data-dept="${u.deptName}">${u.name}</option>`);
                 const today = new Date().toISOString().split('T')[0];
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان"><select id="taskUser" class="form-control mb-2">${uOpts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
+                let deptField = isAdmin ? `<select id="taskDept" class="form-control mb-2" onchange="filterTaskUsers(this.value)"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>` : `<input type="hidden" id="taskDept" value="${myDept}"><input type="text" class="form-control mb-2" value="القسم: ${myDept}" readonly>`;
+                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2">${uOpts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
                 let depOpts = '<option value="">-- اختر القسم --</option>'; for(let d in depOptsData) depOpts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
@@ -836,6 +873,14 @@
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
 
+        function filterTaskUsers(deptName) {
+            const sel = document.getElementById('taskUser');
+            sel.innerHTML = '<option value="">-- اختر الموظف --</option>';
+            allUsers.filter(u => u.deptName === deptName).forEach(u => {
+                sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+            });
+        }
+
         function addProductRow() {
             const container = document.getElementById('productListContainer');
             const html = `<div class="row mb-1 product-row"><div class="col-5"><input type="text" class="form-control form-control-sm prod-name" placeholder="اسم المنتج"></div><div class="col-4"><select class="form-control form-control-sm prod-unit"><option>لتر</option><option>طن</option><option>كيلو</option><option>عبوة</option><option>قطعة</option></select></div><div class="col-3"><input type="number" class="form-control form-control-sm prod-qty" placeholder="الكمية"></div></div>`;
@@ -851,7 +896,11 @@
                 }).catch(err => toastr.error(err.message)); 
             }
             else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
-            else if (type === 'task') { const u = document.getElementById('taskUser'); db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: 'جديدة', chat: null, nextFollowUp: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'task') { 
+                const u = document.getElementById('taskUser'); 
+                const taskDept = document.getElementById('taskDept').value;
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: 'جديدة', chat: null, nextFollowUp: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
+            }
             else if (type === 'request') { 
                 db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
                     const newId = res.snapshot.val();
@@ -904,15 +953,19 @@
 
         async function openRequestDetails(id) {
             const r = allRequests.find(req => req.id === id); if (!r) return;
-            const isAdmin = currentUserData?.role === 'admin';
-            const isTargetDept = currentUserData?.deptName === r.targetDeptName;
+            const role = currentUserData?.role;
+            const isAdmin = role === 'admin';
+            const isManager = role === 'manager' && r.targetDeptName === currentUserData.deptName;
             const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
+            
             document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
-            document.getElementById('detailsModalBody').innerHTML = `<h5>${r.item}</h5><p>الكمية: ${r.qty} | الأولوية: ${r.priority}</p><p>التفاصيل: ${r.purpose || ''}</p><hr><textarea class="form-control" id="detailComment" placeholder="تعليق" ${isAdmin || (isTargetDept && canPurchasingTakeAction) ? '' : 'readonly'}>${r.comment || ''}</textarea>`;
+            document.getElementById('detailsModalBody').innerHTML = `<h5>${r.item}</h5><p>الكمية: ${r.qty} | الأولوية: ${r.priority}</p><p>التفاصيل: ${r.purpose || ''}</p><hr><textarea class="form-control" id="detailComment" placeholder="تعليق" ${isAdmin || (isManager && canPurchasingTakeAction) ? '' : 'readonly'}>${r.comment || ''}</textarea>`;
+            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            if (isAdmin && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
-            if (isTargetDept && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
+            if ((isAdmin || isManager) && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
+            if (isManager && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
             if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
+            
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
@@ -925,9 +978,9 @@
             const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            if (type === 'user') { const deps = (await db.ref('departments').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let d in deps) opts += `<option value="${deps[d].name}" ${data.deptName===deps[d].name?'selected':''}>${deps[d].name}</option>`; title.innerText='تعديل مستخدم'; body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير</option></select>`; }
+            if (type === 'user') { const deps = (await db.ref('departments').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let d in deps) opts += `<option value="${deps[d].name}" ${data.deptName===deps[d].name?'selected':''}>${deps[d].name}</option>`; title.innerText='تعديل مستخدم'; body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><select id="newDept" class="form-control mb-2">${opts}</select><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; }
             else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
-            else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
+            else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
             else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
             else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
             else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option><option ${data.category==='مادة خام'?'selected':''}>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}"><input type="text" id="invUnit" class="form-control mb-2" value="${data.unit}">`; }
