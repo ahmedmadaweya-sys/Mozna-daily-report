@@ -95,7 +95,10 @@
 
                 <!-- Team -->
                 <div id="teamSection" style="display: none;">
-                    <h2 class="mb-4">الفريق</h2>
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>الفريق</h2>
+                        <button onclick="openEditMyProfileModal()" class="btn btn-primary btn-sm"><i class="fas fa-user-edit"></i> تعديل بياناتي</button>
+                    </div>
                     <div class="row" id="teamList"></div>
                 </div>
 
@@ -246,7 +249,6 @@
         let userPermissions = {};
         let currentDailyTasksRef = null;
         let breakInterval = null;
-        let todayAttSnap = null; // لتخزين حضور اليوم لكل الموظفين
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
@@ -282,7 +284,7 @@
             const isAdmin = role === 'admin';
             const isManager = role === 'manager';
             
-            document.getElementById('navTeam').style.display = 'block'; // الفريق تظهر للكل
+            document.getElementById('navTeam').style.display = 'block';
             
             ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'Sales', 'Customers'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
             
@@ -856,6 +858,49 @@
             });
         }
 
+        function filterTaskUsers(deptName) {
+            const sel = document.getElementById('taskUser');
+            sel.innerHTML = '<option value="">-- اختر الموظف --</option>';
+            if (!deptName) return;
+            allUsers.filter(u => {
+                const userDepts = u.departments || (u.deptName ? [u.deptName] : []);
+                return userDepts.includes(deptName) && !userDepts.includes('المبيعات');
+            }).forEach(u => {
+                sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+            });
+        }
+
+        function openEditMyProfileModal() {
+            currentEdit = { id: currentUserData.id, type: 'users' };
+            const body = document.getElementById('addModalBody');
+            const title = document.getElementById('addModalTitle');
+            title.innerText = 'تعديل بياناتي الشخصية';
+            body.innerHTML = `
+                <input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly>
+                <input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون">
+                <input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين">
+                <input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي">
+            `;
+            document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEditMyProfile()');
+            new bootstrap.Modal(document.getElementById('addModal')).show();
+        }
+
+        function confirmEditMyProfile() {
+            const upd = {
+                phone: document.getElementById('newPhone').value,
+                hireDate: document.getElementById('newHireDate').value,
+                jobTitle: document.getElementById('newJobTitle').value
+            };
+            db.ref('users/' + currentUserData.id).update(upd).then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                toastr.success('تم تحديث بياناتك بنجاح');
+                currentUserData.phone = upd.phone;
+                currentUserData.hireDate = upd.hireDate;
+                currentUserData.jobTitle = upd.jobTitle;
+                renderTeam();
+            });
+        }
+
         async function openAddModal(type) {
             currentAdd.type = type;
             const body = document.getElementById('addModalBody');
@@ -873,12 +918,9 @@
                 body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" placeholder="اسم القسم"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control" placeholder="الوصف"></textarea>`;
             } else if (type === 'task') {
                 title.innerText = 'إضافة مهمة';
-                // Filter out Sales users from task assignment
-                let uOpts = '<option value="">--</option>'; 
-                allUsers.filter(u => !(u.departments || [u.deptName]).includes('المبيعات')).forEach(u => uOpts += `<option value="${u.id}">${u.name}</option>`);
                 const today = new Date().toISOString().split('T')[0];
-                let deptField = `<select id="taskDept" class="form-control mb-2"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>`;
-                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2">${uOpts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
+                let deptField = `<select id="taskDept" class="form-control mb-2" onchange="filterTaskUsers(this.value)"><option value="">-- اختر القسم --</option>${Object.values(depOptsData).map(d=>`<option value="${d.name}">${d.name}</option>`).join('')}</select>`;
+                body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2"><option value="">-- اختر القسم أولاً --</option></select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${today}"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
                 let depOpts = '<option value="">-- اختر القسم --</option>'; for(let d in depOptsData) depOpts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
@@ -947,6 +989,8 @@
             else if (type === 'task') { 
                 const u = document.getElementById('taskUser'); 
                 const taskDept = document.getElementById('taskDept').value;
+                if(!taskDept) return toastr.warning('من فضلك اختر القسم');
+                if(!u.value) return toastr.warning('من فضلك اختر الموظف');
                 db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: 'جديدة', chat: null, nextFollowUp: '' }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
             }
             else if (type === 'request') { 
