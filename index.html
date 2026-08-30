@@ -746,7 +746,7 @@
             userPermissions = updates; applyPermissions(); loadData();
         }
 
-               function resetUserPassword(email) {
+        function resetUserPassword(email) {
             if(!confirm(`هل أنت متأكد من إرسال رابط إعادة تعيين كلمة المرور إلى ${email}؟`)) return;
             auth.sendPasswordResetEmail(email).then(() => toastr.success('تم إرسال رابط إعادة التعيين')).catch(err => toastr.error('خطأ: ' + err.message));
         }
