@@ -796,7 +796,7 @@
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
         }
 
-        function openEditTaskFromChat(id) { bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); openEditModal('task', id); }
+        function openEditTaskFromChat(id) { bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); openEditModal('task', id); }
 
         function addTaskComment() {
             const text = document.getElementById('taskChatInput').value; const nextFollowUp = document.getElementById('taskNextFollowUp').value;
@@ -832,7 +832,7 @@
                     } else if (newStatus === 'مكتملة') { 
                         sendNotification(t.userId, `تم اعتماد إنهاء مهمتك: ${t.title}`);
                     }
-                    bootstrap.Modal.getInstance(document.getElementById('taskChatModal')).hide(); 
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); 
                 });
             });
         }
@@ -905,7 +905,7 @@
         function confirmEditMyProfile() {
             const upd = { phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value };
             db.ref('users/' + currentUserData.id).update(upd).then(() => {
-                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تحديث بياناتك بنجاح');
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تحديث بياناتك بنجاح');
                 currentUserData.phone = upd.phone; currentUserData.hireDate = upd.hireDate; currentUserData.jobTitle = upd.jobTitle; renderTeam();
             });
         }
@@ -961,17 +961,17 @@
             if (type === 'user') { 
                 const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
                 auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
+                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
                 }).catch(err => toastr.error(err.message)); 
             }
-            else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'department') { const m = document.getElementById('depManager'); db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: m.value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
             else if (type === 'task') { 
                 const u = document.getElementById('taskUser'); const taskDept = document.getElementById('taskDept').value;
                 if(!taskDept) return toastr.warning('من فضلك اختر القسم');
                 if(!u.value) return toastr.warning('من فضلك اختر الموظف');
                 const initialStatus = isAdmin ? 'جديدة' : 'بانتظار اعتماد الإدارة';
                 db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: taskDept, createdById: currentUserData.id, createdByName: currentUserData.name, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: initialStatus, chat: null, nextFollowUp: '' }).then(() => { 
-                    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة');
                     if (isAdmin) {
                         sendNotification(u.value, `لديك مهمة جديدة: ${document.getElementById('taskTitle').value}`);
                     } else {
@@ -980,26 +980,64 @@
                 }); 
             }
             else if (type === 'request') { 
-                const targetDeptSel = document.getElementById('reqTargetDept'); const assignedEmpSel = document.getElementById('reqAssignedEmp');
+                const targetDeptSel = document.getElementById('reqTargetDept'); 
+                const assignedEmpSel = document.getElementById('reqAssignedEmp');
+                
                 if (!targetDeptSel.value) return toastr.warning('من فضلك اختر القسم!');
                 if (!assignedEmpSel.value) return toastr.warning('من فضلك اختر الموظف المسؤول!');
                 
                 db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
-                    const newId = res.snapshot.val(); const formattedId = "#" + String(newId).padStart(4, '0'); 
+                    const newId = res.snapshot.val(); 
+                    const formattedId = "#" + String(newId).padStart(4, '0'); 
                     const assignedEmpName = assignedEmpSel.options[assignedEmpSel.selectedIndex].text;
-                    db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, empDept: currentUserData.departments ? currentUserData.departments.join(', ') : currentUserData.deptName, targetDeptName: targetDeptSel.value, assignedEmpId: assignedEmpSel.value, assignedEmpName: assignedEmpName, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => { 
-                        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId);
-                        allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${currentUserData.name}`));
+                    
+                    // اسم طالب الطلب اجباري باسم اليوزر اللي فاتح
+                    const requesterName = currentUserData.name;
+                    
+                    // ضمان إن القسم مش undefined لو الموظف مسجل عليه قديم
+                    let requesterDept = 'غير محدد';
+                    if (currentUserData.departments && Array.isArray(currentUserData.departments) && currentUserData.departments.length > 0) {
+                        requesterDept = currentUserData.departments.join(', ');
+                    } else if (currentUserData.deptName) {
+                        requesterDept = currentUserData.deptName;
+                    }
+                    
+                    db.ref('requests').push({ 
+                        reqId: formattedId, 
+                        empId: currentUserData.id, 
+                        empName: requesterName, 
+                        empDept: requesterDept, 
+                        targetDeptName: targetDeptSel.value, 
+                        assignedEmpId: assignedEmpSel.value, 
+                        assignedEmpName: assignedEmpName,
+                        item: document.getElementById('reqItem').value, 
+                        qty: document.getElementById('reqQty').value, 
+                        priority: document.getElementById('reqPriority').value, 
+                        purpose: document.getElementById('reqPurpose').value, 
+                        status: 'جديد', 
+                        comment: '', 
+                        timestamp: new Date().toLocaleDateString() 
+                    }).then(() => { 
+                        // استخدام getOrCreateInstance لحل مشكلة تعليق النافذة
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); 
+                        toastr.success('تم تسجيل الطلب ' + formattedId);
+                        
+                        // إرسال إشعار للمديرين والأدمن
+                        allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => {
+                            sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${requesterName}`);
+                        });
+                    }).catch(err => {
+                        toastr.error("حدث خطأ أثناء الحفظ: " + err.message);
                     }); 
                 }); 
             }
-            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
+            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value, timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
             else if (type === 'customer') {
                 let products = []; document.querySelectorAll('#productListContainer .product-row').forEach(row => { const name = row.querySelector('.prod-name').value; const unit = row.querySelector('.prod-unit').value; const qty = row.querySelector('.prod-qty').value; if(name && qty) products.push(`${name} (${qty} ${unit})`); });
                 const landArea = document.getElementById('custLand').value + ' ' + document.getElementById('custLandUnit').value;
-                db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: landArea, crop: document.getElementById('custCrop').value, requests: products.join(' | '), location: document.getElementById('custLocation').value, locSuspicious: document.getElementById('custLocSuspicious').value === 'true', locReason: document.getElementById('custLocReason').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
+                db.ref('customers').push({ repId: currentUserData.id, repName: currentUserData.name, name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: landArea, crop: document.getElementById('custCrop').value, requests: products.join(' | '), location: document.getElementById('custLocation').value, locSuspicious: document.getElementById('custLocSuspicious').value === 'true', locReason: document.getElementById('custLocReason').value, followUps: [], timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة العميل'); });
             }
-            else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
+            else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
 
         async function getLocationForCustomer() {
@@ -1022,7 +1060,7 @@
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if ((isAdmin || isManager) && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
             if (isManager && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
-            if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
+            if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
             
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
@@ -1031,7 +1069,7 @@
         function updateReqStatus(id, status) { 
             const comment = document.getElementById('detailComment').value; 
             db.ref('requests/' + id).update({ status, comment }).then(() => { 
-                bootstrap.Modal.getInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث: ' + status); 
                 const r = allRequests.find(req => req.id === id);
                 if (r && r.empId !== currentUserData.id) sendNotification(r.empId, `تم تحديث حالة طلبك ${r.reqId} إلى: ${status}`);
             }); 
@@ -1070,11 +1108,11 @@
             else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
             else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
             else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
-            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
+            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
-        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
+        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
 
         function openAttendanceReportModal() { const sel = document.getElementById('reportEmployees'); sel.innerHTML = ''; allUsers.forEach(u => sel.appendChild(new Option(u.name, u.id))); new bootstrap.Modal(document.getElementById('attendanceReportModal')).show(); }
         async function generateAttendanceReport() {
@@ -1098,7 +1136,7 @@
                     if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } 
                 });
             }
-            XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
+            XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getOrCreateInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
         }
     </script>
 </body>
