@@ -322,7 +322,10 @@
             }
 
             let cardsHtml = '';
-            if (can('view', 'requests')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>طلبات تنتظر موافقتك</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div><i class="fas fa-bell fa-2x opacity-50"></i></div></div></div>`;
+            if (can('view', 'requests')) {
+                const reqCardTitle = isAdmin ? 'طلبات تنتظر موافقتك' : 'طلباتي قيد المعالجة';
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>${reqCardTitle}</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div><i class="fas fa-bell fa-2x opacity-50"></i></div></div></div>`;
+            }
             if (can('view', 'tasks')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>مهام تنتظر اعتمادك</h6><h2 id="statPendingTasks" class="display-6 mb-0">0</h2></div><i class="fas fa-check-circle fa-2x opacity-50"></i></div></div></div>`;
             if (can('view', 'users')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>المستخدمين</h6><h2 id="statUsers" class="display-6 mb-0">0</h2></div><i class="fas fa-users fa-2x opacity-50"></i></div></div></div>`;
             if (can('view', 'customers')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><h6>العملاء</h6><h2 id="statCustomers" class="display-6 mb-0">0</h2></div><i class="fas fa-address-book fa-2x opacity-50"></i></div></div></div>`;
@@ -640,7 +643,9 @@
                 else if (isManager) visibleRequests = allRequests.filter(r => myDepts.includes(r.targetDeptName) || r.empId === currentUserData.id);
                 else visibleRequests = allRequests.filter(r => r.empId === currentUserData.id);
 
-                if(document.getElementById('statPendingReq')) document.getElementById('statPendingReq').innerText = (isAdmin || isManager) ? visibleRequests.filter(r => r.status === 'جديد').length : 0;
+                // تعديل العداد ليظهر للموظف طلباته اللي لسه مخلصش
+                const userPendingCount = visibleRequests.filter(r => r.status === 'جديد' || r.status === 'موافقة الإدارة').length;
+                if(document.getElementById('statPendingReq')) document.getElementById('statPendingReq').innerText = (isAdmin || isManager) ? visibleRequests.filter(r => r.status === 'جديد').length : userPendingCount;
                 
                 let html = '';
                 visibleRequests.forEach(r => {
@@ -991,10 +996,7 @@
                     const formattedId = "#" + String(newId).padStart(4, '0'); 
                     const assignedEmpName = assignedEmpSel.options[assignedEmpSel.selectedIndex].text;
                     
-                    // اسم طالب الطلب اجباري باسم اليوزر اللي فاتح
                     const requesterName = currentUserData.name;
-                    
-                    // ضمان إن القسم مش undefined لو الموظف مسجل عليه قديم
                     let requesterDept = 'غير محدد';
                     if (currentUserData.departments && Array.isArray(currentUserData.departments) && currentUserData.departments.length > 0) {
                         requesterDept = currentUserData.departments.join(', ');
@@ -1018,11 +1020,8 @@
                         comment: '', 
                         timestamp: new Date().toLocaleDateString() 
                     }).then(() => { 
-                        // استخدام getOrCreateInstance لحل مشكلة تعليق النافذة
                         bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); 
                         toastr.success('تم تسجيل الطلب ' + formattedId);
-                        
-                        // إرسال إشعار للمديرين والأدمن
                         allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => {
                             sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${requesterName}`);
                         });
