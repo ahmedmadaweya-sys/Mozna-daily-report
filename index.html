@@ -47,7 +47,7 @@
             <h3 class="text-center mb-4"><i class="fas fa-lock"></i> تسجيل الدخول</h3>
             <div class="mb-3"><input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني"></div>
             <div class="mb-3"><input type="password" id="password" class="form-control" placeholder="كلمة المرور"></div>
-            <button onclick="doLogin()" class="btn btn-primary w-100">دخول</button>
+            <button type="button" id="loginBtn" class="btn btn-primary w-100">دخول</button>
             <div id="loginError" class="text-danger text-center mt-3"></div>
         </div>
     </div>
@@ -254,8 +254,65 @@
         let currentChatUserId = null;
         let leaveFiles = []; 
 
-        function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
-        function logout() { auth.signOut(); }
+        window.doLogin = async function doLogin() {
+            const emailEl = document.getElementById('email');
+            const passwordEl = document.getElementById('password');
+            const loginErrorEl = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+
+            const email = emailEl ? emailEl.value.trim() : '';
+            const password = passwordEl ? passwordEl.value : '';
+
+            if (!email || !password) {
+                if (loginErrorEl) loginErrorEl.textContent = 'من فضلك أدخل البريد الإلكتروني وكلمة المرور';
+                return;
+            }
+
+            if (loginBtn) {
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> جاري تسجيل الدخول...';
+            }
+            if (loginErrorEl) loginErrorEl.textContent = '';
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                toastr.success('تم تسجيل الدخول');
+            } catch (err) {
+                console.error('Login error:', err);
+                const msg = {
+                    'auth/invalid-email': 'البريد الإلكتروني غير صحيح',
+                    'auth/user-disabled': 'هذا الحساب تم تعطيله',
+                    'auth/user-not-found': 'البريد الإلكتروني غير مسجل',
+                    'auth/wrong-password': 'كلمة المرور غير صحيحة',
+                    'auth/invalid-credential': 'بيانات الدخول غير صحيحة',
+                    'auth/too-many-requests': 'تم تجاوز عدد المحاولات، حاول لاحقاً'
+                }[err.code] || err.message || 'حدث خطأ أثناء تسجيل الدخول';
+                if (loginErrorEl) loginErrorEl.textContent = msg;
+                toastr.error(msg);
+            } finally {
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'دخول';
+                }
+            }
+        };
+        window.logout = async function logout() {
+            try {
+                await auth.signOut();
+                toastr.info('تم تسجيل الخروج');
+            } catch (err) {
+                console.error('Logout error:', err);
+                toastr.error(err.message || 'تعذر تسجيل الخروج');
+            }
+        };
+
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) loginBtn.addEventListener('click', window.doLogin);
+
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) passwordInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') window.doLogin();
+        });
 
         auth.onAuthStateChanged(async user => {
             const loginSec = document.getElementById('loginSection');
