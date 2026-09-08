@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="نظام الإدارة المتكامل ERP لإدارة المهام، المأموريات، الحضور والمشتريات">
+    <!-- PWA Settings -->
     <meta name="theme-color" content="#343a40">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mozna ERP">
     <title>نظام الإدارة المتكامل ERP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <style>
@@ -35,9 +38,6 @@
         .notif-unread { background-color: #e7f1ff; font-weight: bold; }
         .top-bar { background: white; padding: 10px 20px; border-bottom: 1px solid #dee2e6; position: sticky; top: 0; z-index: 1000; }
         .announcement-bar { background: #fff3cd; color: #856404; padding: 10px 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ffeeba; display: flex; justify-content: space-between; align-items: center; }
-        .msg-bubble { max-width: 75%; padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; position: relative; }
-        .msg-sent { background: #007bff; color: white; margin-right: auto; }
-        .msg-received { background: #e9ecef; color: black; margin-left: auto; }
     </style>
 </head>
 <body>
@@ -93,13 +93,6 @@
                     <div id="announcementBanner"></div>
                     <div class="row mb-4" id="dashboardCards"></div>
                     
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3"><i class="fas fa-chart-pie text-primary"></i> لوحة تحليلات النظام</h5>
-                            <canvas id="taskStatusChart" height="100"></canvas>
-                        </div>
-                    </div>
-
                     <div id="attendanceCard" class="card shadow-sm mb-4 d-none border-primary">
                         <div class="card-body text-center">
                             <h5 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5>
@@ -210,11 +203,6 @@
         <div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل ومتابعة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="taskChatInfo" class="mb-3"></div><hr><h6>سجل المتابعات والتعليقات</h6><div class="chat-box mb-3" id="taskChatHistory"></div><textarea id="taskChatInput" class="form-control mb-2" placeholder="اكتب تحديث جديد للحالة / الخطوات المنفذة"></textarea><label class="form-label">التاريخ القادم للمتابعة (اختياري)</label><input type="date" id="taskNextFollowUp" class="form-control mb-2"></div><div class="modal-footer" id="taskChatFooter"></div></div></div>
     </div>
 
-    <!-- Chat Modal -->
-    <div class="modal fade" id="chatModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title" id="chatModalTitle">المحادثة</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="chat-box mb-2" id="chatBox" style="height: 400px; display: flex; flex-direction: column; justify-content: flex-end;"><div id="chatMessages"></div></div><div class="input-group"><input type="text" id="chatInput" class="form-control" placeholder="اكتب رسالتك..."><button class="btn btn-primary" onclick="sendChatMessage()">إرسال</button></div></div></div></div>
-    </div>
-
     <div class="modal fade" id="dailyTasksModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> تسجيل المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label class="form-label">من الساعة (24)</label><input type="time" id="dtStart" class="form-control" onchange="this.blur()"></div><div class="col-6"><label class="form-label">إلى الساعة (24)</label><input type="time" id="dtEnd" class="form-control" onchange="this.blur()"></div></div><div class="mb-3"><label class="form-label">تفاصيل المهمة</label><textarea id="dtDetails" class="form-control" rows="2" placeholder="اكتب ما تم إنجازه في هذه المهمة"></textarea></div><button onclick="saveDailyTask()" class="btn btn-success w-100 mb-3"><i class="fas fa-plus"></i> إضافة المهمة</button><hr><h6>المهام المسجلة اليوم:</h6><div id="todayTasksList" class="text-start"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div></div>
 
     <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
@@ -243,8 +231,6 @@
         let currentDailyTasksRef = null;
         let breakInterval = null;
         let isInitialNotifLoad = true;
-        let taskChartInstance = null;
-        let currentChatUserId = null;
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
@@ -468,29 +454,6 @@
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks"); XLSX.writeFile(wb, "Daily_Tasks_Report.xlsx"); toastr.success("تم التصدير");
         }
 
-        // Dashboard Analytics
-        function renderTaskChart() {
-            const ctx = document.getElementById('taskStatusChart');
-            if (!ctx) return;
-            const statuses = { 'جديدة': 0, 'تم الاستلام': 0, 'قيد التنفيذ': 0, 'مكتملة': 0, 'مرفوضة': 0, 'بانتظار اعتماد الإدارة': 0 };
-            allTasks.forEach(t => { if(statuses[t.status] !== undefined) statuses[t.status]++; });
-            
-            if (taskChartInstance) taskChartInstance.destroy();
-            
-            taskChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(statuses),
-                    datasets: [{
-                        data: Object.values(statuses),
-                        backgroundColor: ['#0d6efd', '#6610f2', '#ffc107', '#198754', '#dc3545', '#0dcaf0'],
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'top' } } }
-            });
-        }
-
         function loadData() {
             const role = currentUserData?.role; const isAdmin = role === 'admin'; const isManager = role === 'manager';
             const myDepts = currentUserData?.departments || (currentUserData?.deptName ? [currentUserData.deptName] : []);
@@ -549,8 +512,6 @@
                 });
                 document.getElementById('tasksList').innerHTML = html || '<div class="col-12 text-center text-muted">لا توجد مهام</div>';
                 document.getElementById('tasksActions').innerHTML = `${can('export', 'tasks') ? `<button onclick="exportTasksToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'tasks') ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
-                renderTaskChart(); // Render Chart after tasks load
-                renderTeam(); // Update KPI
             });
 
             db.ref('requests').on('value', snap => {
@@ -699,57 +660,9 @@
                     const statusColor = isCheckedIn ? 'success' : 'warning';
                     const statusText = isCheckedIn ? 'في العمل (أونلاين)' : 'غير نشط (أوف لاين)';
                     const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
-                    
-                    // KPI Calculation
-                    const userTasks = allTasks.filter(t => t.userId === u.id);
-                    const completedTasks = userTasks.filter(t => t.status === 'مكتملة').length;
-                    const kpi = userTasks.length > 0 ? Math.round((completedTasks / userTasks.length) * 100) : 0;
-                    const kpiColor = kpi >= 75 ? 'success' : kpi >= 50 ? 'warning' : 'danger';
-                    
-                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100"><div class="card-body text-center"><div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p><p class="text-muted small mb-1"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p><div class="d-flex justify-content-between align-items-center mt-2"><span class="badge bg-${kpiColor}">KPI: ${kpi}%</span><button onclick="openChat('${u.id}')" class="btn btn-sm btn-outline-primary"><i class="fas fa-comment-dots"></i> مراسلة</button></div></div></div></div>`;
+                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100"><div class="card-body text-center"><div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p><p class="text-muted small mb-0"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p></div></div></div>`;
                 });
                 document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
-            });
-        }
-
-        // Chat System
-        function openChat(userId) {
-            currentChatUserId = userId;
-            const otherUser = allUsers.find(u => u.id === userId);
-            document.getElementById('chatModalTitle').innerText = 'محادثة مع: ' + (otherUser ? otherUser.name : 'غير معروف');
-            const chatId = [currentUserData.id, userId].sort().join('_');
-            const chatRef = db.ref('messages/' + chatId);
-            
-            chatRef.on('value', snap => {
-                let html = '';
-                snap.forEach(child => {
-                    const m = child.val();
-                    const isSent = m.sender === currentUserData.id;
-                    const align = isSent ? 'text-left' : 'text-right';
-                    const bubbleClass = isSent ? 'msg-sent' : 'msg-received';
-                    html += `<div class="${align}"><div class="msg-bubble ${bubbleClass}">${m.text}<br><small style="font-size: 0.6rem; opacity: 0.7;">${new Date(m.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</small></div></div>`;
-                });
-                document.getElementById('chatMessages').innerHTML = html;
-                const chatBox = document.getElementById('chatBox');
-                chatBox.scrollTop = chatBox.scrollHeight;
-            });
-            
-            new bootstrap.Modal(document.getElementById('chatModal')).show();
-        }
-        
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if(!text || !currentChatUserId) return;
-            
-            const chatId = [currentUserData.id, currentChatUserId].sort().join('_');
-            db.ref('messages/' + chatId).push({
-                sender: currentUserData.id,
-                text: text,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                input.value = '';
-                sendNotification(currentChatUserId, `لديك رسالة جديدة من ${currentUserData.name}`);
             });
         }
 
@@ -935,8 +848,13 @@
 
         function toggleOtherMission(val) { const otherInput = document.getElementById('missionOther'); if(val === 'أخرى') otherInput.classList.remove('d-none'); else otherInput.classList.add('d-none'); }
         function toggleLeaveFields(val) {
-            if(val === 'إذن انصراف') { document.getElementById('leaveDaysFields').classList.add('d-none'); document.getElementById('leaveHoursFields').classList.remove('d-none'); } 
-            else { document.getElementById('leaveDaysFields').classList.remove('d-none'); document.getElementById('leaveHoursFields').classList.add('d-none'); }
+            if(val === 'إذن انصراف') {
+                document.getElementById('leaveDaysFields').classList.add('d-none');
+                document.getElementById('leaveHoursFields').classList.remove('d-none');
+            } else {
+                document.getElementById('leaveDaysFields').classList.remove('d-none');
+                document.getElementById('leaveHoursFields').classList.add('d-none');
+            }
         }
 
         function addProductRow() {
@@ -981,7 +899,12 @@
                 }); 
             }
             else if (type === 'mission') {
-                const mType = document.getElementById('missionType').value; const mOther = document.getElementById('missionOther').value; const mStart = document.getElementById('missionStart').value; const mEnd = document.getElementById('missionEnd').value; const mDest = document.getElementById('missionDest').value; const mPurpose = document.getElementById('missionPurpose').value;
+                const mType = document.getElementById('missionType').value;
+                const mOther = document.getElementById('missionOther').value;
+                const mStart = document.getElementById('missionStart').value;
+                const mEnd = document.getElementById('missionEnd').value;
+                const mDest = document.getElementById('missionDest').value;
+                const mPurpose = document.getElementById('missionPurpose').value;
                 if(!mType) return toastr.warning('من فضلك اختر نوع المأمورية');
                 if(mType === 'أخرى' && !mOther.trim()) return toastr.warning('من فضلك اكتب الغرض في حقل أخرى');
                 if(!mStart || !mEnd) return toastr.warning('من فضلك حدد تاريخ البدء والانتهاء');
@@ -995,19 +918,30 @@
                 }).catch(err => toastr.error(err.message));
             }
             else if (type === 'leave') {
-                const lType = document.getElementById('leaveType').value; const lReason = document.getElementById('leaveReason').value;
+                const lType = document.getElementById('leaveType').value;
+                const lReason = document.getElementById('leaveReason').value;
                 if(!lType) return toastr.warning('من فضلك اختر نوع الطلب');
                 if(!lReason.trim()) return toastr.warning('من فضلك اكتب السبب');
                 let leaveData = { type: lType, reason: lReason, status: 'بانتظار الموافقة', userId: currentUserData.id, userName: currentUserData.name, timestamp: firebase.database.ServerValue.TIMESTAMP };
-                if(lType === 'إذن انصراف') { const lDate = document.getElementById('leaveDate').value; const lHours = document.getElementById('leaveHours').value; if(!lDate || !lHours) return toastr.warning('من فضلك حدد تاريخ وساعات الإذن'); leaveData.date = lDate; leaveData.hours = lHours; } 
-                else { const lStart = document.getElementById('leaveStart').value; const lEnd = document.getElementById('leaveEnd').value; if(!lStart || !lEnd) return toastr.warning('من فضلك حدد تاريخ البدء والانتهاء'); leaveData.startDate = lStart; leaveData.endDate = lEnd; }
+                if(lType === 'إذن انصراف') {
+                    const lDate = document.getElementById('leaveDate').value;
+                    const lHours = document.getElementById('leaveHours').value;
+                    if(!lDate || !lHours) return toastr.warning('من فضلك حدد تاريخ وساعات الإذن');
+                    leaveData.date = lDate; leaveData.hours = lHours;
+                } else {
+                    const lStart = document.getElementById('leaveStart').value;
+                    const lEnd = document.getElementById('leaveEnd').value;
+                    if(!lStart || !lEnd) return toastr.warning('من فضلك حدد تاريخ البدء والانتهاء');
+                    leaveData.startDate = lStart; leaveData.endDate = lEnd;
+                }
                 db.ref('leaves').push(leaveData).then(() => {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإجازة بنجاح');
                     allUsers.filter(u => u.role === 'admin').forEach(admin => sendNotification(admin.id, `طلب إجازة جديد من ${currentUserData.name} (${lType})`));
                 }).catch(err => toastr.error(err.message));
             }
             else if (type === 'announcement') {
-                const aTitle = document.getElementById('annTitle').value; const aText = document.getElementById('annText').value;
+                const aTitle = document.getElementById('annTitle').value;
+                const aText = document.getElementById('annText').value;
                 if(!aTitle.trim() || !aText.trim()) return toastr.warning('من فضلك اكتب العنوان والنص');
                 db.ref('announcements').push({ title: aTitle, text: aText, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم نشر الإعلان بنجاح');
