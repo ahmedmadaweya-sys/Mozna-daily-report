@@ -74,7 +74,6 @@
             </div>
 
             <div class="p-4 w-100" style="overflow-y: auto; height: 100vh;">
-                
                 <div class="top-bar d-flex justify-content-end mb-4">
                     <div class="dropdown">
                         <button class="btn btn-light position-relative shadow-sm" id="notifBell" data-bs-toggle="dropdown" data-bs-auto-close="outside">
@@ -93,7 +92,6 @@
                     <div id="announcementBanner"></div>
                     <div class="row mb-4" id="dashboardCards"></div>
                     
-                    <!-- كروت الحضور والمهام اليومية (مرفوعة فوق التحليل) -->
                     <div id="attendanceCard" class="card shadow-sm mb-4 d-none border-primary">
                         <div class="card-body text-center">
                             <h5 class="card-title mb-3"><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5>
@@ -119,10 +117,9 @@
                         </div>
                     </div>
 
-                    <!-- لوحة التحليلات (في الآخر) -->
-                    <div class="card shadow-sm mb-4">
+                    <div class="card shadow-sm mb-4 d-none" id="analyticsCard">
                         <div class="card-body">
-                            <h5 class="card-title mb-3"><i class="fas fa-chart-pie text-primary"></i> لوحة تحليلات النظام</h5>
+                            <h5 class="card-title mb-3"><i class="fas fa-chart-bar text-primary"></i> لوحة تحليلات النظام</h5>
                             <canvas id="taskStatusChart" height="100"></canvas>
                         </div>
                     </div>
@@ -150,7 +147,14 @@
 
                 <div id="tasksSection" style="display: none;">
                     <div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div>
-                    <div id="tasksList" class="row"></div>
+                    <ul class="nav nav-tabs mb-3">
+                        <li class="nav-item"><a class="nav-link active" id="tabIncomplete" onclick="switchTaskTab('incomplete')">غير المنتهية</a></li>
+                        <li class="nav-item"><a class="nav-link" id="tabCompleted" onclick="switchTaskTab('completed')">المنتهية</a></li>
+                        <li class="nav-item"><a class="nav-link" id="tabLate" onclick="switchTaskTab('late')">المتأخرة</a></li>
+                    </ul>
+                    <div id="tasksIncomplete" class="row"></div>
+                    <div id="tasksCompleted" class="row" style="display:none"></div>
+                    <div id="tasksLate" class="row" style="display:none"></div>
                 </div>
 
                 <div id="requestsSection" style="display: none;">
@@ -200,7 +204,6 @@
                         <button onclick="savePermissions()" class="btn btn-primary mt-3"><i class="fas fa-save"></i> حفظ الصلاحيات وتطبيقها فوراً</button>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -316,6 +319,8 @@
 
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin);
+            document.getElementById('analyticsCard').classList.toggle('d-none', !isAdmin && !isManager);
+            
             showSection('dashboard', null);
         }
 
@@ -470,26 +475,24 @@
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks"); XLSX.writeFile(wb, "Daily_Tasks_Report.xlsx"); toastr.success("تم التصدير");
         }
 
-        // Dashboard Analytics
         function renderTaskChart() {
             const ctx = document.getElementById('taskStatusChart');
             if (!ctx) return;
             const statuses = { 'جديدة': 0, 'تم الاستلام': 0, 'قيد التنفيذ': 0, 'مكتملة': 0, 'مرفوضة': 0, 'بانتظار اعتماد الإدارة': 0 };
             allTasks.forEach(t => { if(statuses[t.status] !== undefined) statuses[t.status]++; });
-            
             if (taskChartInstance) taskChartInstance.destroy();
-            
             taskChartInstance = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
                     labels: Object.keys(statuses),
                     datasets: [{
+                        label: 'عدد المهام',
                         data: Object.values(statuses),
                         backgroundColor: ['#0d6efd', '#6610f2', '#ffc107', '#198754', '#dc3545', '#0dcaf0'],
                         borderWidth: 1
                     }]
                 },
-                options: { responsive: true, plugins: { legend: { position: 'top' } } }
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
         }
 
@@ -504,9 +507,9 @@
             if (today.getDate() < hire.getDate()) months--;
             if (months < 0) months = 0;
             
-            let annualEntitlement = 15; // Base
-            if (months >= 120) annualEntitlement = 30; // 10 years
-            else if (months >= 12) annualEntitlement = 21; // 1 year
+            let annualEntitlement = 15; 
+            if (months >= 120) annualEntitlement = 30; 
+            else if (months >= 12) annualEntitlement = 21; 
             
             let accrued = Math.ceil((annualEntitlement / 12) * months);
             
@@ -514,12 +517,11 @@
             allLeaves.forEach(l => {
                 if (l.userId === userId && l.status === 'معتمدة' && (l.type === 'إجازة سنوية' || l.type === 'إجازة عرضي')) {
                     if (l.type === 'إذن انصراف') {
-                        // Assuming 8 hours = 1 day for simplicity in deduction
                         taken += parseFloat(l.hours) / 8; 
                     } else {
                         const start = new Date(l.startDate);
                         const end = new Date(l.endDate);
-                        const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1; // inclusive
+                        const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1; 
                         taken += days;
                     }
                 }
@@ -527,6 +529,18 @@
             
             let remaining = accrued - taken;
             return { accrued, taken, remaining, text: `الرصيد المتبقي: ${remaining} يوم` };
+        }
+
+        function switchTaskTab(tab) {
+            ['Incomplete', 'Completed', 'Late'].forEach(t => document.getElementById('tasks'+t).style.display = 'none');
+            document.getElementById('tasks' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'flex';
+            document.querySelectorAll('#tasksSection .nav-link').forEach(a => a.classList.remove('active'));
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+        }
+
+        function isTaskLate(t) {
+            if (!t.endDate || t.status === 'مكتملة' || t.status === 'مرفوضة') return false;
+            return new Date(t.endDate) < new Date();
         }
 
         function loadData() {
@@ -574,18 +588,38 @@
                 else if (isManager) visibleTasks = allTasks.filter(t => t.createdById === currentUserData.id || (myDepts.includes(t.deptName) && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة'));
                 else visibleTasks = allTasks.filter(t => t.userId === currentUserData.id && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة');
                 if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = isAdmin ? allTasks.filter(t => t.status === 'بانتظار اعتماد الإدارة').length : (isManager ? allTasks.filter(t => t.createdById === currentUserData.id && t.status === 'بانتظار اعتماد الإدارة').length : 0);
-                let html = '';
+                
+                let incompleteHtml = '', completedHtml = '', lateHtml = '';
+                
                 visibleTasks.forEach(t => {
                     let badge = 'secondary'; let late = '';
                     if(t.status === 'تم الاستلام' || t.status === 'جديدة') badge = 'primary';
                     if(t.status === 'قيد التنفيذ' || t.status === 'معلقة') badge = 'warning';
                     if(t.status === 'بانتظار اعتماد الإدارة' || t.status === 'بانتظار اعتماد المدير') badge = 'info';
-                    if(t.status === 'مكتملة') badge = 'success'; if(t.status === 'مرفوضة') badge = 'danger';
-                    if(t.endDate && t.status !== 'مكتملة' && t.status !== 'مرفوضة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) late = '<span class="badge bg-danger ms-1">متأخرة</span>'; }
+                    if(t.status === 'مكتملة') badge = 'success';
+                    if(t.status === 'مرفوضة') badge = 'danger';
+                    
+                    const lateFlag = isTaskLate(t);
+                    const wasLate = (t.status === 'مكتملة' && t.endDate && new Date(t.endDate) < new Date(t.approvedAt || t.startDate));
+                    if(lateFlag) late = '<span class="badge bg-danger ms-1">متأخرة</span>';
+                    if(wasLate) late = '<span class="badge bg-danger ms-1">متأخرة</span>';
+                    
                     let adminDelete = (isAdmin || (isManager && t.createdById === currentUserData.id)) ? `<button onclick="event.stopPropagation(); openDeleteModal('${t.id}','tasks')" class="btn btn-sm btn-outline-danger float-end"><i class="fas fa-trash"></i></button>` : '';
-                    html += `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${late}</p>${adminDelete}</div></div></div>`;
+                    let cardHtml = `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card ${lateFlag || wasLate ? 'border-danger' : ''}" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${late}</p>${adminDelete}</div></div></div>`;
+                    
+                    if(t.status === 'مكتملة' || t.status === 'مرفوضة') {
+                        completedHtml += cardHtml;
+                    } else if(lateFlag) {
+                        lateHtml += cardHtml;
+                    } else {
+                        incompleteHtml += cardHtml;
+                    }
                 });
-                document.getElementById('tasksList').innerHTML = html || '<div class="col-12 text-center text-muted">لا توجد مهام</div>';
+                
+                document.getElementById('tasksIncomplete').innerHTML = incompleteHtml || '<div class="col-12 text-center text-muted">لا توجد مهام غير منتهية</div>';
+                document.getElementById('tasksCompleted').innerHTML = completedHtml || '<div class="col-12 text-center text-muted">لا توجد مهام منتهية</div>';
+                document.getElementById('tasksLate').innerHTML = lateHtml || '<div class="col-12 text-center text-muted">لا توجد مهام متأخرة</div>';
+                
                 document.getElementById('tasksActions').innerHTML = `${can('export', 'tasks') ? `<button onclick="exportTasksToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'tasks') ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 renderTaskChart(); 
                 renderTeam(); 
@@ -646,7 +680,7 @@
                 });
                 document.getElementById('leavesTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد طلبات إجازات</td></tr>';
                 document.getElementById('leavesActions').innerHTML = `<button onclick="openAddModal('leave')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إجازة/إذن</button>`;
-                renderTeam(); // Update leave balance for team
+                renderTeam(); 
             });
 
             db.ref('announcements').on('value', snap => {
@@ -686,7 +720,7 @@
             }
             if (can('view', 'customers')) {
                 db.ref('customers').on('value', snap => {
-                    allCustomers = []; if(document.getElementById('statCustomers')) document.getElementById('statCustomers').innerText = snap.numChildren(); let html = '';
+                    allCustomers = []; let html = '';
                     snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); 
                         let locBtn = c.location ? `<a href="https://www.google.com/maps?q=${c.location}" target="_blank" class="text-primary">${c.location}</a> ${c.locSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}` : '<span class="text-muted">لا يوجد</span>';
                         let act = '';
@@ -736,17 +770,41 @@
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
                     const statusColor = isCheckedIn ? 'success' : 'warning';
-                    const statusText = isCheckedIn ? 'في العمل (أونلاين)' : 'غير نشط (أوف لاين)';
+                    const statusText = isCheckedIn ? 'أونلاين' : 'أوف لاين';
                     const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
                     
                     const userTasks = allTasks.filter(t => t.userId === u.id);
-                    const completedTasks = userTasks.filter(t => t.status === 'مكتملة').length;
-                    const kpi = userTasks.length > 0 ? Math.round((completedTasks / userTasks.length) * 100) : 0;
-                    const kpiColor = kpi >= 75 ? 'success' : kpi >= 50 ? 'warning' : 'danger';
+                    const total = userTasks.length;
+                    const completed = userTasks.filter(t => t.status === 'مكتملة').length;
+                    const late = userTasks.filter(t => isTaskLate(t)).length;
+                    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    const kpiColor = completionRate >= 75 ? 'success' : completionRate >= 50 ? 'warning' : 'danger';
                     
                     const leaveStats = getUserLeaveStats(u.id);
                     
-                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100"><div class="card-body text-center"><div class="mb-2"><i class="fas fa-user-circle fa-3x text-secondary"></i></div><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p><p class="text-muted small mb-1"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p><div class="d-flex justify-content-between align-items-center mt-2"><span class="badge bg-${kpiColor}">KPI: ${kpi}%</span><span class="badge bg-info">${leaveStats.text}</span></div><div class="mt-2"><button onclick="openChat('${u.id}')" class="btn btn-sm btn-outline-primary w-100"><i class="fas fa-comment-dots"></i> مراسلة</button></div></div></div></div>`;
+                    html += `<div class="col-md-4 mb-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-2"><img src="${u.profilePic || 'https://via.placeholder.com/80'}" class="rounded-circle" width="80" height="80" style="object-fit:cover;"></div>
+                                <h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}" title="${statusText}"></span></h5>
+                                <p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p>
+                                <p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p>
+                                <p class="text-muted small mb-1"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p>
+                                <p class="text-muted small mb-1"><i class="fas fa-calendar-alt"></i> تعيين: ${u.hireDate || 'غير محدد'}</p>
+                                <hr>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-${kpiColor}">KPI: ${completionRate}%</span>
+                                    <span class="badge bg-info">${leaveStats.text}</span>
+                                </div>
+                                <div class="text-muted small mb-2">
+                                    <span class="badge bg-primary me-1">المهام: ${total}</span>
+                                    <span class="badge bg-success me-1">مكتملة: ${completed}</span>
+                                    <span class="badge bg-danger">متأخرة: ${late}</span>
+                                </div>
+                                <button onclick="openChat('${u.id}')" class="btn btn-sm btn-outline-primary w-100"><i class="fas fa-comment-dots"></i> مراسلة</button>
+                            </div>
+                        </div>
+                    </div>`;
                 });
                 document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
             });
@@ -818,35 +876,52 @@
         function openTaskChat(id) {
             const t = allTasks.find(task => task.id === id); if (!t) return;
             currentTaskChatId = id;
-            const role = currentUserData?.role; const isAdmin = role === 'admin'; const isManager = role === 'manager';
+            const isAdmin = currentUserData?.role === 'admin'; const isManager = currentUserData?.role === 'manager';
             const isCreator = t.createdById === currentUserData.id; const isAssignedUser = t.userId === currentUserData.id;
             const isDeptManager = isManager && (currentUserData.departments || [currentUserData.deptName]).includes(t.deptName);
-            document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
-            document.getElementById('taskChatInfo').innerHTML = `<p><b>الموظف:</b> ${t.userName} | <b>الحالة:</b> ${t.status}</p><p><b>تاريخ البدء:</b> ${t.startDate || 'غير محدد'} | <b>تاريخ الانتهاء:</b> ${t.endDate || 'غير محدد'}</p><p><b>المتابعة القادمة:</b> ${t.nextFollowUp || 'غير محدد'}</p>`;
+            
+            const lateFlag = isTaskLate(t);
+            const wasLate = (t.status === 'مكتملة' && t.endDate && new Date(t.endDate) < new Date(t.approvedAt || t.startDate));
+            
+            document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title} ${lateFlag || wasLate ? '⚠️ (متأخرة)' : ''}`;
+            document.getElementById('taskChatInfo').innerHTML = `<p><b>الموظف:</b> ${t.userName} | <b>الحالة:</b> <span class="badge bg-${t.status==='مكتملة'?'success':t.status==='مرفوضة'?'danger':'primary'}">${t.status}</span></p><p><b>تاريخ البدء:</b> ${t.startDate || 'غير محدد'} | <b>تاريخ الانتهاء:</b> ${t.endDate || 'غير محدد'}</p><p><b>المتابعة القادمة:</b> ${t.nextFollowUp || 'غير محدد'}</p>`;
+            
             let chatHtml = '';
             if(t.chat) { Object.values(t.chat).forEach(msg => { let followUpText = msg.nextFollowUp ? `<br><small class="text-primary"><i class="fas fa-calendar-alt"></i> متابعة قادمة: ${msg.nextFollowUp}</small>` : ''; chatHtml += `<div class="chat-msg"><small class="text-muted fw-bold">${msg.senderName}</small> <small class="float-left text-muted">${msg.time}</small><p class="mb-0 mt-1">${msg.text}</p>${followUpText}</div>`; }); }
             document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات حتى الآن</p>';
             document.getElementById('taskChatInput').value = ''; document.getElementById('taskNextFollowUp').value = '';
+            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             
-            if(isAdmin && t.status === 'بانتظار اعتماد الإدارة') {
-                footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('جديدة', 'تم اعتماد المهمة من قبل الإدارة')">اعتماد المهمة</button>`;
-                footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('مرفوضة', 'تم رفض المهمة من قبل الإدارة')">رفض المهمة</button>`;
-                footer += `<button type="button" class="btn btn-info text-white" onclick="addTaskComment()">إضافة تعليق للموظف</button>`;
+            if(isAdmin && t.status === 'بانتظار اعتماد الإدارة') { 
+                footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('جديدة', 'تم اعتماد المهمة')">اعتماد</button>`; 
+                footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('مرفوضة', 'تم رفض المهمة')">رفض</button>`; 
             }
-            if ((isAdmin || isCreator) && t.status !== 'بانتظار اعتماد الإدارة') {
-                footer += `<button type="button" class="btn btn-warning" onclick="openEditTaskFromChat('${t.id}')"><i class="fas fa-edit"></i> تعديل المهمة</button>`;
+            
+            if(isAdmin && t.status !== 'مكتملة' && t.status !== 'مرفوضة') {
+                footer += `<button type="button" class="btn btn-dark" onclick="closeTask('${t.id}')"><i class="fas fa-lock"></i> إنهاء وإغلاق المهمة</button>`;
             }
-            // Employee can edit after approval
-            if(isAssignedUser && t.status === 'جديدة') {
-                footer += `<button type="button" class="btn btn-warning" onclick="openEditTaskFromChat('${t.id}')"><i class="fas fa-edit"></i> تعديل تفاصيل المهمة</button>`;
+            
+            if ((isAdmin || isCreator || isAssignedUser) && t.status !== 'بانتظار اعتماد الإدارة' && t.status !== 'مرفوضة') {
+                footer += `<button type="button" class="btn btn-warning" onclick="openEditTaskFromChat('${t.id}')"><i class="fas fa-edit"></i> تعديل</button>`;
             }
             
             if(t.status !== 'مكتملة' && t.status !== 'مرفوضة' && t.status !== 'بانتظار اعتماد الإدارة') {
-                if((isAdmin || isDeptManager) && t.status === 'بانتظار اعتماد المدير') { footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة')">اعتماد الإنهاء</button>`; footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('قيد التنفيذ', 'تم رفض الإنهاء')">رفض الإنهاء</button>`; }
-                if(isAssignedUser) { if(t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة')">استلمت المهمة</button>`; footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">حفظ التحديث والمتابعة</button>`; if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء المهمة')">إنهاء المهمة</button>`; }
-                if(isAdmin || isDeptManager) { footer += `<button type="button" class="btn btn-warning" onclick="addTaskComment()">إضافة تعليق كإدارة</button>`; }
+                if(isAssignedUser) { 
+                    if(t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة')">استلمت</button>`; 
+                    footer += `<button type="button" class="btn btn-info text-white" onclick="addTaskComment()">حفظ التحديث</button>`; 
+                    if(t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء')">إنهاء المهمة</button>`; 
+                }
+                if((isAdmin || isDeptManager) && t.status === 'بانتظار اعتماد المدير') { 
+                    footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('مكتملة', 'تم اعتماد إنهاء المهمة')">اعتماد الإنهاء</button>`; 
+                    footer += `<button type="button" class="btn btn-danger" onclick="updateTaskStatus('قيد التنفيذ', 'تم رفض الإنهاء')">رفض الإنهاء</button>`; 
+                }
             }
+            
+            if(t.status !== 'مرفوضة') {
+                footer += `<button type="button" class="btn btn-outline-info" onclick="addTaskComment()">إضافة تعليق</button>`;
+            }
+            
             document.getElementById('taskChatFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
         }
@@ -878,6 +953,28 @@
                     else if (newStatus === 'بانتظار اعتماد المدير') { allUsers.filter(u => u.role === 'admin').forEach(admin => sendNotification(admin.id, `طلب اعتماد إنهاء مهمة: ${t.title}`)); if (t.createdById && t.createdById !== currentUserData.id) sendNotification(t.createdById, `طلب اعتماد إنهاء مهمة: ${t.title}`); } 
                     else if (newStatus === 'مكتملة') { sendNotification(t.userId, `تم اعتماد إنهاء مهمتك: ${t.title}`); }
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); 
+                });
+            });
+        }
+        function closeTask(id) {
+            const comment = prompt('اكتب تعليق الإنهاء والإغلاق:');
+            if(!comment) return;
+            db.ref('tasks/' + id + '/chat').push({
+                senderId: currentUserData.id,
+                senderName: currentUserData.name,
+                text: '🔒 تم إنهاء وإغلاق المهمة: ' + comment,
+                time: new Date().toLocaleString(),
+                nextFollowUp: ''
+            }).then(() => {
+                db.ref('tasks/' + id).update({
+                    status: 'مكتملة',
+                    approvedAt: new Date().toLocaleString(),
+                    closedBy: currentUserData.name
+                }).then(() => {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();
+                    toastr.success('تم إنهاء وإغلاق المهمة بنجاح');
+                    const t = allTasks.find(task => task.id === id);
+                    if (t && t.userId !== currentUserData.id) sendNotification(t.userId, `تم إنهاء مهمتك: ${t.title}`);
                 });
             });
         }
@@ -923,17 +1020,66 @@
             const sel = document.getElementById('taskUser'); sel.innerHTML = '<option value="">-- اختر الموظف --</option>'; if (!deptName) return;
             allUsers.filter(u => { const userDepts = u.departments || (u.deptName ? [u.deptName] : []); return userDepts.includes(deptName) && !userDepts.includes('المبيعات'); }).forEach(u => { sel.innerHTML += `<option value="${u.id}">${u.name}</option>`; });
         }
+        
         function openEditMyProfileModal() {
             currentEdit = { id: currentUserData.id, type: 'users' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             title.innerText = 'تعديل بياناتي الشخصية';
-            body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين"><input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي">`;
+            const picUrl = currentUserData.profilePic || 'https://via.placeholder.com/100';
+            body.innerHTML = `
+                <div class="text-center mb-3">
+                    <img src="${picUrl}" class="rounded-circle" width="100" height="100" id="profilePicPreview" style="object-fit:cover;">
+                </div>
+                <label class="small text-muted">تغيير الصورة الشخصية</label>
+                <input type="file" id="profilePicFile" class="form-control mb-3" accept="image/*" onchange="previewProfilePic(this)">
+                
+                <input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly>
+                <input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون (إجباري لإكمال الملف)">
+                <input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين (إجباري)">
+                <input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي (إجباري)">
+            `;
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEditMyProfile()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
+
+        function previewProfilePic(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => document.getElementById('profilePicPreview').src = e.target.result;
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
         function confirmEditMyProfile() {
-            const upd = { phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value };
-            db.ref('users/' + currentUserData.id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تحديث بياناتك بنجاح'); currentUserData.phone = upd.phone; currentUserData.hireDate = upd.hireDate; currentUserData.jobTitle = upd.jobTitle; renderTeam(); });
+            const upd = { 
+                phone: document.getElementById('newPhone').value, 
+                hireDate: document.getElementById('newHireDate').value, 
+                jobTitle: document.getElementById('newJobTitle').value 
+            };
+            
+            const fileInput = document.getElementById('profilePicFile');
+            if(fileInput && fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    upd.profilePic = e.target.result; 
+                    saveProfile(upd);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveProfile(upd);
+            }
+        }
+
+        function saveProfile(upd) {
+            db.ref('users/' + currentUserData.id).update(upd).then(() => { 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); 
+                toastr.success('تم تحديث بياناتك بنجاح'); 
+                currentUserData.phone = upd.phone; 
+                currentUserData.hireDate = upd.hireDate; 
+                currentUserData.jobTitle = upd.jobTitle; 
+                if(upd.profilePic) currentUserData.profilePic = upd.profilePic;
+                renderTeam(); 
+            });
         }
 
         async function openAddModal(type) {
@@ -964,7 +1110,33 @@
                 body.innerHTML = `<label class="small text-muted">نوع المأمورية</label><select id="missionType" class="form-control mb-2" onchange="toggleOtherMission(this.value)"><option value="">-- اختر النوع --</option><option value="سفر عمل">سفر عمل</option><option value="مؤتمر">مؤتمر</option><option value="معرض">معرض</option><option value="ندوة">ندوة</option><option value="تدريب">تدريب</option><option value="زيارة عميل">زيارة عميل</option><option value="أخرى">أخرى</option></select><input type="text" id="missionOther" class="form-control mb-2 d-none" placeholder="حدد الغرض من المأمورية"><div class="row mb-2"><div class="col-6"><label class="small text-muted">من تاريخ</label><input type="date" id="missionStart" class="form-control"></div><div class="col-6"><label class="small text-muted">إلى تاريخ</label><input type="date" id="missionEnd" class="form-control"></div></div><label class="small text-muted">الوجهة (المدينة / الدولة)</label><input type="text" id="missionDest" class="form-control mb-2" placeholder="مثال: الرياض - السعودية"><label class="small text-muted">الغرض من المأمورية</label><textarea id="missionPurpose" class="form-control mb-2" placeholder="شرح مبسط للهدف"></textarea><label class="small text-muted">المتطلبات</label><div class="mb-2 border p-2 rounded"><div class="form-check"><input class="form-check-input mission-req" type="checkbox" id="reqFlight"><label class="form-check-label" for="reqFlight">حجز طيران</label></div><div class="form-check"><input class="form-check-input mission-req" type="checkbox" id="reqHotel"><label class="form-check-label" for="reqHotel">حجز إقامة (فندق)</label></div><div class="form-check"><input class="form-check-input mission-req" type="checkbox" id="reqTransport"><label class="form-check-label" for="reqTransport">مواصلات / تذاكر</label></div><div class="form-check"><input class="form-check-input mission-req" type="checkbox" id="reqAllowance"><label class="form-check-label" for="reqAllowance">مصروف نثري (علاوة)</label></div></div>`;
             } else if (type === 'leave') {
                 title.innerText = 'طلب إجازة أو إذن';
-                body.innerHTML = `<label class="small text-muted">نوع الطلب</label><select id="leaveType" class="form-control mb-2" onchange="toggleLeaveFields(this.value)"><option value="">-- اختر النوع --</option><option value="إجازة سنوية">إجازة سنوية</option><option value="إجازة مرضية">إجازة مرضية</option><option value="إجازة عرضي">إجازة عرضي</option><option value="إذن انصراف">إذن انصراف (ساعات)</option><option value="إجازة حج">إجازة حج</option><option value="إجازة وضع">إجازة وضع (للنساء)</option></select><div id="leaveDaysFields"><div class="row mb-2"><div class="col-6"><label class="small text-muted">من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label class="small text-muted">إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div></div></div><div id="leaveHoursFields" class="d-none"><div class="row mb-2"><div class="col-6"><label class="small text-muted">تاريخ الإذن</label><input type="date" id="leaveDate" class="form-control"></div><div class="col-6"><label class="small text-muted">عدد الساعات</label><input type="number" id="leaveHours" class="form-control" placeholder="مثال: 2"></div></div></div><label class="small text-muted">السبب</label><textarea id="leaveReason" class="form-control mb-2" placeholder="اكتب سبب طلب الإجازة"></textarea>`;
+                let userOpts = '<option value="">-- اختر الموظف --</option>';
+                allUsers.forEach(u => userOpts += `<option value="${u.id}">${u.name}</option>`);
+                
+                body.innerHTML = `
+                    ${isAdmin ? `<div class="mb-2"><label class="small text-muted">اختر الموظف (للأدمن)</label><select id="leaveUserId" class="form-control mb-2">${userOpts}</select></div>` : ''}
+                    <label class="small text-muted">نوع الطلب</label>
+                    <select id="leaveType" class="form-control mb-2" onchange="toggleLeaveFields(this.value)">
+                        <option value="">-- اختر النوع --</option>
+                        <option value="إجازة سنوية">إجازة سنوية (قبلها بيومين)</option>
+                        <option value="إجازة عرضي">إجازة عرضي (تطلب اليوم قبل 10 ص)</option>
+                        <option value="إجازة مرضية">إجازة مرضية (تطلب اليوم/غداً + مرفقات)</option>
+                        <option value="إجازة وفاة">إجازة وفاة (تطلب اليوم - 3 أيام)</option>
+                        <option value="إذن انصراف">إذن انصراف (ساعات)</option>
+                    </select>
+                    <div id="leaveDaysFields"><div class="row mb-2"><div class="col-6"><label class="small text-muted">من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label class="small text-muted">إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div></div></div>
+                    <div id="leaveHoursFields" class="d-none"><div class="row mb-2"><div class="col-6"><label class="small text-muted">تاريخ الإذن</label><input type="date" id="leaveDate" class="form-control"></div><div class="col-6"><label class="small text-muted">عدد الساعات</label><input type="number" id="leaveHours" class="form-control" placeholder="مثال: 2"></div></div></div>
+                    <label class="small text-muted">رقم هاتف للتواصل (إجباري)</label>
+                    <input type="text" id="leavePhone" class="form-control mb-2" placeholder="010...">
+                    <label class="small text-muted">السبب (إجباري)</label>
+                    <textarea id="leaveReason" class="form-control mb-2" placeholder="اكتب السبب"></textarea>
+                    <div id="leaveAttachmentField" class="d-none mb-2">
+                        <label class="small text-muted">المرفقات (روشتة/تقرير - PDF أو صورة)</label>
+                        <div id="leaveFilesContainer" class="mb-2"></div>
+                        <button type="button" onclick="addFileInput()" class="btn btn-sm btn-info text-white mb-2"><i class="fas fa-plus"></i> إضافة ملف مرفق</button>
+                        <small class="text-muted d-block mb-2">الحد الأقصى: 2 ميجابايت للملف، 5 ملفات كحد أقصى.</small>
+                    </div>
+                `;
             } else if (type === 'announcement') {
                 title.innerText = 'إضافة إعلان جديد';
                 body.innerHTML = `<label class="small text-muted">عنوان الإعلان</label><input type="text" id="annTitle" class="form-control mb-2" placeholder="مثال: إجازة رسمية"><label class="small text-muted">نص الإعلان</label><textarea id="annText" class="form-control mb-2" placeholder="اكتب تفاصيل الإعلان هنا..."></textarea>`;
@@ -986,8 +1158,40 @@
 
         function toggleOtherMission(val) { const otherInput = document.getElementById('missionOther'); if(val === 'أخرى') otherInput.classList.remove('d-none'); else otherInput.classList.add('d-none'); }
         function toggleLeaveFields(val) {
-            if(val === 'إذن انصراف') { document.getElementById('leaveDaysFields').classList.add('d-none'); document.getElementById('leaveHoursFields').classList.remove('d-none'); } 
-            else { document.getElementById('leaveDaysFields').classList.remove('d-none'); document.getElementById('leaveHoursFields').classList.add('d-none'); }
+            if(val === 'إذن انصراف') { 
+                document.getElementById('leaveDaysFields').classList.add('d-none'); 
+                document.getElementById('leaveHoursFields').classList.remove('d-none'); 
+            } else { 
+                document.getElementById('leaveDaysFields').classList.remove('d-none'); 
+                document.getElementById('leaveHoursFields').classList.add('d-none'); 
+            }
+            if(val === 'إجازة مرضية') {
+                document.getElementById('leaveAttachmentField').classList.remove('d-none');
+                addFileInput(); 
+            } else {
+                document.getElementById('leaveAttachmentField').classList.add('d-none');
+                document.getElementById('leaveFilesContainer').innerHTML = '';
+            }
+        }
+
+        let leaveFiles = [];
+        function addFileInput() {
+            if (document.querySelectorAll('.leave-file-input').length >= 5) return toastr.warning('الحد الأقصى 5 ملفات');
+            const container = document.getElementById('leaveFilesContainer');
+            const div = document.createElement('div');
+            div.className = 'input-group mb-2';
+            div.innerHTML = `<input type="file" class="form-control leave-file-input" accept="image/*,.pdf" onchange="handleFileSelect(this)"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>`;
+            container.appendChild(div);
+        }
+        
+        function handleFileSelect(input) {
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                if (file.size > 2 * 1024 * 1024) { 
+                    toastr.error('حجم الملف أكبر من 2 ميجابايت');
+                    input.value = '';
+                }
+            }
         }
 
         function addProductRow() {
@@ -1026,7 +1230,7 @@
                     if (currentUserData.departments && Array.isArray(currentUserData.departments) && currentUserData.departments.length > 0) { requesterDept = currentUserData.departments.join(', '); } else if (currentUserData.deptName) { requesterDept = currentUserData.deptName; }
                     db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: requesterName, empDept: requesterDept, targetDeptName: targetDeptSel.value, assignedEmpId: assignedEmpSel.value, assignedEmpName: assignedEmpName, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, priority: document.getElementById('reqPriority').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد', comment: '', timestamp: new Date().toLocaleDateString() }).then(() => { 
                         bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId);
-                        allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value))).forEach(m => { sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${requesterName}`); });
+                        allUsers.filter(u => u.role === 'admin' || (u.role === 'manager' && (u.departments || [u.deptName]).includes(targetDeptSel.value)).forEach(m => { sendNotification(m.id, `طلب شراء جديد ${formattedId} من ${requesterName}`); });
                         db.ref('tasks').push({ title: `شراء: ${document.getElementById('reqItem').value} (${document.getElementById('reqQty').value})`, userId: assignedEmpSel.value, userName: assignedEmpName, deptName: targetDeptSel.value, createdById: currentUserData.id, createdByName: currentUserData.name, startDate: new Date().toISOString().split('T')[0], endDate: '', status: 'جديدة', chat: null, nextFollowUp: '' }).then(() => { sendNotification(assignedEmpSel.value, `لديك مهمة شراء جديدة: ${document.getElementById('reqItem').value}`); });
                     }).catch(err => { toastr.error("حدث خطأ أثناء الحفظ: " + err.message); }); 
                 }); 
@@ -1046,16 +1250,89 @@
                 }).catch(err => toastr.error(err.message));
             }
             else if (type === 'leave') {
-                const lType = document.getElementById('leaveType').value; const lReason = document.getElementById('leaveReason').value;
+                const lType = document.getElementById('leaveType').value;
+                const lReason = document.getElementById('leaveReason').value;
+                const lPhone = document.getElementById('leavePhone').value;
+                
                 if(!lType) return toastr.warning('من فضلك اختر نوع الطلب');
                 if(!lReason.trim()) return toastr.warning('من فضلك اكتب السبب');
-                let leaveData = { type: lType, reason: lReason, status: 'بانتظار الموافقة', userId: currentUserData.id, userName: currentUserData.name, timestamp: firebase.database.ServerValue.TIMESTAMP };
-                if(lType === 'إذن انصراف') { const lDate = document.getElementById('leaveDate').value; const lHours = document.getElementById('leaveHours').value; if(!lDate || !lHours) return toastr.warning('من فضلك حدد تاريخ وساعات الإذن'); leaveData.date = lDate; leaveData.hours = lHours; } 
-                else { const lStart = document.getElementById('leaveStart').value; const lEnd = document.getElementById('leaveEnd').value; if(!lStart || !lEnd) return toastr.warning('من فضلك حدد تاريخ البدء والانتهاء'); leaveData.startDate = lStart; leaveData.endDate = lEnd; }
-                db.ref('leaves').push(leaveData).then(() => {
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإجازة بنجاح');
-                    allUsers.filter(u => u.role === 'admin').forEach(admin => sendNotification(admin.id, `طلب إجازة جديد من ${currentUserData.name} (${lType})`));
-                }).catch(err => toastr.error(err.message));
+                if(!lPhone.trim()) return toastr.warning('من فضلك اكتب رقم هاتف للتواصل');
+                
+                let leaveData = { type: lType, reason: lReason, phone: lPhone, status: 'بانتظار الموافقة', timestamp: Date.now() };
+                let targetUserId = currentUserData.id;
+                let targetUserName = currentUserData.name;
+
+                if (isAdmin && document.getElementById('leaveUserId') && document.getElementById('leaveUserId').value) {
+                    targetUserId = document.getElementById('leaveUserId').value;
+                    targetUserName = allUsers.find(u => u.id === targetUserId)?.name || '';
+                    leaveData.adminAssigned = true;
+                } else {
+                    if(!currentUserData.hireDate || !currentUserData.phone || !currentUserData.jobTitle) {
+                        return toastr.error('يجب إكمال ملفك الشخصي (تاريخ التعيين، الهاتف، المسمى) قبل طلب الإجازة');
+                    }
+                }
+                
+                leaveData.userId = targetUserId;
+                leaveData.userName = targetUserName;
+
+                const now = new Date();
+                const today10AM = new Date(); today10AM.setHours(10,0,0,0);
+                
+                if(lType === 'إذن انصراف') {
+                    const lDate = document.getElementById('leaveDate').value; const lHours = document.getElementById('leaveHours').value;
+                    if(!lDate || !lHours) return toastr.warning('من فضلك حدد تاريخ وساعات الإذن');
+                    leaveData.date = lDate; leaveData.hours = lHours;
+                } else {
+                    const lStartStr = document.getElementById('leaveStart').value; const lEndStr = document.getElementById('leaveEnd').value;
+                    if(!lStartStr || !lEndStr) return toastr.warning('من فضلك حدد تاريخ البدء والانتهاء');
+                    
+                    const lStart = new Date(lStartStr); const lEnd = new Date(lEndStr);
+                    const diffDays = Math.round((lEnd - lStart) / (1000 * 60 * 60 * 24)) + 1;
+                    leaveData.startDate = lStartStr; leaveData.endDate = lEndStr; leaveData.days = diffDays;
+                    
+                    if(!leaveData.adminAssigned) {
+                        if(lType === 'إجازة عرضي') {
+                            if(now > today10AM) return toastr.error('يجب طلب الإجازة العارضة قبل الساعة 10 صباحاً');
+                        } else if(lType === 'إجازة مرضية') {
+                            const maxDate = new Date(now); maxDate.setDate(now.getDate() + 2);
+                            if(lStart > maxDate) return toastr.error('المرضية تطلب اليوم أو بعدها بحد أقصى يومين');
+                            const fileInputs = document.querySelectorAll('.leave-file-input');
+                            if(fileInputs.length === 0 || !fileInputs[0].files.length) return toastr.warning('يجب إرفاق روشتة/تقرير للمرضية');
+                            // Process files
+                            const filePromises = Array.from(fileInputs).filter(i => i.files.length > 0).map(i => {
+                                return new Promise(resolve => {
+                                    const file = i.files[0];
+                                    const reader = new FileReader();
+                                    reader.onload = e => resolve({ name: file.name, type: file.type, data: e.target.result });
+                                    reader.readAsDataURL(file);
+                                });
+                            });
+                            Promise.all(filePromises).then(files => {
+                                leaveData.files = files;
+                                submitLeave(leaveData);
+                            });
+                            return; 
+                        } else if(lType === 'إجازة وفاة') {
+                            if(diffDays > 3) return toastr.error('إجازة الوفاة بحد أقصى 3 أيام');
+                        } else {
+                            const minDate = new Date(now); minDate.setDate(now.getDate() + 2);
+                            if(lStart < minDate) return toastr.error('يجب طلب هذه الإجازة قبلها بيومين على الأقل');
+                        }
+                        
+                        const stats = getUserLeaveStats(targetUserId);
+                        if((lType === 'إجازة سنوية' || lType === 'إجازة عرضي') && diffDays > stats.remaining) {
+                            return toastr.error(`الرصيد لا يسمح. المتبقي: ${stats.remaining} يوم`);
+                        }
+                    } else {
+                        const stats = getUserLeaveStats(targetUserId);
+                        if((lType === 'إجازة سنوية' || lType === 'إجازة عرضي') && diffDays > stats.remaining) {
+                            leaveData.deductFromSalary = diffDays - stats.remaining;
+                            toastr.warning(`سيتم خصم ${leaveData.deductFromSalary} يوم من راتب الموظف`);
+                        }
+                    }
+                }
+                
+                submitLeave(leaveData);
             }
             else if (type === 'announcement') {
                 const aTitle = document.getElementById('annTitle').value; const aText = document.getElementById('annText').value;
@@ -1074,6 +1351,14 @@
             else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
 
+        function submitLeave(leaveData) {
+            db.ref('leaves').push(leaveData).then(() => {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide();
+                toastr.success('تم تسجيل طلب الإجازة بنجاح');
+                if(!leaveData.adminAssigned) allUsers.filter(u => u.role === 'admin').forEach(admin => sendNotification(admin.id, `طلب إجازة جديد من ${currentUserData.name} (${leaveData.type})`));
+            }).catch(err => toastr.error(err.message));
+        }
+
         async function getLocationForCustomer() {
             document.getElementById('locStatus').innerHTML = '<span class="text-info">جاري تحديد موقعك... برجاء الانتظار والسماح بالإذن.</span>';
             const locData = await getSecureLocation();
@@ -1084,15 +1369,22 @@
 
         async function openRequestDetails(id) {
             const r = allRequests.find(req => req.id === id); if (!r) return;
-            const role = currentUserData?.role; const isAdmin = role === 'admin';
-            const isManager = role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(r.targetDeptName);
+            const isAdmin = currentUserData?.role === 'admin';
+            const isManager = currentUserData?.role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(r.targetDeptName);
             const canPurchasingTakeAction = r.status === 'موافقة الإدارة';
+            
             document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
             document.getElementById('detailsModalBody').innerHTML = `<h5>${r.item}</h5><p>الكمية: ${r.qty} | الأولوية: ${r.priority}</p><p>التفاصيل: ${r.purpose || ''}</p><hr><textarea class="form-control" id="detailComment" placeholder="تعليق" ${isAdmin || (isManager && canPurchasingTakeAction) ? '' : 'readonly'}>${r.comment || ''}</textarea>`;
+            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if ((isAdmin || isManager) && r.status === 'جديد') footer += `<button type="button" class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض إداري</button>`;
             if (isManager && canPurchasingTakeAction) footer += `<button type="button" class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">موافقة المشتريات</button><button type="button" class="btn btn-warning" onclick="updateReqStatus('${id}','تأجيل')">تأجيل</button><button type="button" class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
+            
+            if (isAdmin && r.status !== 'تم التنفيذ' && r.status !== 'مرفوض') {
+                footer += `<button type="button" class="btn btn-dark" onclick="closeRequest('${id}')"><i class="fas fa-lock"></i> إغلاق الطلب</button>`;
+            }
             if (isAdmin) footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`;
+            
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
@@ -1103,6 +1395,18 @@
                 const r = allRequests.find(req => req.id === id);
                 if (r && r.empId !== currentUserData.id) sendNotification(r.empId, `تم تحديث حالة طلبك ${r.reqId} إلى: ${status}`);
             }); 
+        }
+        function closeRequest(id) {
+            const comment = document.getElementById('detailComment').value;
+            db.ref('requests/' + id).update({
+                status: 'تم التنفيذ',
+                comment: (comment ? comment + ' | ' : '') + 'تم الإغلاق بواسطة: ' + currentUserData.name
+            }).then(() => {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();
+                toastr.success('تم إغلاق الطلب بنجاح');
+                const r = allRequests.find(req => req.id === id);
+                if (r && r.empId !== currentUserData.id) sendNotification(r.empId, `تم إغلاق طلبك ${r.reqId}`);
+            });
         }
 
         async function openMissionDetails(id) {
@@ -1137,12 +1441,25 @@
             const l = allLeaves.find(lv => lv.id === id); if (!l) return;
             const isAdmin = currentUserData?.role === 'admin';
             const isOwner = l.userId === currentUserData.id;
-            let dateText = l.type === 'إذن انصراف' ? `تاريخ: ${l.date} | المدة: ${l.hours} ساعات` : `من: ${l.startDate} إلى: ${l.endDate}`;
+            let dateText = l.type === 'إذن انصراف' ? `تاريخ: ${l.date} | المدة: ${l.hours} ساعات` : `من: ${l.startDate} إلى: ${l.endDate} (${l.days} أيام)`;
             
-            const leaveStats = getUserLeaveStats(l.userId);
+            let extraInfo = '';
+            if(isAdmin || isOwner) {
+                const leaveStats = getUserLeaveStats(l.userId);
+                extraInfo = `<hr><p class="text-muted small">رصيد الموظف: ${leaveStats.text}</p>`;
+            }
+            if(isAdmin && l.deductFromSalary) {
+                extraInfo += `<p class="text-danger small">سيتم خصم ${l.deductFromSalary} يوم من الراتب</p>`;
+            }
+            if(isAdmin && l.files && l.files.length > 0) {
+                extraInfo += `<p class="small"><b>المرفقات:</b></p>`;
+                l.files.forEach(f => {
+                    extraInfo += `<p class="small"><a href="${f.data}" download="${f.name}" class="text-primary"><i class="fas fa-paperclip"></i> ${f.name}</a></p>`;
+                });
+            }
             
             document.getElementById('detailsModalTitle').innerText = `تفاصيل طلب الإجازة`;
-            document.getElementById('detailsModalBody').innerHTML = `<h5>${l.type}</h5><p>${dateText}</p><p><b>الموظف:</b> ${l.userName}</p><p><b>السبب:</b> ${l.reason}</p><p><b>الحالة:</b> ${l.status}</p><hr><p class="text-muted small">رصيد الموظف: ${leaveStats.text}</p>`;
+            document.getElementById('detailsModalBody').innerHTML = `<h5>${l.type}</h5><p>${dateText}</p><p><b>الموظف:</b> ${l.userName}</p><p><b>السبب:</b> ${l.reason}</p><p><b>هاتف التواصل:</b> ${l.phone}</p><p><b>الحالة:</b> ${l.status}</p>${extraInfo}`;
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin && l.status === 'بانتظار الموافقة') { footer += `<button type="button" class="btn btn-success" onclick="updateLeaveStatus('${id}', 'معتمدة')">اعتماد</button>`; footer += `<button type="button" class="btn btn-danger" onclick="updateLeaveStatus('${id}', 'مرفوضة')">رفض</button>`; }
             if (isAdmin) { footer += `<button type="button" class="btn btn-outline-danger" onclick="openDeleteModal('${id}','leaves'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i></button>`; }
