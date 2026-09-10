@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الإدارة المتكامل ERP - HR</title>
+    <title>نظام الإدارة المتكامل ERP - مزنة</title>
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#343a40">
+    <link rel="manifest" id="manifest-placeholder">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -43,7 +47,6 @@
             <div class="mb-3"><input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني"></div>
             <div class="mb-3"><input type="password" id="password" class="form-control" placeholder="كلمة المرور"></div>
             <button onclick="doLogin()" class="btn btn-primary w-100">دخول</button>
-            <div id="loginError" class="text-danger text-center mt-3"></div>
         </div>
     </div>
 
@@ -77,6 +80,7 @@
 
                 <div class="top-bar d-flex justify-content-end mb-4">
                     <button onclick="openEditMyProfileModal()" class="btn btn-outline-primary btn-sm ms-2"><i class="fas fa-user-circle"></i> ملفي الشخصي</button>
+                    <button id="installAppBtn" class="btn btn-success btn-sm ms-2 d-none"><i class="fas fa-download"></i> تثبيت التطبيق</button>
                     <button id="postAnnouncementBtn" onclick="postAnnouncement()" class="btn btn-warning btn-sm ms-2 d-none"><i class="fas fa-bullhorn"></i> إعلان</button>
                     <div class="dropdown">
                         <button class="btn btn-light position-relative shadow-sm" id="notifBell" data-bs-toggle="dropdown" data-bs-auto-close="outside">
@@ -134,87 +138,20 @@
                     <div class="alert alert-info"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
                 </div>
 
-                <!-- Team Section -->
-                <div id="teamSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>الفريق</h2></div>
-                    <div class="row" id="teamList"></div>
-                </div>
-
-                <!-- Users Section -->
-                <div id="usersSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="departmentsSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div>
-                </div>
-
-                <!-- Tasks Section -->
-                <div id="tasksSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div>
-                    <ul class="nav nav-tabs mb-3">
-                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tasksActive">نشطة / جديدة</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksLate">متأخرة</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksDone">منتهية</a></li>
-                    </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="tasksActive"><div class="row mt-3" id="tasksListActive"></div></div>
-                        <div class="tab-pane fade" id="tasksLate"><div class="row mt-3" id="tasksListLate"></div></div>
-                        <div class="tab-pane fade" id="tasksDone"><div class="row mt-3" id="tasksListDone"></div></div>
-                    </div>
-                </div>
-
-                <div id="requestsSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم الطلب</th><th>الصنف</th><th>طالب الطلب</th><th>موجه لـ</th><th>الموظف المسؤول</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="missionsSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المأموريات والانتدابات</h2><div id="missionsActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="missionsTable"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>الحالة</th></tr></thead><tbody id="missionsTbody"></tbody></table></div></div>
-                </div>
-
-                <!-- Leaves Section -->
-                <div id="leavesSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h2>الإجازات والأرصدة</h2>
-                        <div id="leavesActions"></div>
-                    </div>
-                    <div id="leaveBalanceCard" class="card text-white bg-info mb-3 d-none">
-                        <div class="card-body">رصيدك الحالي من الإجازات السنوية: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div>
-                    </div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="salesSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المبيعات</h2><div id="salesActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="salesTable"><thead><tr><th>المندوب</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="salesTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="customersSection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div id="customersActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>المساحة/المحصول</th><th>الإحداثيات</th><th>المتابعة</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="inventorySection" style="display: none;">
-                    <div class="d-flex justify-content-between mb-3"><h2>المخزن</h2><div id="inventoryActions"></div></div>
-                    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="inventoryTable"><thead><tr><th>اسم الصنف</th><th>التصنيف</th><th>الكمية</th><th>الوحدة</th><th>إجراءات</th></tr></thead><tbody id="inventoryTbody"></tbody></table></div></div>
-                </div>
-
-                <div id="reportsSection" style="display: none;">
-                    <h2 class="mb-4">التقارير</h2>
-                    <div class="row" id="reportsList"></div>
-                </div>
-
-                <div id="permissionsSection" style="display: none;">
-                    <h2 class="mb-4">إدارة الصلاحيات</h2>
-                    <div class="card shadow-sm p-3">
-                        <div id="permissionsContainer"></div>
-                        <button onclick="savePermissions()" class="btn btn-primary mt-3"><i class="fas fa-save"></i> حفظ الصلاحيات</button>
-                    </div>
-                </div>
+                <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق</h2></div><div class="row" id="teamList"></div></div>
+                <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الصلاحية</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
+                <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
+                
+                <div id="tasksSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tasksActive">نشطة / جديدة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksLate">متأخرة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksDone">منتهية</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="tasksActive"><div class="row mt-3" id="tasksListActive"></div></div><div class="tab-pane fade" id="tasksLate"><div class="row mt-3" id="tasksListLate"></div></div><div class="tab-pane fade" id="tasksDone"><div class="row mt-3" id="tasksListDone"></div></div></div></div>
+                <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم الطلب</th><th>الصنف</th><th>طالب الطلب</th><th>موجه لـ</th><th>الموظف المسؤول</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
+                <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="missionsTable"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>الحالة</th></tr></thead><tbody id="missionsTbody"></tbody></table></div></div></div>
+                <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات والأرصدة</h2><div id="leavesActions"></div></div><div id="leaveBalanceCard" class="card text-white bg-info mb-3 d-none"><div class="card-body">رصيدك الحالي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
+                <div id="salesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المبيعات</h2><div id="salesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="salesTable"><thead><tr><th>المندوب</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="salesTbody"></tbody></table></div></div></div>
+                <div id="customersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div id="customersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>المساحة/المحصول</th><th>الإحداثيات</th><th>المتابعة</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div></div>
+                <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن</h2><div id="inventoryActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="inventoryTable"><thead><tr><th>اسم الصنف</th><th>التصنيف</th><th>الكمية</th><th>الوحدة</th><th>إجراءات</th></tr></thead><tbody id="inventoryTbody"></tbody></table></div></div></div>
+                
+                <div id="reportsSection" style="display: none;"><h2 class="mb-4">التقارير</h2><div class="row" id="reportsList"></div></div>
+                <div id="permissionsSection" style="display: none;"><h2 class="mb-4">إدارة الصلاحيات</h2><div class="card shadow-sm p-3"><div id="permissionsContainer"></div><button onclick="savePermissions()" class="btn btn-primary mt-3"><i class="fas fa-save"></i> حفظ الصلاحيات</button></div></div>
 
             </div>
         </div>
@@ -223,28 +160,8 @@
     <!-- Modals -->
     <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد</button></div></div></div></div>
     <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد؟</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button></div></div></div></div>
-    
-    <div class="modal fade" id="taskChatModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل ومتابعة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">
-                    <div id="taskChatInfo" class="mb-3"></div><hr>
-                    <h6>سجل المتابعات والتعليقات</h6>
-                    <div class="chat-box mb-3" id="taskChatHistory"></div>
-                    <textarea id="taskChatInput" class="form-control mb-2" placeholder="اكتب تحديث جديد..."></textarea>
-                    <label class="form-label">التاريخ القادم للمتابعة (اختياري)</label>
-                    <input type="date" id="taskNextFollowUp" class="form-control mb-2">
-                </div>
-                <div class="modal-footer" id="taskChatFooter"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="dailyTasksModal" tabindex="-1">
-        <div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> تسجيل المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label class="form-label">من الساعة</label><input type="time" id="dtStart" class="form-control"></div><div class="col-6"><label class="form-label">إلى الساعة</label><input type="time" id="dtEnd" class="form-control"></div></div><div class="mb-3"><label class="form-label">تفاصيل المهمة</label><textarea id="dtDetails" class="form-control" rows="2"></textarea></div><button onclick="saveDailyTask()" class="btn btn-success w-100 mb-3"><i class="fas fa-plus"></i> إضافة المهمة</button><hr><h6>المهام المسجلة اليوم:</h6><div id="todayTasksList" class="text-start"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div>
-    </div>
-
+    <div class="modal fade" id="taskChatModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل ومتابعة المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="taskChatInfo" class="mb-3"></div><hr><h6>سجل المتابعات والتعليقات</h6><div class="chat-box mb-3" id="taskChatHistory"></div><textarea id="taskChatInput" class="form-control mb-2" placeholder="اكتب تحديث جديد..."></textarea><label class="form-label">التاريخ القادم للمتابعة (اختياري)</label><input type="date" id="taskNextFollowUp" class="form-control mb-2"></div><div class="modal-footer" id="taskChatFooter"></div></div></div></div>
+    <div class="modal fade" id="dailyTasksModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> تسجيل المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label class="form-label">من الساعة</label><input type="time" id="dtStart" class="form-control"></div><div class="col-6"><label class="form-label">إلى الساعة</label><input type="time" id="dtEnd" class="form-control"></div></div><div class="mb-3"><label class="form-label">تفاصيل المهمة</label><textarea id="dtDetails" class="form-control" rows="2"></textarea></div><button onclick="saveDailyTask()" class="btn btn-success w-100 mb-3"><i class="fas fa-plus"></i> إضافة المهمة</button><hr><h6>المهام المسجلة اليوم:</h6><div id="todayTasksList" class="text-start"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div></div>
     <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
     <div class="modal fade" id="attendanceReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title">تقرير الحضور</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><select id="reportEmployees" class="form-control mb-3" multiple size="5" style="height: 150px;"></select><div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportSummary" value="summary" checked><label class="form-check-label" for="reportSummary">ملخص شهري</label></div><div class="form-check"><input class="form-check-input" type="radio" name="reportType" id="reportDetailed" value="detailed"><label class="form-check-label" for="reportDetailed">تفصيلي يومي</label></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-warning" onclick="generateAttendanceReport()">سحب Excel</button></div></div></div></div>
 
@@ -272,6 +189,35 @@
         let breakInterval = null;
         let isInitialNotifLoad = true;
         let analyticsChart = null;
+        let deferredPrompt = null;
+
+        // PWA Setup
+        const manifest = {
+            name: "نظام الإدارة المتكامل - مزنة",
+            short_name: "مزنة ERP",
+            display: "standalone",
+            background_color: "#f8f9fa",
+            theme_color: "#343a40",
+            icons: [{
+                src: "https://via.placeholder.com/192x192/343a40/ffffff?text=M",
+                sizes: "192x192",
+                type: "image/png"
+            }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        document.querySelector('#manifest-placeholder').setAttribute('href', URL.createObjectURL(manifestBlob));
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installAppBtn').classList.remove('d-none');
+        });
+        document.getElementById('installAppBtn').addEventListener('click', async () => {
+            if (deferredPrompt !== null) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') { deferredPrompt = null; document.getElementById('installAppBtn').classList.add('d-none'); }
+            }
+        });
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
@@ -291,9 +237,7 @@
                     loadDailyTasks();
                     loadNotifications();
                     loadAnnouncements();
-                    if (currentUserData.role === 'admin' || currentUserData.role === 'manager') {
-                        document.getElementById('analyticsRow').classList.remove('d-none');
-                    }
+                    if (currentUserData.role === 'admin' || currentUserData.role === 'manager') document.getElementById('analyticsRow').classList.remove('d-none');
                 }
                 loadData();
             } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
@@ -332,10 +276,16 @@
             }
 
             let cardsHtml = '';
-            if (can('view', 'requests')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body"><h6>طلبات المشتريات</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div></div></div>`;
-            if (can('view', 'tasks')) cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body"><h6>المهام النشطة</h6><h2 id="statPendingTasks" class="display-6 mb-0">0</h2></div></div></div>`;
-            cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showSection('missions', null)"><div class="card-body"><h6>المأموريات</h6><h2 id="statMissions" class="display-6 mb-0">0</h2></div></div></div>`;
-            cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-secondary shadow-sm h-100 quick-link" onclick="showSection('leaves', null)"><div class="card-body"><h6>إجازاتي / الأرصدة</h6><h2 id="statLeaves" class="display-6 mb-0">0</h2></div></div></div>`;
+            if (isAdmin || isManager) {
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body"><h6>مبيعات اليوم</h6><h2 id="statTodaySales" class="display-6 mb-0">0</h2><small>جنيه</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body"><h6>تأخر اليوم</h6><h2 id="statLateToday" class="display-6 mb-0">0</h2><small>موظف</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body"><h6>مهام مكتملة</h6><h2 id="statDoneTasks" class="display-6 mb-0">0</h2><small>مهمة</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body"><h6>إجمالي العملاء</h6><h2 id="statTotalCustomers" class="display-6 mb-0">0</h2><small>عميل</small></div></div></div>`;
+            } else {
+                if (can('view', 'requests')) cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body"><h6>طلبات المشتريات</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div></div></div>`;
+                if (can('view', 'tasks')) cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body"><h6>المهام النشطة</h6><h2 id="statPendingTasks" class="display-6 mb-0">0</h2></div></div></div>`;
+                cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-secondary shadow-sm h-100 quick-link" onclick="showSection('leaves', null)"><div class="card-body"><h6>إجازاتي / الأرصدة</h6><h2 id="statLeaves" class="display-6 mb-0">0</h2></div></div></div>`;
+            }
             document.getElementById('dashboardCards').innerHTML = cardsHtml;
 
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
@@ -401,14 +351,10 @@
                     else taskStatusCounts.done++;
                 }
             });
-
             if (analyticsChart) analyticsChart.destroy();
             analyticsChart = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: ['مهام جديدة', 'قيد التنفيذ', 'متأخرة', 'منتهية في وقتها'],
-                    datasets: [{ label: 'عدد المهام', data: [taskStatusCounts.new, taskStatusCounts.progress, taskStatusCounts.late, taskStatusCounts.done], backgroundColor: ['#0dcaf0', '#ffc107', '#dc3545', '#198754'] }]
-                },
+                data: { labels: ['مهام جديدة', 'قيد التنفيذ', 'متأخرة', 'منتهية في وقتها'], datasets: [{ label: 'عدد المهام', data: [taskStatusCounts.new, taskStatusCounts.progress, taskStatusCounts.late, taskStatusCounts.done], backgroundColor: ['#0dcaf0', '#ffc107', '#dc3545', '#198754'] }] },
                 options: { scales: { y: { beginAtZero: true } } }
             });
         }
@@ -511,7 +457,6 @@
             currentDailyTasksRef.push({ startTime: start, endTime: end, details, timestamp: new Date().toLocaleString() }).then(() => { toastr.success('تم إضافة المهمة'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; });
         }
 
-        // Base64 Upload Helper
         function uploadFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -521,14 +466,12 @@
             });
         }
 
-        // LEAVES LOGIC
         function calculateLeaveBalance(hireDateStr) {
             if(!hireDateStr) return { balance: 0, type: "غير محدد" };
             const hireDate = new Date(hireDateStr);
             const today = new Date();
             const monthsDiff = (today.getFullYear() - hireDate.getFullYear()) * 12 + (today.getMonth() - hireDate.getMonth());
             const yearsDiff = monthsDiff / 12;
-
             if (yearsDiff >= 10) return { balance: 30, type: "30 يوم (خبرة/سن)" };
             if (yearsDiff >= 1) return { balance: 21, type: "21 يوم (سنوية)" };
             let balance = Math.ceil((15 / 12) * monthsDiff);
@@ -565,12 +508,12 @@
                         if (can('edit', 'users')) act += `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                         if (can('delete', 'users')) act += `<button onclick="openDeleteModal('${u.id}','users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
                         if (!act) act = '<span class="text-muted">مقيد</span>';
-                        html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.role}</td><td>${act}</td></tr>`; 
+                        html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.role}</td><td>${u.salary || '-'}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('usersTbody').innerHTML = html;
                     document.getElementById('usersActions').innerHTML = `${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 }
-                renderTeam();
+                renderTeam(); loadKPIs();
             });
 
             if (can('view', 'departments')) {
@@ -590,40 +533,25 @@
             db.ref('tasks').on('value', snap => {
                 allTasks = [];
                 snap.forEach(child => { const t = child.val(); t.id = child.key; allTasks.push(t); });
-                
-                let activeHtml = '', lateHtml = '', doneHtml = '';
-                let activeCount = 0;
-
+                let activeHtml = '', lateHtml = '', doneHtml = '', activeCount = 0;
                 allTasks.forEach(t => {
                     let isLate = false;
-                    if(t.endDate && t.status !== 'مكتملة' && t.status !== 'مرفوضة') { 
-                        const end = new Date(t.endDate); const today = new Date(); if(end < today) isLate = true; 
-                    }
+                    if(t.endDate && t.status !== 'مكتملة' && t.status !== 'مرفوضة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) isLate = true; }
                     if(t.status === 'مكتملة' && t.endDate && t.approvedAt && new Date(t.endDate) < new Date(t.approvedAt)) isLate = true;
-
                     let badge = 'secondary';
                     if(t.status === 'تم الاستلام' || t.status === 'جديدة') badge = 'primary';
                     if(t.status === 'قيد التنفيذ' || t.status === 'معلقة') badge = 'warning';
                     if(t.status === 'بانتظار اعتماد الإدارة' || t.status === 'بانتظار اعتماد المدير') badge = 'info';
                     if(t.status === 'مكتملة') badge = 'success'; if(t.status === 'مرفوضة') badge = 'danger';
-                    
                     let cardHtml = `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card ${isLate ? 'late' : ''}" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">الموظف: ${t.userName}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || 'غير محدد'} إلى ${t.endDate || 'غير محدد'}</small> ${isLate ? '<span class="badge bg-danger ms-1">متأخرة</span>' : ''}</p></div></div></div>`;
-                    
-                    if (t.status === 'مكتملة' || t.status === 'مرفوضة') {
-                        doneHtml += cardHtml;
-                    } else if (isLate) {
-                        lateHtml += cardHtml;
-                    } else {
-                        activeHtml += cardHtml;
-                        activeCount++;
-                    }
+                    if (t.status === 'مكتملة' || t.status === 'مرفوضة') doneHtml += cardHtml;
+                    else if (isLate) lateHtml += cardHtml;
+                    else { activeHtml += cardHtml; activeCount++; }
                 });
-
                 if(document.getElementById('statPendingTasks')) document.getElementById('statPendingTasks').innerText = activeCount;
                 document.getElementById('tasksListActive').innerHTML = activeHtml || '<div class="col-12 text-center text-muted">لا توجد مهام نشطة</div>';
                 document.getElementById('tasksListLate').innerHTML = lateHtml || '<div class="col-12 text-center text-muted">لا توجد مهام متأخرة</div>';
                 document.getElementById('tasksListDone').innerHTML = doneHtml || '<div class="col-12 text-center text-muted">لا توجد مهام منتهية</div>';
-                
                 document.getElementById('tasksActions').innerHTML = `${can('add', 'tasks') ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 loadAnalyticsCharts();
             });
@@ -655,7 +583,6 @@
                 snap.forEach(child => { const l = child.val(); l.id = child.key; allLeaves.push(l); });
                 let html = '';
                 let visibleLeaves = isAdmin ? allLeaves : allLeaves.filter(l => l.userId === currentUserData.id);
-                
                 visibleLeaves.forEach(l => {
                     let badge = 'secondary';
                     if(l.status === 'بانتظار الموافقة') badge = 'warning'; if(l.status === 'معتمدة') badge = 'success'; if(l.status === 'مرفوضة') badge = 'danger';
@@ -696,6 +623,50 @@
                     document.getElementById('inventoryActions').innerHTML = `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> صنف جديد</button>`;
                 });
             }
+
+            let repHtml = '';
+            if (can('view', 'reports')) {
+                repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-danger shadow-sm h-100 quick-link" onclick="generatePayrollReport()"><div class="card-body text-center"><i class="fas fa-money-bill-wave fa-3x mb-2"></i><h5>كشف رواتب الشهر</h5></div></div></div>`;
+                repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="openAttendanceReportModal()"><div class="card-body text-center"><i class="fas fa-clock fa-3x mb-2"></i><h5>تقرير الحضور</h5></div></div></div>`;
+                repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="exportToExcel('salesTable', 'تقرير_المبيعات')"><div class="card-body text-center"><i class="fas fa-hand-holding-usd fa-3x mb-2"></i><h5>تقرير المبيعات</h5></div></div></div>`;
+            }
+            document.getElementById('reportsList').innerHTML = repHtml || '<div class="col-12 text-center text-muted">لا توجد تقارير متاحة لك</div>';
+        }
+
+        function loadKPIs() {
+            const isAdmin = currentUserData.role === 'admin';
+            const isManager = currentUserData.role === 'manager';
+            if(!isAdmin && !isManager) return;
+
+            // Today's Sales
+            const todayStr = new Date().toLocaleDateString();
+            let todaySales = 0;
+            allSales.forEach(s => { if(new Date(s.timestamp).toLocaleDateString() === todayStr) todaySales += parseFloat(s.amount || 0); });
+            if(document.getElementById('statTodaySales')) document.getElementById('statTodaySales').innerText = todaySales.toFixed(0);
+
+            // Total Customers
+            if(document.getElementById('statTotalCustomers')) document.getElementById('statTotalCustomers').innerText = allCustomers.length;
+
+            // Done Tasks
+            let doneTasks = allTasks.filter(t => t.status === 'مكتملة').length;
+            if(document.getElementById('statDoneTasks')) document.getElementById('statDoneTasks').innerText = doneTasks;
+
+            // Late Today
+            const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            db.ref('attendance').once('value').then(attSnap => {
+                let lateCount = 0;
+                attSnap.forEach(userAttSnap => {
+                    const userAtt = userAttSnap.val()[monthYear]?.[day];
+                    if (userAtt && userAtt.sessions) {
+                        const firstSession = Object.values(userAtt.sessions)[0];
+                        if (firstSession && firstSession.checkIn) {
+                            const [h, m] = firstSession.checkIn.split(':').map(Number);
+                            if (h > 9 || (h === 9 && m > 0)) lateCount++;
+                        }
+                    }
+                });
+                if(document.getElementById('statLateToday')) document.getElementById('statLateToday').innerText = lateCount;
+            });
         }
 
         function renderTeam() {
@@ -744,7 +715,6 @@
             currentTaskChatId = id;
             const isAdmin = currentUserData.role === 'admin';
             const isAssignedUser = t.userId === currentUserData.id;
-            
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
             document.getElementById('taskChatInfo').innerHTML = `<p><b>الموظف:</b> ${t.userName} | <b>الحالة:</b> ${t.status}</p>`;
             let chatHtml = '';
@@ -752,19 +722,10 @@
             document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات</p>';
             document.getElementById('taskChatInput').value = ''; 
             document.getElementById('taskNextFollowUp').value = '';
-            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            
-            if (isAdmin && t.status !== 'مكتملة' && t.status !== 'مرفوضة') {
-                footer += `<button type="button" class="btn btn-danger" onclick="adminForceCompleteTask()"><i class="fas fa-flag-checkered"></i> إنهاء المهمة (إجباري)</button>`;
-            }
-            if (isAdmin && t.status === 'بانتظار اعتماد الإدارة') {
-                footer += `<button type="button" class="btn btn-warning" onclick="adminRequestTaskEdit()"><i class="fas fa-edit"></i> طلب تعديل</button>`;
-            }
-            if (isAssignedUser && t.status !== 'بانتظار اعتماد الإدارة') {
-                footer += `<button type="button" class="btn btn-info text-white" onclick="openEditModal('task','${t.id}')"><i class="fas fa-pen"></i> تعديل المهمة</button>`;
-            }
-            
+            if (isAdmin && t.status !== 'مكتملة' && t.status !== 'مرفوضة') footer += `<button type="button" class="btn btn-danger" onclick="adminForceCompleteTask()"><i class="fas fa-flag-checkered"></i> إنهاء المهمة (إجباري)</button>`;
+            if (isAdmin && t.status === 'بانتظار اعتماد الإدارة') footer += `<button type="button" class="btn btn-warning" onclick="adminRequestTaskEdit()"><i class="fas fa-edit"></i> طلب تعديل</button>`;
+            if (isAssignedUser && t.status !== 'بانتظار اعتماد الإدارة') footer += `<button type="button" class="btn btn-info text-white" onclick="openEditModal('task','${t.id}')"><i class="fas fa-pen"></i> تعديل المهمة</button>`;
             if (t.status !== 'مكتملة' && t.status !== 'مرفوضة') {
                 if(isAssignedUser && t.status === 'جديدة') footer += `<button type="button" class="btn btn-primary" onclick="updateTaskStatus('تم الاستلام', 'تم استلام المهمة')">استلام المهمة</button>`;
                 if(isAssignedUser && t.status !== 'بانتظار اعتماد المدير') footer += `<button type="button" class="btn btn-success" onclick="updateTaskStatus('بانتظار اعتماد المدير', 'طلب اعتماد إنهاء')">طلب إنهاء</button>`;
@@ -797,7 +758,6 @@
         function updateTaskStatus(newStatus, commentText) {
             let updates = { status: newStatus };
             if(newStatus === 'مكتملة') updates.approvedAt = new Date().toLocaleString();
-            
             db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: commentText, time: new Date().toLocaleString() }).then(() => {
                 db.ref('tasks/' + currentTaskChatId).update(updates).then(() => { 
                     toastr.success('تم تحديث الحالة'); 
@@ -810,12 +770,11 @@
             currentAdd.type = type;
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             const depOptsData = (await db.ref('departments').once('value')).val() || {};
-            
             if (type === 'user') {
                 title.innerText = 'إضافة مستخدم';
                 let depCheckboxes = '';
                 Object.values(depOptsData).forEach(d => { depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}"><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; });
-                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><input type="text" id="newPhone" class="form-control mb-2" placeholder="التليفون"><input type="date" id="newHireDate" class="form-control mb-2"><input type="text" id="newJobTitle" class="form-control mb-2" placeholder="المسمى الوظيفي"><label>الأقسام</label><div class="mb-2 border p-2 rounded">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
+                body.innerHTML = `<input type="text" id="newName" class="form-control mb-2" placeholder="الاسم"><input type="email" id="newEmail" class="form-control mb-2" placeholder="البريد"><input type="password" id="newPassword" class="form-control mb-2" placeholder="كلمة المرور"><input type="text" id="newPhone" class="form-control mb-2" placeholder="التليفون"><input type="date" id="newHireDate" class="form-control mb-2"><input type="text" id="newJobTitle" class="form-control mb-2" placeholder="المسمى الوظيفي"><input type="number" id="newSalary" class="form-control mb-2" placeholder="الراتب الأساسي"><label>الأقسام</label><div class="mb-2 border p-2 rounded">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user">مستخدم</option><option value="manager">مدير قسم</option><option value="admin">مدير عام</option></select>`;
             } else if (type === 'department') {
                 title.innerText = 'إضافة قسم';
                 let opts = '<option value="">--</option>'; allUsers.forEach(u => opts += `<option value="${u.name}">${u.name}</option>`);
@@ -834,42 +793,11 @@
             } else if (type === 'leave') {
                 title.innerText = 'طلب إجازة جديد';
                 const bal = calculateLeaveBalance(currentUserData.hireDate);
-                body.innerHTML = `
-                    <div class="alert alert-info">رصيدك الحالي: ${bal.balance} يوم (${bal.type})</div>
-                    <label>نوع الإجازة</label>
-                    <select id="leaveType" class="form-control mb-2" onchange="toggleLeaveFields(this.value)">
-                        <option value="سنوية">سنوية</option>
-                        <option value="عارضة">عارضة</option>
-                        <option value="مرضية">مرضية</option>
-                        <option value="وفاة">وفاة</option>
-                        <option value="حج">حج</option>
-                        <option value="وضع">وضع (للنساء)</option>
-                    </select>
-                    <div class="row mb-2">
-                        <div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div>
-                        <div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div>
-                    </div>
-                    <div id="casualWarn" class="alert alert-warning d-none small">ملاحظة: العارضة تُطلب قبل 10 صباحاً وبيومين كحد أقصى.</div>
-                    <div id="sickWarn" class="alert alert-warning d-none small">ملاحظة: المرضية تتطلب رفع روشتة وتقرير.</div>
-                    <label>السبب (إجباري)</label>
-                    <textarea id="leaveReason" class="form-control mb-2" placeholder="سبب الإجازة"></textarea>
-                    <label>رقم تليفون للتواصل أثناء الإجازة (إجباري)</label>
-                    <input type="text" id="leavePhone" class="form-control mb-2" value="${currentUserData.phone || ''}">
-                    <div id="fileUploadContainer" class="d-none">
-                        <label>رفع المرفقات (روشتة/تقرير/PDF)</label>
-                        <input type="file" id="leaveFile" class="form-control mb-2" accept="image/*,application/pdf">
-                    </div>
-                `;
+                body.innerHTML = `<div class="alert alert-info">رصيدك الحالي: ${bal.balance} يوم (${bal.type})</div><label>نوع الإجازة</label><select id="leaveType" class="form-control mb-2" onchange="toggleLeaveFields(this.value)"><option value="سنوية">سنوية</option><option value="عارضة">عارضة</option><option value="مرضية">مرضية</option><option value="وفاة">وفاة</option><option value="حج">حج</option><option value="وضع">وضع (للنساء)</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div></div><div id="casualWarn" class="alert alert-warning d-none small">ملاحظة: العارضة تُطلب قبل 10 صباحاً وبيومين كحد أقصى.</div><div id="sickWarn" class="alert alert-warning d-none small">ملاحظة: المرضية تتطلب رفع روشتة وتقرير.</div><label>السبب (إجباري)</label><textarea id="leaveReason" class="form-control mb-2" placeholder="سبب الإجازة"></textarea><label>رقم تليفون للتواصل أثناء الإجازة (إجباري)</label><input type="text" id="leavePhone" class="form-control mb-2" value="${currentUserData.phone || ''}"><div id="fileUploadContainer" class="d-none"><label>رفع المرفقات (روشتة/تقرير/PDF)</label><input type="file" id="leaveFile" class="form-control mb-2" accept="image/*,application/pdf"></div>`;
             } else if (type === 'leave_admin') {
                 title.innerText = 'تسجيل إجازة لموظف (بدون قيود)';
                 let opts = '<option value="">-- اختر الموظف --</option>'; allUsers.forEach(u => opts += `<option value="${u.id}">${u.name}</option>`);
-                body.innerHTML = `
-                    <select id="leaveAdminUser" class="form-control mb-2">${opts}</select>
-                    <select id="leaveType" class="form-control mb-2"><option value="سنوية">سنوية</option><option value="مرضية">مرضية</option><option value="عارضة">عارضة</option><option value="وفاة">وفاة</option></select>
-                    <div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div></div>
-                    <textarea id="leaveReason" class="form-control mb-2" placeholder="السبب"></textarea>
-                    <div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" checked><label class="form-check-label">خصم من الراتب (لو بدون رصيد)</label></div>
-                `;
+                body.innerHTML = `<select id="leaveAdminUser" class="form-control mb-2">${opts}</select><select id="leaveType" class="form-control mb-2"><option value="سنوية">سنوية</option><option value="مرضية">مرضية</option><option value="عارضة">عارضة</option><option value="وفاة">وفاة</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control"></div></div><textarea id="leaveReason" class="form-control mb-2" placeholder="السبب"></textarea><div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" checked><label class="form-check-label">خصم من الراتب (لو بدون رصيد)</label></div>`;
             } else if (type === 'sale') {
                 title.innerText = 'بيع جديد';
                 let cOpts = '<option value="">--</option>'; allCustomers.forEach(c => cOpts += `<option value="${c.name}">${c.name}</option>`);
@@ -890,11 +818,10 @@
 
         async function confirmAdd() {
             const type = currentAdd.type; const isAdmin = currentUserData.role === 'admin';
-            
             if (type === 'user') { 
                 const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
                 auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
+                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
                 }).catch(err => toastr.error(err.message)); 
             }
             else if (type === 'department') { db.ref('departments').push({ name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
@@ -917,36 +844,20 @@
                 const lEnd = document.getElementById('leaveEnd').value;
                 const lReason = document.getElementById('leaveReason').value;
                 const lPhone = document.getElementById('leavePhone').value;
-                
                 if(!lReason.trim() || !lPhone.trim()) return toastr.warning('السبب ورقم التليفون إجباري');
-                
                 const today = new Date(); today.setHours(0,0,0,0);
                 const startDt = new Date(lStart);
                 const diffDays = (startDt - today) / (1000 * 60 * 60 * 24);
                 const currentHour = new Date().getHours();
-                
-                if (lType !== 'مرضية' && lType !== 'عارضة' && lType !== 'وفاة') {
-                    if (diffDays < 2) return toastr.error('هذه الإجازة تتطلب التقديم قبلها بيومين على الأقل');
-                }
-                if (lType === 'عارضة') {
-                    if (currentHour >= 10 && diffDays === 0) return toastr.error('الإجازة العارضة تُطلب قبل الساعة 10 صباحاً');
-                    if (diffDays > 2) return toastr.error('العارضة بحد أقصى يومان في المرة');
-                }
-                
+                if (lType !== 'مرضية' && lType !== 'عارضة' && lType !== 'وفاة') { if (diffDays < 2) return toastr.error('هذه الإجازة تتطلب التقديم قبلها بيومين على الأقل'); }
+                if (lType === 'عارضة') { if (currentHour >= 10 && diffDays === 0) return toastr.error('الإجازة العارضة تُطلب قبل الساعة 10 صباحاً'); if (diffDays > 2) return toastr.error('العارضة بحد أقصى يومان في المرة'); }
                 let fileUrl = null;
                 const fileInput = document.getElementById('leaveFile');
                 if ((lType === 'مرضية' || lType === 'وضع') && fileInput && fileInput.files[0]) {
                     toastr.info('جاري رفع الملف...');
                     fileUrl = await uploadFile(fileInput.files[0]);
                 }
-
-                db.ref('leaves').push({
-                    type: lType, startDate: lStart, endDate: lEnd, reason: lReason, phone: lPhone, fileUrl: fileUrl,
-                    status: 'بانتظار الموافقة', userId: currentUserData.id, userName: currentUserData.name
-                }).then(() => {
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide();
-                    toastr.success('تم تسجيل طلب الإجازة');
-                });
+                db.ref('leaves').push({ type: lType, startDate: lStart, endDate: lEnd, reason: lReason, phone: lPhone, fileUrl: fileUrl, status: 'بانتظار الموافقة', userId: currentUserData.id, userName: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإجازة'); });
             }
             else if (type === 'leave_admin') {
                 const u = document.getElementById('leaveAdminUser');
@@ -955,19 +866,9 @@
                 const lEnd = document.getElementById('leaveEnd').value;
                 const lReason = document.getElementById('leaveReason').value;
                 const deduct = document.getElementById('leaveDeductSalary').checked;
-                
-                db.ref('leaves').push({
-                    type: lType, startDate: lStart, endDate: lEnd, reason: lReason, 
-                    deductSalary: deduct,
-                    status: 'معتمدة', 
-                    userId: u.value, userName: u.options[u.selectedIndex].text,
-                    approvedBy: currentUserData.name
-                }).then(() => {
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide();
-                    toastr.success('تم اعتماد الإجازة للموظف');
-                });
+                db.ref('leaves').push({ type: lType, startDate: lStart, endDate: lEnd, reason: lReason, deductSalary: deduct, status: 'معتمدة', userId: u.value, userName: u.options[u.selectedIndex].text, approvedBy: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم اعتماد الإجازة للموظف'); });
             }
-            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, status: 'إنتاج' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
+            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, status: 'إنتاج', timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
             else if (type === 'inventory') { db.ref('inventory').push({ name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
         }
 
@@ -1010,14 +911,11 @@
             if (l.fileUrl) bodyHtml += `<a href="${l.fileUrl}" target="_blank" class="btn btn-info text-white"><i class="fas fa-file"></i> عرض المرفق</a>`;
             if (l.deductSalary) bodyHtml += `<div class="alert alert-danger mt-2">تم خصم أيام هذه الإجازة من راتب الموظف</div>`;
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
-            
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin) {
                 footer += `<button class="btn btn-warning" onclick="openEditModal('leave','${l.id}')"><i class="fas fa-edit"></i> تعديل</button>`;
                 footer += `<button class="btn btn-outline-danger" onclick="openDeleteModal('${l.id}','leaves'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i> حذف</button>`;
-                if (l.status === 'بانتظار الموافقة') {
-                    footer += `<button class="btn btn-success" onclick="updateLeaveStatus('${id}', 'معتمدة')">اعتماد</button><button class="btn btn-danger" onclick="updateLeaveStatus('${id}', 'مرفوضة')">رفض</button>`;
-                }
+                if (l.status === 'بانتظار الموافقة') footer += `<button class="btn btn-success" onclick="updateLeaveStatus('${id}', 'معتمدة')">اعتماد</button><button class="btn btn-danger" onclick="updateLeaveStatus('${id}', 'مرفوضة')">رفض</button>`;
             }
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
@@ -1025,7 +923,6 @@
         function updateLeaveStatus(id, status) { db.ref('leaves/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); }); }
 
         function addFollowUp(custId) { const note = prompt("ملاحظة المتابعة:"); if (note) { db.ref('customers/' + custId + '/followUps').push({ date: new Date().toLocaleString(), note, repId: currentUserData.id }).then(() => toastr.success('تمت الإضافة')); } }
-        
         function openEditMyProfileModal() { openEditModal('user', currentUserData.id); }
         
         async function openEditModal(type, id) {
@@ -1038,27 +935,18 @@
                 Object.values(deps).forEach(d => { const checked = userDepts.includes(d.name) ? 'checked' : ''; depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}" ${checked}><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; });
                 title.innerText='تعديل مستخدم'; 
                 const imgSrc = data.photoURL || 'https://via.placeholder.com/100';
-                body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}" placeholder="رقم التليفون (مطلوب)"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}" placeholder="تاريخ التعيين (مطلوب)"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}" placeholder="المسمى الوظيفي (مطلوب)"><label>الأقسام</label><div class="mb-2 border p-2 rounded">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; 
+                body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}" placeholder="رقم التليفون"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}"><input type="number" id="newSalary" class="form-control mb-2" value="${data.salary || 0}"><label>الأقسام</label><div class="mb-2 border p-2 rounded">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; 
                 document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); });
                 document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
             }
             else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
-            else if (type === 'task') { 
-                const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; 
-                title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; 
-            }
+            else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
             else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address||''}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
             else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
             else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option><option ${data.category==='مادة خام'?'selected':''}>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}"><input type="text" id="invUnit" class="form-control mb-2" value="${data.unit}">`; }
             else if (type === 'leave') {
                 title.innerText = 'تعديل إجازة';
-                body.innerHTML = `
-                    <select id="leaveType" class="form-control mb-2"><option ${data.type==='سنوية'?'selected':''}>سنوية</option><option ${data.type==='مرضية'?'selected':''}>مرضية</option><option ${data.type==='عارضة'?'selected':''}>عارضة</option><option ${data.type==='وفاة'?'selected':''}>وفاة</option><option ${data.type==='حج'?'selected':''}>حج</option><option ${data.type==='وضع'?'selected':''}>وضع</option></select>
-                    <div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control" value="${data.startDate}"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control" value="${data.endDate}"></div></div>
-                    <textarea id="leaveReason" class="form-control mb-2" placeholder="السبب">${data.reason}</textarea>
-                    <select id="leaveStatus" class="form-control mb-2"><option ${data.status==='بانتظار الموافقة'?'selected':''}>بانتظار الموافقة</option><option ${data.status==='معتمدة'?'selected':''}>معتمدة</option><option ${data.status==='مرفوضة'?'selected':''}>مرفوضة</option></select>
-                    <div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" ${data.deductSalary?'checked':''}><label class="form-check-label">خصم من الراتب</label></div>
-                `;
+                body.innerHTML = `<select id="leaveType" class="form-control mb-2"><option ${data.type==='سنوية'?'selected':''}>سنوية</option><option ${data.type==='مرضية'?'selected':''}>مرضية</option><option ${data.type==='عارضة'?'selected':''}>عارضة</option><option ${data.type==='وفاة'?'selected':''}>وفاة</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control" value="${data.startDate}"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control" value="${data.endDate}"></div></div><textarea id="leaveReason" class="form-control mb-2" placeholder="السبب">${data.reason}</textarea><select id="leaveStatus" class="form-control mb-2"><option ${data.status==='بانتظار الموافقة'?'selected':''}>بانتظار الموافقة</option><option ${data.status==='معتمدة'?'selected':''}>معتمدة</option><option ${data.status==='مرفوضة'?'selected':''}>مرفوضة</option></select><div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" ${data.deductSalary?'checked':''}><label class="form-check-label">خصم من الراتب</label></div>`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
@@ -1067,7 +955,7 @@
         async function confirmEdit() {
             const t = currentEdit.type; const id = currentEdit.id; let upd = {};
             if (t === 'users') { 
-                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; 
+                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; 
                 const fileInput = document.getElementById('profilePhoto');
                 if (fileInput && fileInput.files[0]) {
                     toastr.info('جاري رفع الصورة...');
@@ -1081,16 +969,83 @@
             }
             else if (t === 'departments') { upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }; }
             else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
-            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
+            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, status: document.getElementById('saleStatus').value }; }
             else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
             else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
             else if (t === 'leaves') { upd = { type: document.getElementById('leaveType').value, startDate: document.getElementById('leaveStart').value, endDate: document.getElementById('leaveEnd').value, reason: document.getElementById('leaveReason').value, status: document.getElementById('leaveStatus').value, deductSalary: document.getElementById('leaveDeductSalary').checked }; }
-            
             db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
         function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
+
+        function openAttendanceReportModal() { const sel = document.getElementById('reportEmployees'); sel.innerHTML = ''; allUsers.forEach(u => sel.appendChild(new Option(u.name, u.id))); new bootstrap.Modal(document.getElementById('attendanceReportModal')).show(); }
+        async function generateAttendanceReport() {
+            const sel = document.getElementById('reportEmployees'); const users = Array.from(sel.selectedOptions).map(o => ({ id: o.value, name: o.text })); if (!users.length) return toastr.warning('اختر موظف');
+            const att = (await db.ref('attendance').once('value')).val() || {}; const wb = XLSX.utils.book_new();
+            if (document.querySelector('input[name="reportType"]:checked').value === 'summary') {
+                let d = []; users.forEach(u => { for (const m in (att[u.id]||{})) { let t=0; for (const day in att[u.id][m]) if(att[u.id][m][day].totalHours) t+=parseFloat(att[u.id][m][day].totalHours); d.push({ "الموظف": u.name, "الشهر": m, "الساعات": t.toFixed(2) }); } });
+                const ws = XLSX.utils.json_to_sheet(d); XLSX.utils.book_append_sheet(wb, ws, "ملخص");
+            } else {
+                users.forEach(u => { 
+                    let r=[]; 
+                    for (const m in (att[u.id]||{})) { 
+                        for (const day in att[u.id][m]) { 
+                            if(att[u.id][m][day].sessions) {
+                                Object.values(att[u.id][m][day].sessions).forEach(s => {
+                                    r.push({ "التاريخ": `${day}-${m}`, "حضور": formatTime(s.checkIn), "انصراف": s.checkOut ? formatTime(s.checkOut) : "", "المدة": s.duration||0 }); 
+                                }); 
+                            }
+                        } 
+                    } 
+                    if(r.length) { const ws = XLSX.utils.json_to_sheet(r); XLSX.utils.book_append_sheet(wb, ws, u.name.substring(0,28)); } 
+                });
+            }
+            XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getOrCreateInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
+        }
+
+        async function generatePayrollReport() {
+            const monthYear = prompt("أدخل شهر وسنة الرواتب (مثال: 05-2024):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
+            if (!monthYear) return;
+            const attSnap = await db.ref('attendance').once('value');
+            const allAtt = attSnap.val() || {};
+            let data = [];
+            allUsers.forEach(u => {
+                if (!u.salary) return;
+                const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
+                let totalHours = 0;
+                let absentDays = 0;
+                const daysInMonth = new Date(parseInt(monthYear.split('-')[1]), parseInt(monthYear.split('-')[0]), 0).getDate();
+                
+                for (const day in monthlyAtt) {
+                    if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours);
+                }
+                // Simplified calculation: assume 8 hours per day is full attendance
+                let presentDays = Math.round(totalHours / 8);
+                absentDays = Math.max(0, daysInMonth - presentDays);
+                
+                const dailyRate = u.salary / daysInMonth;
+                const deduction = absentDays * dailyRate;
+                const netSalary = u.salary - deduction;
+
+                data.push({
+                    "الموظف": u.name,
+                    "الراتب الأساسي": u.salary,
+                    "أيام الغياب": absentDays,
+                    "الخصومات": deduction.toFixed(2),
+                    "الصافي": netSalary.toFixed(2)
+                });
+            });
+            
+            if(!data.length) return toastr.warning("لا توجد بيانات رواتب للموظفين. تأكد من تحديد الراتب الأساسي لكل موظف.");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+            XLSX.writeFile(wb, `Payroll_${monthYear}.xlsx`);
+            toastr.success("تم تصدير كشف الرواتب");
+        }
+        
+        function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
     </script>
 </body>
 </html>
