@@ -251,7 +251,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -259,7 +258,6 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        const storage = firebase.storage();
         toastr.options = { "positionClass": "toast-bottom-left", "timeOut": "3000" };
 
         let currentDelete = { id: '', type: '' };
@@ -512,11 +510,15 @@
             if(!start || !end || !details.trim()) return toastr.warning('من فضلك أدخل الوقت والتفاصيل');
             currentDailyTasksRef.push({ startTime: start, endTime: end, details, timestamp: new Date().toLocaleString() }).then(() => { toastr.success('تم إضافة المهمة'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; });
         }
-        async function exportDailyTasksToExcel() {
-            const snap = await db.ref('dailyTasks').once('value'); let data = [];
-            snap.forEach(userSnap => { const userId = userSnap.key; const user = allUsers.find(u => u.id === userId); const userName = user ? user.name : 'غير معروف'; userSnap.forEach(dateSnap => { const date = dateSnap.key; let dailyMinutes = 0; let tasksDetails = []; dateSnap.forEach(taskSnap => { const t = taskSnap.val(); tasksDetails.push(`${t.startTime} - ${t.endTime}: ${t.details}`); const [sh, sm] = t.startTime.split(':').map(Number); const [eh, em] = t.endTime.split(':').map(Number); dailyMinutes += ((eh * 60 + em) - (sh * 60 + sm)); }); data.push({ "اسم الموظف": userName, "التاريخ": date, "إجمالي ساعات العمل": (dailyMinutes / 60).toFixed(2), "تفاصيل المهام": tasksDetails.join(' | ') }); }); });
-            if(!data.length) return toastr.warning("لا توجد بيانات");
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks"); XLSX.writeFile(wb, "Daily_Tasks_Report.xlsx"); toastr.success("تم التصدير");
+
+        // Base64 Upload Helper
+        function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+            });
         }
 
         // LEAVES LOGIC
@@ -529,8 +531,6 @@
 
             if (yearsDiff >= 10) return { balance: 30, type: "30 يوم (خبرة/سن)" };
             if (yearsDiff >= 1) return { balance: 21, type: "21 يوم (سنوية)" };
-            
-            // Less than 1 year, pro-rate 15 days, round up
             let balance = Math.ceil((15 / 12) * monthsDiff);
             if(balance < 0) balance = 0;
             return { balance: balance, type: `${balance} يوم (أقل من سنة)` };
@@ -549,11 +549,6 @@
                     document.getElementById('leavesActions').innerHTML = `<button onclick="openAddModal('leave')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إجازة</button>`;
                 }
             }
-        }
-        async function uploadFile(file, path) {
-            const ref = storage.ref(path + '/' + Date.now() + '_' + file.name);
-            await ref.put(file);
-            return await ref.getDownloadURL();
         }
 
         function loadData() {
@@ -707,13 +702,15 @@
             db.ref('attendance').once('value').then(attSnap => {
                 const allAtt = attSnap.val() || {}; let html = '';
                 const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+                const isAdmin = currentUserData.role === 'admin';
                 allUsers.forEach(u => {
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
                     const statusColor = isCheckedIn ? 'success' : 'warning';
                     const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
                     const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
-                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100 text-center"><div class="card-body"><img src="${imgSrc}" class="profile-pic mb-2"><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-0"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p></div></div></div>`;
+                    let adminBtn = isAdmin ? `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-primary mt-2"><i class="fas fa-user-edit"></i> تعديل الملف</button>` : '';
+                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm h-100 text-center"><div class="card-body"><img src="${imgSrc}" class="profile-pic mb-2"><h5 class="mb-1">${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="text-muted small mb-1">${u.jobTitle || 'موظف'}</p><p class="text-muted small mb-1"><i class="fas fa-building"></i> ${depts}</p><p class="text-muted small mb-0"><i class="fas fa-phone"></i> ${u.phone || 'لا يوجد'}</p>${adminBtn}</div></div></div>`;
                 });
                 document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
             });
@@ -746,7 +743,6 @@
             const t = allTasks.find(task => task.id === id); if (!t) return;
             currentTaskChatId = id;
             const isAdmin = currentUserData.role === 'admin';
-            const isCreator = t.createdById === currentUserData.id;
             const isAssignedUser = t.userId === currentUserData.id;
             
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
@@ -759,15 +755,12 @@
             
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             
-            // Admin Force Complete
             if (isAdmin && t.status !== 'مكتملة' && t.status !== 'مرفوضة') {
                 footer += `<button type="button" class="btn btn-danger" onclick="adminForceCompleteTask()"><i class="fas fa-flag-checkered"></i> إنهاء المهمة (إجباري)</button>`;
             }
-            // Admin Request Edit
             if (isAdmin && t.status === 'بانتظار اعتماد الإدارة') {
                 footer += `<button type="button" class="btn btn-warning" onclick="adminRequestTaskEdit()"><i class="fas fa-edit"></i> طلب تعديل</button>`;
             }
-            // Employee Edit after approval
             if (isAssignedUser && t.status !== 'بانتظار اعتماد الإدارة') {
                 footer += `<button type="button" class="btn btn-info text-white" onclick="openEditModal('task','${t.id}')"><i class="fas fa-pen"></i> تعديل المهمة</button>`;
             }
@@ -944,7 +937,7 @@
                 const fileInput = document.getElementById('leaveFile');
                 if ((lType === 'مرضية' || lType === 'وضع') && fileInput && fileInput.files[0]) {
                     toastr.info('جاري رفع الملف...');
-                    fileUrl = await uploadFile(fileInput.files[0], `leave_attachments/${currentUserData.id}`);
+                    fileUrl = await uploadFile(fileInput.files[0]);
                 }
 
                 db.ref('leaves').push({
@@ -966,7 +959,7 @@
                 db.ref('leaves').push({
                     type: lType, startDate: lStart, endDate: lEnd, reason: lReason, 
                     deductSalary: deduct,
-                    status: 'معتمدة', // Admin adds directly as approved
+                    status: 'معتمدة', 
                     userId: u.value, userName: u.options[u.selectedIndex].text,
                     approvedBy: currentUserData.name
                 }).then(() => {
@@ -1019,8 +1012,12 @@
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            if (isAdmin && l.status === 'بانتظار الموافقة') {
-                footer += `<button class="btn btn-success" onclick="updateLeaveStatus('${id}', 'معتمدة')">اعتماد</button><button class="btn btn-danger" onclick="updateLeaveStatus('${id}', 'مرفوضة')">رفض</button>`;
+            if (isAdmin) {
+                footer += `<button class="btn btn-warning" onclick="openEditModal('leave','${l.id}')"><i class="fas fa-edit"></i> تعديل</button>`;
+                footer += `<button class="btn btn-outline-danger" onclick="openDeleteModal('${l.id}','leaves'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i> حذف</button>`;
+                if (l.status === 'بانتظار الموافقة') {
+                    footer += `<button class="btn btn-success" onclick="updateLeaveStatus('${id}', 'معتمدة')">اعتماد</button><button class="btn btn-danger" onclick="updateLeaveStatus('${id}', 'مرفوضة')">رفض</button>`;
+                }
             }
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
@@ -1029,39 +1026,67 @@
 
         function addFollowUp(custId) { const note = prompt("ملاحظة المتابعة:"); if (note) { db.ref('customers/' + custId + '/followUps').push({ date: new Date().toLocaleString(), note, repId: currentUserData.id }).then(() => toastr.success('تمت الإضافة')); } }
         
-        async function openEditMyProfileModal() {
-            currentEdit = { id: currentUserData.id, type: 'users' };
+        function openEditMyProfileModal() { openEditModal('user', currentUserData.id); }
+        
+        async function openEditModal(type, id) {
+            const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
+            currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            title.innerText = 'تعديل بياناتي الشخصية';
-            const imgSrc = currentUserData.photoURL || 'https://via.placeholder.com/100';
-            body.innerHTML = `
-                <div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div>
-                <input type="text" id="newName" class="form-control mb-2" value="${currentUserData.name}" readonly>
-                <input type="text" id="newPhone" class="form-control mb-2" value="${currentUserData.phone || ''}" placeholder="رقم التليفون (مطلوب)">
-                <input type="date" id="newHireDate" class="form-control mb-2" value="${currentUserData.hireDate || ''}" placeholder="تاريخ التعيين (مطلوب)">
-                <input type="text" id="newJobTitle" class="form-control mb-2" value="${currentUserData.jobTitle || ''}" placeholder="المسمى الوظيفي (مطلوب)">
-            `;
-            document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEditMyProfile()');
-            document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); });
+            if (type === 'user') { 
+                const deps = (await db.ref('departments').once('value')).val() || {}; const userDepts = data.departments || (data.deptName ? [data.deptName] : []);
+                let depCheckboxes = '';
+                Object.values(deps).forEach(d => { const checked = userDepts.includes(d.name) ? 'checked' : ''; depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check" type="checkbox" value="${d.name}" id="dept_${d.name}" ${checked}><label class="form-check-label" for="dept_${d.name}">${d.name}</label></div>`; });
+                title.innerText='تعديل مستخدم'; 
+                const imgSrc = data.photoURL || 'https://via.placeholder.com/100';
+                body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}" placeholder="رقم التليفون (مطلوب)"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}" placeholder="تاريخ التعيين (مطلوب)"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}" placeholder="المسمى الوظيفي (مطلوب)"><label>الأقسام</label><div class="mb-2 border p-2 rounded">${depCheckboxes}</div><select id="newRole" class="form-control"><option value="user" ${data.role==='user'?'selected':''}>مستخدم</option><option value="manager" ${data.role==='manager'?'selected':''}>مدير قسم</option><option value="admin" ${data.role==='admin'?'selected':''}>مدير عام</option></select>`; 
+                document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); });
+                document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
+            }
+            else if (type === 'department') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${users[u].name}" ${data.managerName===users[u].name?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><select id="depManager" class="form-control mb-2">${opts}</select><textarea id="depDesc" class="form-control">${data.desc||''}</textarea>`; }
+            else if (type === 'task') { 
+                const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; 
+                title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; 
+            }
+            else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address||''}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
+            else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
+            else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option><option ${data.category==='مادة خام'?'selected':''}>مادة خام</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}"><input type="text" id="invUnit" class="form-control mb-2" value="${data.unit}">`; }
+            else if (type === 'leave') {
+                title.innerText = 'تعديل إجازة';
+                body.innerHTML = `
+                    <select id="leaveType" class="form-control mb-2"><option ${data.type==='سنوية'?'selected':''}>سنوية</option><option ${data.type==='مرضية'?'selected':''}>مرضية</option><option ${data.type==='عارضة'?'selected':''}>عارضة</option><option ${data.type==='وفاة'?'selected':''}>وفاة</option><option ${data.type==='حج'?'selected':''}>حج</option><option ${data.type==='وضع'?'selected':''}>وضع</option></select>
+                    <div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control" value="${data.startDate}"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control" value="${data.endDate}"></div></div>
+                    <textarea id="leaveReason" class="form-control mb-2" placeholder="السبب">${data.reason}</textarea>
+                    <select id="leaveStatus" class="form-control mb-2"><option ${data.status==='بانتظار الموافقة'?'selected':''}>بانتظار الموافقة</option><option ${data.status==='معتمدة'?'selected':''}>معتمدة</option><option ${data.status==='مرفوضة'?'selected':''}>مرفوضة</option></select>
+                    <div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" ${data.deductSalary?'checked':''}><label class="form-check-label">خصم من الراتب</label></div>
+                `;
+            }
+            document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmEdit()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
-        async function confirmEditMyProfile() {
-            const upd = { 
-                phone: document.getElementById('newPhone').value, 
-                hireDate: document.getElementById('newHireDate').value, 
-                jobTitle: document.getElementById('newJobTitle').value 
-            };
-            const fileInput = document.getElementById('profilePhoto');
-            if (fileInput && fileInput.files[0]) {
-                toastr.info('جاري رفع الصورة...');
-                upd.photoURL = await uploadFile(fileInput.files[0], `profiles/${currentUserData.id}`);
+
+        async function confirmEdit() {
+            const t = currentEdit.type; const id = currentEdit.id; let upd = {};
+            if (t === 'users') { 
+                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, departments: Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value), role: document.getElementById('newRole').value }; 
+                const fileInput = document.getElementById('profilePhoto');
+                if (fileInput && fileInput.files[0]) {
+                    toastr.info('جاري رفع الصورة...');
+                    upd.photoURL = await uploadFile(fileInput.files[0]);
+                }
+                if(id === currentUserData.id) {
+                    currentUserData.phone = upd.phone; currentUserData.hireDate = upd.hireDate; currentUserData.jobTitle = upd.jobTitle;
+                    if(upd.photoURL) currentUserData.photoURL = upd.photoURL;
+                    loadLeaveBalanceUI();
+                }
             }
-            db.ref('users/' + currentUserData.id).update(upd).then(() => { 
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تحديث البيانات'); 
-                currentUserData.phone = upd.phone; currentUserData.hireDate = upd.hireDate; currentUserData.jobTitle = upd.jobTitle;
-                if(upd.photoURL) currentUserData.photoURL = upd.photoURL;
-                loadLeaveBalanceUI(); renderTeam();
-            });
+            else if (t === 'departments') { upd = { name: document.getElementById('depName').value, desc: document.getElementById('depDesc').value, managerName: document.getElementById('depManager').value }; }
+            else if (t === 'tasks') { const u = document.getElementById('taskUser'); upd = { title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value }; }
+            else if (t === 'sales') { upd = { customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, address: document.getElementById('saleAddress').value, status: document.getElementById('saleStatus').value, notes: document.getElementById('saleNotes').value }; }
+            else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value, landArea: document.getElementById('custLand').value, crop: document.getElementById('custCrop').value, requests: document.getElementById('custReq').value }; }
+            else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, qty: document.getElementById('invQty').value, unit: document.getElementById('invUnit').value }; }
+            else if (t === 'leaves') { upd = { type: document.getElementById('leaveType').value, startDate: document.getElementById('leaveStart').value, endDate: document.getElementById('leaveEnd').value, reason: document.getElementById('leaveReason').value, status: document.getElementById('leaveStatus').value, deductSalary: document.getElementById('leaveDeductSalary').checked }; }
+            
+            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
