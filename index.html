@@ -38,6 +38,8 @@
         .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff; }
         .inventory-item { border-left: 5px solid #007bff; }
         .inventory-item.low-stock { border-left-color: #dc3545; background-color: #fff5f5; }
+        /* Fix for white dropdown text */
+        select option { color: #000 !important; background-color: #fff !important; }
     </style>
 </head>
 <body>
@@ -56,7 +58,7 @@
             <div class="sidebar" style="width: 230px;">
                 <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
-                <a href="#" id="navVisits" onclick="showSection('visits', event)"><i class="fas fa-map-marked-alt"></i> الزيارات والمبيعات</a>
+                <a href="#" id="navInvoices" onclick="showSection('invoices', event)"><i class="fas fa-file-invoice-dollar"></i> الفواتير والمبيعات</a>
                 <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق والرواتب</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
@@ -65,7 +67,6 @@
                 <a href="#" id="navProduction" onclick="showSection('production', event)"><i class="fas fa-industry"></i> الإنتاج</a>
                 <a href="#" id="navMissions" onclick="showSection('missions', event)"><i class="fas fa-plane-departure"></i> المأموريات</a>
                 <a href="#" id="navLeaves" onclick="showSection('leaves', event)"><i class="fas fa-umbrella-beach"></i> الإجازات</a>
-                <a href="#" id="navSales" onclick="showSection('sales', event)"><i class="fas fa-hand-holding-usd"></i> المبيعات</a>
                 <a href="#" id="navCustomers" onclick="showSection('customers', event)"><i class="fas fa-address-book"></i> العملاء</a>
                 <a href="#" id="navInventory" onclick="showSection('inventory', event)"><i class="fas fa-warehouse"></i> المخزن</a>
                 <a href="#" id="navLabSettings" onclick="showSection('labSettings', event)"><i class="fas fa-flask"></i> إعدادات التحاليل</a>
@@ -97,7 +98,7 @@
                     <div class="row mb-4 d-none" id="analyticsRow"><div class="col-md-12"><div class="card shadow-sm"><div class="card-header bg-light"><i class="fas fa-chart-bar text-primary"></i> تحليلات النظام</div><div class="card-body"><canvas id="analyticsChart" height="50"></canvas></div></div></div></div>
                 </div>
 
-                <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الزيارات والمبيعات</h2><div id="visitsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>النوع</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="visitsTbody"></tbody></table></div></div></div>
+                <div id="invoicesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفواتير والمبيعات</h2><div id="invoicesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="invoicesTbody"></tbody></table></div></div></div>
                 <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق والرواتب</h2><div id="teamActions"></div></div><div class="row" id="teamList"></div></div>
                 <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
@@ -106,7 +107,6 @@
                 <div id="productionSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>طلبات الإنتاج</h2><div id="productionActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="productionTable"><thead><tr><th>كود</th><th>المنتج</th><th>الكمية</th><th>الحالة</th></tr></thead><tbody id="productionTbody"></tbody></table></div></div></div>
                 <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#missionsActive">جارية</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#missionsDone">مكتملة</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="missionsActive"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyActive"></tbody></table></div></div><div class="tab-pane fade" id="missionsDone"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة</th></tr></thead><tbody id="missionsTbodyDone"></tbody></table></div></div></div></div>
                 <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات</h2><div id="leavesActions"></div></div><div id="leaveBalanceCard" class="card text-white bg-info mb-3 d-none"><div class="card-body">رصيدك: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
-                <div id="salesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المبيعات</h2><div id="salesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="salesTable"><thead><tr><th>المندوب</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="salesTbody"></tbody></table></div></div></div>
                 <div id="customersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div id="customersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div></div>
                 <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن</h2><div id="inventoryActions"></div></div><div class="card shadow-sm p-3"><div id="inventoryList"></div></div></div>
                 <div id="labSettingsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>إعدادات التحاليل والباقات</h2></div><ul class="nav nav-tabs mb-3" id="labTabsNav"></ul><div class="tab-content" id="labTabsContent"></div></div>
@@ -168,27 +168,57 @@
             } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
         });
 
+        function isMarketing() {
+            const depts = currentUserData?.departments || [];
+            return depts.some(d => d.toLowerCase().includes('marketing') || d.includes('ماركتينج'));
+        }
+
         function can(action, section) {
             if (currentUserData?.role === 'admin') return true;
-            if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'visits'].includes(section);
-            if (['missions', 'leaves', 'production', 'visits', 'customers'].includes(section)) return true;
+            
+            // Marketing team restriction
+            if (isMarketing()) {
+                if (!['customers', 'invoices', 'labSettings'].includes(section)) return false;
+            }
+
+            if (currentUserData?.role === 'manager') {
+                if (action === 'export') return ['tasks', 'requests', 'invoices'].includes(section);
+                return ['tasks', 'requests', 'missions', 'leaves', 'production', 'invoices', 'customers'].includes(section);
+            }
+            
+            // Normal user export restriction
+            if (action === 'export') return ['tasks', 'requests', 'invoices'].includes(section);
+
+            if (['missions', 'leaves', 'production', 'invoices', 'customers'].includes(section)) return true;
             return userPermissions[section] && userPermissions[section][action];
         }
 
         function applyPermissions() {
             const isAdmin = currentUserData.role === 'admin', isManager = currentUserData.role === 'manager';
-            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'Sales', 'LabSettings'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
-            document.getElementById('navVisits').style.display = 'block';
+            const marketing = isMarketing();
+            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'LabSettings'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
+            document.getElementById('navInvoices').style.display = 'block';
+            document.getElementById('navCustomers').style.display = 'block';
             document.getElementById('postAnnouncementBtn').classList.toggle('d-none', !isAdmin);
             document.getElementById('navLabSettings').style.display = isAdmin ? 'block' : 'none';
-            if (isAdmin) ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Customers', 'Inventory', 'Reports', 'Permissions'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
-            else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
-            else { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
+            
+            if (marketing && !isAdmin) {
+                ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
+            } else if (isAdmin) {
+                ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
+            } else if (isManager) {
+                document.getElementById('navTasks').style.display = 'block';
+                document.getElementById('navRequests').style.display = 'block';
+            } else { 
+                document.getElementById('navTasks').style.display = 'block';
+                document.getElementById('navRequests').style.display = 'block';
+            }
+            
             let cardsHtml = '';
             if (isAdmin || isManager) {
                 cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showKPIDetails('sales')"><div class="card-body"><h6>مبيعات اليوم</h6><h2 id="statTodaySales" class="display-6 mb-0">0</h2><small>جنيه</small></div></div></div>`;
                 cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showKPIDetails('late')"><div class="card-body"><h6>تأخر اليوم</h6><h2 id="statLateToday" class="display-6 mb-0">0</h2><small>موظف</small></div></div></div>`;
-                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showKPIDetails('visits')"><div class="card-body"><h6>زيارات معلقة</h6><h2 id="statPendingVisits" class="display-6 mb-0">0</h2><small>زيارة</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showKPIDetails('invoices')"><div class="card-body"><h6>فواتير معلقة</h6><h2 id="statPendingInvoices" class="display-6 mb-0">0</h2><small>فاتورة</small></div></div></div>`;
                 cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body"><h6>إجمالي العملاء</h6><h2 id="statTotalCustomers" class="display-6 mb-0">0</h2></div></div></div>`;
             } else {
                 if (can('view', 'requests')) cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body"><h6>طلبات المشتريات</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div></div></div>`;
@@ -202,7 +232,7 @@
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'customers', 'inventory', 'visits', 'labSettings', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
+            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'customers', 'inventory', 'invoices', 'labSettings', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             if(evt && evt.target.closest('a')) evt.target.closest('a').classList.add('active');
@@ -254,11 +284,11 @@
                     document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
                     new bootstrap.Modal(document.getElementById('detailsModal')).show();
                 });
-            } else if (type === 'visits') {
-                title = 'الزيارات المعلقة';
-                let pending = allVisits.filter(v => v.status === 'pending_discount');
+            } else if (type === 'invoices') {
+                title = 'الفواتير المعلقة';
+                let pending = allVisits.filter(v => v.status === 'pending_approval');
                 html = '<ul class="list-group">'; pending.forEach(v => { html += `<li class="list-group-item">${v.custName} - بواسطة ${v.repName}</li>`; }); html += '</ul>';
-                if (pending.length === 0) html = '<p class="text-center text-muted">لا توجد زيارات معلقة</p>';
+                if (pending.length === 0) html = '<p class="text-center text-muted">لا توجد فواتير معلقة</p>';
                 document.getElementById('detailsModalBody').innerHTML = html; document.getElementById('detailsModalTitle').innerText = title;
                 document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
                 new bootstrap.Modal(document.getElementById('detailsModal')).show();
@@ -334,7 +364,7 @@
         function calculateLeaveBalance(hireDateStr) { if(!hireDateStr) return { balance: 0 }; const hireDate = new Date(hireDateStr); const today = new Date(); const monthsDiff = (today.getFullYear() - hireDate.getFullYear()) * 12 + (today.getMonth() - hireDate.getMonth()); const yearsDiff = monthsDiff / 12; if (yearsDiff >= 10) return { balance: 30 }; if (yearsDiff >= 1) return { balance: 21 }; let balance = Math.ceil((15 / 12) * monthsDiff); return { balance: Math.max(0, balance) }; }
         function loadLeaveBalanceUI() { if (currentUserData.role === 'admin') { document.getElementById('leaveBalanceCard').classList.add('d-none'); document.getElementById('leavesActions').innerHTML = `<button onclick="openAddModal('leave_admin')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إجازة لموظف</button>`; } else { if(!currentUserData.hireDate || !currentUserData.phone || !currentUserData.jobTitle) { document.getElementById('leavesActions').innerHTML = `<span class="text-danger small">أكمل ملفك الشخصي لطلب إجازة</span>`; } else { const bal = calculateLeaveBalance(currentUserData.hireDate); document.getElementById('myLeaveBalance').innerText = bal.balance; document.getElementById('leaveBalanceCard').classList.remove('d-none'); document.getElementById('leavesActions').innerHTML = `<button onclick="openAddModal('leave')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إجازة</button>`; } } }
 
-        // LAB SETTINGS (Dynamic Catalog)
+        // LAB SETTINGS
         function loadLabSettings() {
             db.ref('labSettings').on('value', snap => {
                 labSettings = snap.val() || {};
@@ -368,15 +398,14 @@
         }
         function deleteLabItem(catKey, idx) { db.ref(`labSettings/${catKey}`).transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
-        // VISITS & SALES (Field CRM)
+        // INVOICES & SALES
         function openVisitModal() {
             currentVisitCart = []; currentGpsLoc = null;
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            title.innerText = 'بدء زيارة / مبيعات';
+            title.innerText = 'بدء زيارة / فاتورة مبيعات';
             let custOpts = '<option value="new">-- عميل جديد --</option>';
             allCustomers.forEach(c => custOpts += `<option value="${c.id}">${c.name} - ${c.phone}</option>`);
             body.innerHTML = `
-                <div class="mb-3"><label class="fw-bold">نوع الزيارة</label><select id="visitType" class="form-control" onchange="toggleVisitFields(this.value)"><option value="visit">زيارة فقط</option><option value="sale">زيارة مبيعات</option></select></div>
                 <div class="mb-3"><label class="fw-bold">العميل</label><select id="visitCustType" class="form-control" onchange="toggleCustFields(this.value)">${custOpts}</select></div>
                 <div id="newCustFields" class="border p-3 rounded mb-3 bg-light">
                     <h6>بيانات العميل الجديد</h6>
@@ -391,35 +420,32 @@
                     <button class="btn btn-info w-100 text-white" onclick="fetchGpsForVisit()"><i class="fas fa-map-marker-alt"></i> تسجيل الموقع</button>
                     <div id="gpsStatus" class="small mt-2 text-center"></div>
                 </div>
-                <div id="cartSection" class="d-none">
-                    <hr><h6>سلة المبيعات</h6>
-                    <ul class="nav nav-tabs mb-2">
-                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#cartProd">المنتجات</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cartLab">التحاليل</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cartPkg">الباقات</a></li>
-                    </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="cartProd">
-                            ${PRODUCTS.map(p => `<div class="row mb-1"><div class="col-4"><label class="col-form-label">${p}</label></div><div class="col-3"><input type="number" id="prod_qty_${p}" class="form-control" placeholder="كمية"></div><div class="col-3"><select id="prod_unit_${p}" class="form-control">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div><div class="col-2"><button class="btn btn-sm btn-success" onclick="addProdToCart('${p}')"><i class="fas fa-plus"></i></button></div></div>`).join('')}
-                        </div>
-                        <div class="tab-pane fade" id="cartLab">
-                            <select id="labSelect" class="form-control mb-2">${LAB_CATEGORIES.flatMap(cat => { const k = cat.replace(/\s/g,''); return (labSettings[k]||[]).map((item, i) => `<option value='${k}_${i}'>${cat}: ${item.name} (${item.price} جنيه)</option>`); }).join('')}</select>
-                            <button class="btn btn-sm btn-success" onclick="addLabToCart()"><i class="fas fa-plus"></i> إضافة تحليل</button>
-                        </div>
-                        <div class="tab-pane fade" id="cartPkg">
-                            <select id="pkgSelect" class="form-control mb-2">${(labSettings['الباقاتوالعروض']||[]).map((item, i) => `<option value='${i}'>${item.name} (${item.price} جنيه)</option>`).join('')}</select>
-                            <button class="btn btn-sm btn-success" onclick="addPkgToCart()"><i class="fas fa-plus"></i> إضافة باقة</button>
-                        </div>
+                <hr><h6>سلة المبيعات</h6>
+                <ul class="nav nav-tabs mb-2">
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#cartProd">المنتجات</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cartLab">التحاليل</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#cartPkg">الباقات</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="cartProd">
+                        ${PRODUCTS.map(p => `<div class="row mb-1"><div class="col-4"><label class="col-form-label">${p}</label></div><div class="col-3"><input type="number" id="prod_qty_${p}" class="form-control" placeholder="كمية"></div><div class="col-3"><select id="prod_unit_${p}" class="form-control">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div><div class="col-2"><button class="btn btn-sm btn-success" onclick="addProdToCart('${p}')"><i class="fas fa-plus"></i></button></div></div>`).join('')}
                     </div>
-                    <div id="cartList" class="mt-3"></div>
+                    <div class="tab-pane fade" id="cartLab">
+                        <select id="labSelect" class="form-control mb-2">${LAB_CATEGORIES.flatMap(cat => { const k = cat.replace(/\s/g,''); return (labSettings[k]||[]).map((item, i) => `<option value='${k}_${i}'>${cat}: ${item.name} (${item.price} جنيه)</option>`); }).join('')}</select>
+                        <button class="btn btn-sm btn-success" onclick="addLabToCart()"><i class="fas fa-plus"></i> إضافة تحليل</button>
+                    </div>
+                    <div class="tab-pane fade" id="cartPkg">
+                        <select id="pkgSelect" class="form-control mb-2">${(labSettings['الباقاتوالعروض']||[]).map((item, i) => `<option value='${i}'>${item.name} (${item.price} جنيه)</option>`).join('')}</select>
+                        <button class="btn btn-sm btn-success" onclick="addPkgToCart()"><i class="fas fa-plus"></i> إضافة باقة</button>
+                    </div>
                 </div>
+                <div id="cartList" class="mt-3"></div>
             `;
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'saveVisit()');
-            toggleCustFields('new'); toggleVisitFields('visit');
+            toggleCustFields('new');
             new bootstrap.Modal(document.getElementById('addModal')).show();
         }
         function toggleCustFields(val) { document.getElementById('newCustFields').classList.toggle('d-none', val !== 'new'); }
-        function toggleVisitFields(val) { document.getElementById('cartSection').classList.toggle('d-none', val !== 'sale'); }
         function toggleCustTypeFields(val) { document.getElementById('farmerFields').classList.toggle('d-none', val !== 'مزارع'); document.getElementById('otherFields').classList.toggle('d-none', val !== 'أخرى'); }
         async function fetchGpsForVisit() {
             document.getElementById('gpsStatus').innerHTML = '<span class="text-info">جاري تحديد الموقع بدقة...</span>';
@@ -438,22 +464,34 @@
         }
         async function saveVisit() {
             if (!currentGpsLoc) return toastr.error('يجب تحديد موقع العميل أولاً');
-            const visitType = document.getElementById('visitType').value;
-            let custId = document.getElementById('visitCustType').value, custName = '';
+            let custId = document.getElementById('visitCustType').value, custName = '', custPhone = '', custType = '';
             if (custId === 'new') {
                 custName = document.getElementById('custName').value; if(!custName) return toastr.warning('أدخل اسم العميل');
+                custPhone = document.getElementById('custPhone').value; custType = document.getElementById('custType').value;
                 const newCustRef = db.ref('customers').push();
-                let custData = { name: custName, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value };
-                if(custData.type === 'مزارع') { custData.crop = document.getElementById('custCrop').value; custData.land = document.getElementById('custLand').value; }
-                else if(custData.type === 'أخرى') custData.otherType = document.getElementById('custOtherType').value;
+                let custData = { name: custName, type: custType, phone: custPhone };
+                if(custType === 'مزارع') { custData.crop = document.getElementById('custCrop').value; custData.land = document.getElementById('custLand').value; }
+                else if(custType === 'أخرى') custData.otherType = document.getElementById('custOtherType').value;
                 await newCustRef.set(custData); custId = newCustRef.key;
-            } else { const c = allCustomers.find(c => c.id === custId); custName = c ? c.name : ''; }
-            let visitData = { repId: currentUserData.id, repName: currentUserData.name, custId, custName, type: visitType, loc: currentGpsLoc.loc, suspicious: currentGpsLoc.suspicious, timestamp: new Date().toLocaleString(), status: 'pending_discount', cart: currentVisitCart, total: currentVisitCart.reduce((s,c)=>s+(c.price||0),0), discount: 0, net: currentVisitCart.reduce((s,c)=>s+(c.price||0),0) };
-            db.ref('visits').push(visitData).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم حفظ الزيارة والفاتورة مؤقتاً'); });
+            } else { const c = allCustomers.find(c => c.id === custId); custName = c ? c.name : ''; custPhone = c ? c.phone : ''; custType = c ? c.type : ''; }
+            
+            let visitData = { 
+                repId: currentUserData.id, repName: currentUserData.name, 
+                custId, custName, custPhone, custType,
+                loc: currentGpsLoc.loc, suspicious: currentGpsLoc.suspicious, 
+                timestamp: new Date().toLocaleString(), 
+                status: 'pending_approval', 
+                cart: currentVisitCart, 
+                total: currentVisitCart.reduce((s,c)=>s+(c.price||0),0), 
+                discount: 0, net: currentVisitCart.reduce((s,c)=>s+(c.price||0),0) 
+            };
+            db.ref('visits').push(visitData).then(() => { 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); 
+                toastr.success('تم إرسال الفاتورة للإدارة للاعتماد'); 
+            });
         }
 
         function loadData() {
-            const isAdmin = currentUserData.role === 'admin', isManager = currentUserData.role === 'manager';
             db.ref('users').on('value', snap => { allUsers = []; snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); }); renderUsers(); renderTeam(); loadKPIs(); });
             db.ref('tasks').on('value', snap => { allTasks = []; snap.forEach(child => { const t = child.val(); t.id = child.key; allTasks.push(t); }); renderTasks(); loadAnalyticsCharts(); });
             db.ref('requests').on('value', snap => { allRequests = []; snap.forEach(child => { const r = child.val(); r.id = child.key; allRequests.push(r); }); renderRequests(); });
@@ -462,45 +500,83 @@
             db.ref('customers').on('value', snap => { allCustomers = []; snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); }); renderCustomers(); loadKPIs(); });
             db.ref('inventory').on('value', snap => { allInventory = []; snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); }); renderInventory(); });
             db.ref('production').on('value', snap => { allProduction = []; snap.forEach(child => { const p = child.val(); p.id = child.key; allProduction.push(p); }); renderProduction(); });
-            db.ref('visits').on('value', snap => { allVisits = []; snap.forEach(child => { const v = child.val(); v.id = child.key; allVisits.push(v); }); renderVisits(); loadKPIs(); });
+            db.ref('visits').on('value', snap => { allVisits = []; snap.forEach(child => { const v = child.val(); v.id = child.key; allVisits.push(v); }); renderInvoices(); loadKPIs(); });
         }
         
-        function renderVisits() {
+        function renderInvoices() {
             let html = '';
-            let visibleVisits = currentUserData.role === 'admin' ? allVisits : allVisits.filter(v => v.repId === currentUserData.id);
-            visibleVisits.forEach(v => { html += `<tr class="req-row" onclick="openVisitDetails('${v.id}')"><td>${v.repName}</td><td>${v.custName}</td><td>${v.type === 'visit' ? 'زيارة فقط' : 'مبيعات'}</td><td><span class="badge bg-${v.status === 'pending_discount' ? 'warning' : 'success'}">${v.status === 'pending_discount' ? 'بانتظار الخصم' : 'مكتملة'}</span></td><td>${v.total || 0}</td><td>${v.discount || 0}%</td><td class="fw-bold">${v.net || 0}</td></tr>`; });
-            document.getElementById('visitsTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد زيارات</td></tr>';
-            document.getElementById('visitsActions').innerHTML = `<button onclick="openVisitModal()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> بدء زيارة</button>`;
+            let visibleInvoices = currentUserData.role === 'admin' ? allVisits : allVisits.filter(v => v.repId === currentUserData.id);
+            visibleInvoices.forEach(v => {
+                let statusBadge = v.status === 'pending_approval' ? '<span class="badge bg-warning">بانتظار الاعتماد</span>' : v.status === 'rejected' ? '<span class="badge bg-danger">مرفوضة</span>' : '<span class="badge bg-success">معتمدة</span>';
+                html += `<tr class="req-row" onclick="openInvoiceDetails('${v.id}')"><td>${v.repName}</td><td>${v.custName}</td><td>${v.custPhone || '-'}</td><td>${statusBadge}</td><td>${v.total || 0}</td><td>${v.discount || 0}%</td><td class="fw-bold">${v.net || 0}</td></tr>`;
+            });
+            document.getElementById('invoicesTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد فواتير</td></tr>';
+            document.getElementById('invoicesActions').innerHTML = `<button onclick="openVisitModal()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> فاتورة جديدة</button>`;
         }
-        function openVisitDetails(id) {
+        function openInvoiceDetails(id) {
             const v = allVisits.find(vis => vis.id === id); if (!v) return;
             const isAdmin = currentUserData.role === 'admin';
-            document.getElementById('detailsModalTitle').innerText = `تفاصيل الزيارة - ${v.custName}`;
+            document.getElementById('detailsModalTitle').innerText = `فاتورة - ${v.custName}`;
             let cartHtml = '<ul class="list-group">';
             v.cart.forEach(c => { cartHtml += `<li class="list-group-item">${c.type}: ${c.name} ${c.qty ? `(${c.qty} ${c.unit})` : ''} - ${c.price || 0} جنيه</li>`; });
             cartHtml += '</ul>';
-            let bodyHtml = `<p><b>المندوب:</b> ${v.repName} | <b>النوع:</b> ${v.type}</p><p><b>الموقع:</b> <a href="${v.loc}" target="_blank">عرض الخريطة</a> ${v.suspicious ? '<span class="badge bg-danger">موقع مشبوه</span>' : ''}</p><hr>${cartHtml}<hr>`;
-            if (v.type === 'sale') {
-                bodyHtml += `<div class="row"><div class="col-6"><b>الإجمالي:</b> ${v.total} جنيه</div><div class="col-6"><b>الخصم:</b> ${v.discount || 0}%</div></div><h4 class="mt-3 text-success text-end">الصافي: ${v.net} جنيه</h4>`;
-                if (isAdmin && v.status === 'pending_discount') {
-                    bodyHtml += `<hr><h6>تطبيق خصم (للأدمن)</h6><div class="input-group"><input type="number" id="discountInput" class="form-control" value="${v.discount || 0}" min="0" max="100"><span class="input-group-text">%</span><button class="btn btn-success" onclick="applyDiscount('${id}')">حفظ الخصم</button></div>`;
-                }
+            let bodyHtml = `<p><b>المندوب:</b> ${v.repName}<br><b>العميل:</b> ${v.custName} (${v.custType})<br><b>تليفون:</b> ${v.custPhone}<br><b>الموقع:</b> <a href="${v.loc}" target="_blank">عرض الخريطة</a> ${v.suspicious ? '<span class="badge bg-danger">موقع مشبوه</span>' : ''}</p><hr>${cartHtml}<hr>`;
+            bodyHtml += `<div class="row"><div class="col-6"><b>الإجمالي:</b> ${v.total} جنيه</div><div class="col-6"><b>الخصم:</b> ${v.discount || 0}%</div></div><h4 class="mt-3 text-success text-end">الصافي: ${v.net} جنيه</h4>`;
+            
+            if (isAdmin && v.status === 'pending_approval') {
+                bodyHtml += `<hr><h6>تطبيق خصم واعتماد (للأدمن)</h6><div class="input-group"><input type="number" id="discountInput" class="form-control" value="${v.discount || 0}" min="0" max="100"><span class="input-group-text">%</span><button class="btn btn-success" onclick="approveInvoice('${id}')">اعتماد الفاتورة</button><button class="btn btn-danger" onclick="rejectInvoice('${id}')">رفض</button></div>`;
             }
+            
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            if (v.status !== 'pending_discount' || !isAdmin) footer += `<button class="btn btn-danger" onclick="exportInvoice('${id}')"><i class="fas fa-file-pdf"></i> تصدير PDF</button>`;
+            if (v.status === 'approved') footer += `<button class="btn btn-danger" onclick="exportInvoicePDF('${id}')"><i class="fas fa-file-pdf"></i> تصدير PDF</button>`;
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
-        function applyDiscount(id) {
+        function approveInvoice(id) {
             const v = allVisits.find(vis => vis.id === id); const discount = parseFloat(document.getElementById('discountInput').value) || 0;
             const net = v.total - (v.total * (discount / 100));
-            db.ref('visits/' + id).update({ discount: discount, net: net, status: 'completed' }).then(() => { toastr.success('تم تطبيق الخصم'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); });
+            db.ref('visits/' + id).update({ discount: discount, net: net, status: 'approved' }).then(() => { 
+                toastr.success('تم اعتماد الفاتورة'); 
+                sendNotification(v.repId, `تم اعتماد فاتورتك للعميل ${v.custName}. يمكنك طباعة الـ PDF الآن.`);
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); 
+            });
         }
-        function exportInvoice(id) {
+        function rejectInvoice(id) {
+            db.ref('visits/' + id).update({ status: 'rejected' }).then(() => { 
+                toastr.warning('تم رفض الفاتورة'); 
+                const v = allVisits.find(vis => vis.id === id);
+                sendNotification(v.repId, `تم رفض فاتورتك للعميل ${v.custName}. برجاء المراجعة.`);
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); 
+            });
+        }
+        function exportInvoicePDF(id) {
             const v = allVisits.find(vis => vis.id === id); if(!v) return;
             const element = document.createElement('div');
-            element.innerHTML = `<div style="direction:rtl; padding:20px; font-family:Arial;"><h2 style="text-align:center;">فاتورة مبيعات / تحاليل</h2><hr><p><b>العميل:</b> ${v.custName}<br><b>المندوب:</b> ${v.repName}<br><b>التاريخ:</b> ${v.timestamp}</p><table style="width:100%; border-collapse:collapse; margin:20px 0;"><thead><tr style="background:#f8f9fa; border-bottom:2px solid #ddd;"><th style="text-align:right; padding:8px;">الصنف</th><th style="text-align:center; padding:8px;">الكمية</th><th style="text-align:left; padding:8px;">السعر</th></tr></thead><tbody>${v.cart.map(c => `<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;">${c.name}</td><td style="text-align:center; padding:8px;">${c.qty || 1} ${c.unit || ''}</td><td style="text-align:left; padding:8px;">${c.price || 0}</td></tr>`).join('')}</tbody></table><h3 style="text-align:left;">الإجمالي: ${v.total} جنيه</h3><h3 style="text-align:left;">الخصم: ${v.discount}%</h3><h2 style="text-align:left; color:green;">الصافي: ${v.net} جنيه</h2></div>`;
+            element.innerHTML = `
+                <div style="direction:rtl; padding:20px; font-family:Arial;">
+                    <h2 style="text-align:center;">فاتورة مبيعات وتحاليل</h2>
+                    <hr>
+                    <p><b>المندوب:</b> ${v.repName}<br>
+                       <b>العميل:</b> ${v.custName} (${v.custType})<br>
+                       <b>تليفون العميل:</b> ${v.custPhone}<br>
+                       <b>تاريخ الفاتورة:</b> ${v.timestamp}</p>
+                    <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                        <thead>
+                            <tr style="background:#f8f9fa; border-bottom:2px solid #ddd;">
+                                <th style="text-align:right; padding:8px;">الصنف / التحليل</th>
+                                <th style="text-align:center; padding:8px;">الكمية</th>
+                                <th style="text-align:left; padding:8px;">السعر (جنيه)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${v.cart.map(c => `<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;">${c.name}</td><td style="text-align:center; padding:8px;">${c.qty || 1} ${c.unit || ''}</td><td style="text-align:left; padding:8px;">${c.price || 0}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                    <h3 style="text-align:left;">الإجمالي قبل الخصم: ${v.total} جنيه</h3>
+                    <h3 style="text-align:left;">نسبة الخصم: ${v.discount}%</h3>
+                    <h2 style="text-align:left; color:green;">الصافي المطلوب: ${v.net} جنيه</h2>
+                </div>`;
             html2pdf().from(element).save(`Invoice_${v.custName}.pdf`);
         }
 
@@ -516,7 +592,7 @@
                 html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.salary || '-'}</td><td>${act}</td></tr>`;
             });
             document.getElementById('usersTbody').innerHTML = html;
-            document.getElementById('usersActions').innerHTML = `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'users')" hidden></label> <button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
+            document.getElementById('usersActions').innerHTML = `${isAdmin ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
         }
         function renderTasks() {
             let visibleTasks = currentUserData.role === 'admin' ? allTasks : allTasks.filter(t => t.userId === currentUserData.id || t.createdById === currentUserData.id);
@@ -529,14 +605,14 @@
             document.getElementById('tasksListActive').innerHTML = activeHtml || '<div class="col-12 text-center text-muted">لا توجد مهام نشطة</div>';
             document.getElementById('tasksListLate').innerHTML = lateHtml || '<div class="col-12 text-center text-muted">لا توجد مهام متأخرة</div>';
             document.getElementById('tasksListDone').innerHTML = doneHtml || '<div class="col-12 text-center text-muted">لا توجد مهام منتهية</div>';
-            document.getElementById('tasksActions').innerHTML = `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
+            document.getElementById('tasksActions').innerHTML = `${can('export','tasks') ? `<button onclick="exportTasksToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
         }
         function renderRequests() {
             let visibleRequests = currentUserData.role === 'admin' ? allRequests : allRequests.filter(r => r.empId === currentUserData.id);
             let html = '';
             visibleRequests.forEach(r => { html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item}</td><td>${r.qty} ${r.unit || ''}</td><td>${r.empName}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':'warning'}">${r.status}</span></td></tr>`; });
             document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد طلبات</td></tr>';
-            document.getElementById('requestsActions').innerHTML = `<button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button>`;
+            document.getElementById('requestsActions').innerHTML = `${can('export','requests') ? `<button onclick="exportRequestsToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button>`;
         }
         function renderMissions() {
             let visibleMissions = currentUserData.role === 'admin' ? allMissions : allMissions.filter(m => m.userId === currentUserData.id);
@@ -547,7 +623,7 @@
             });
             document.getElementById('missionsTbodyActive').innerHTML = activeHtml || '<tr><td colspan="5" class="text-center text-muted">لا توجد مأموريات جارية</td></tr>';
             document.getElementById('missionsTbodyDone').innerHTML = doneHtml || '<tr><td colspan="4" class="text-center text-muted">لا توجد مأموريات مكتملة</td></tr>';
-            document.getElementById('missionsActions').innerHTML = currentUserData.role === 'admin' ? `<button onclick="openAddModal('mission')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> تكليف بمأمورية</button>` : '';
+            document.getElementById('missionsActions').innerHTML = currentUserData.role === 'admin' ? `${can('export','missions') ? `<button onclick="exportToExcel('missionsTableActive', 'المأموريات')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('mission')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> تكليف بمأمورية</button>` : '';
         }
         function renderLeaves() {
             let visibleLeaves = currentUserData.role === 'admin' ? allLeaves : allLeaves.filter(l => l.userId === currentUserData.id);
@@ -559,7 +635,7 @@
             let html = '';
             allCustomers.forEach(c => { html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td><button onclick="openEditModal('customer','${c.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button></td></tr>`; });
             document.getElementById('customersTbody').innerHTML = html || '<tr><td colspan="4" class="text-center text-muted">لا يوجد عملاء</td></tr>';
-            document.getElementById('customersActions').innerHTML = `<button onclick="exportToExcel('customersTable', 'العملاء')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل</button>`;
+            document.getElementById('customersActions').innerHTML = `${can('export','customers') ? `<button onclick="exportToExcel('customersTable', 'العملاء')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل</button>`;
         }
         function renderInventory() {
             if (!can('view', 'inventory')) return;
@@ -570,13 +646,13 @@
             });
             html += '</div>';
             document.getElementById('inventoryList').innerHTML = html || '<p class="text-muted">المخزن فارغ</p>';
-            document.getElementById('inventoryActions').innerHTML = `<button onclick="exportToExcel('inventoryTable', 'المخزن')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
+            document.getElementById('inventoryActions').innerHTML = `${can('export','inventory') ? `<button onclick="exportToExcel('inventoryTable', 'المخزن')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
         }
         function renderProduction() {
             let html = '';
             allProduction.forEach(p => { html += `<tr class="req-row" onclick="openProductionDetails('${p.id}')"><td>${p.code}</td><td>${p.product}</td><td>${p.qty} ${p.unit || ''}</td><td><span class="badge bg-${p.status==='تم الإنتاج'?'success':'warning'}">${p.status}</span></td></tr>`; });
             document.getElementById('productionTbody').innerHTML = html || '<tr><td colspan="4" class="text-center text-muted">لا توجد طلبات إنتاج</td></tr>';
-            document.getElementById('productionActions').innerHTML = `<button onclick="openAddModal('production')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إنتاج</button>`;
+            document.getElementById('productionActions').innerHTML = `${can('export','production') ? `<button onclick="exportToExcel('productionTable', 'الإنتاج')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('production')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إنتاج</button>`;
         }
 
         function renderTeam() {
@@ -625,9 +701,8 @@
         function loadKPIs() {
             const isAdmin = currentUserData.role === 'admin', isManager = currentUserData.role === 'manager';
             if(!isAdmin && !isManager) return;
-            const todayStr = new Date().toLocaleDateString();
-            let pendingVisits = allVisits.filter(v => v.status === 'pending_discount').length;
-            if(document.getElementById('statPendingVisits')) document.getElementById('statPendingVisits').innerText = pendingVisits;
+            let pendingInvoices = allVisits.filter(v => v.status === 'pending_approval').length;
+            if(document.getElementById('statPendingInvoices')) document.getElementById('statPendingInvoices').innerText = pendingInvoices;
             if(document.getElementById('statTotalCustomers')) document.getElementById('statTotalCustomers').innerText = allCustomers.length;
             const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             db.ref('attendance').once('value').then(attSnap => {
@@ -783,18 +858,13 @@
         function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
 
         function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
-        function importExcel(event, type) {
-            const file = event.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result); const wb = XLSX.read(data, { type: 'array' }); const ws = wb.Sheets[wb.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(ws);
-                jsonData.forEach(row => {
-                    if (type === 'users') { const item = { name: row['الاسم'], email: row['البريد'], phone: String(row['التليفون']), salary: row['الراتب'], role: 'user' }; if(item.email) db.ref('users').push(item); }
-                    else if (type === 'customers') { const item = { name: row['اسم العميل'], type: row['النوع'], phone: String(row['التليفون']) }; if(item.name) db.ref('customers').push(item); }
-                });
-                toastr.success('تم الاستيراد بنجاح');
-            };
-            reader.readAsArrayBuffer(file); event.target.value = '';
+        async function exportTasksToExcel() {
+            let data = []; allTasks.forEach(t => { data.push({ "العنوان": t.title, "الموظف": t.userName, "تاريخ البدء": t.startDate, "تاريخ الانتهاء": t.endDate, "الحالة": t.status }); });
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Tasks"); XLSX.writeFile(wb, "Tasks_Report.xlsx"); toastr.success("تم التصدير");
+        }
+        async function exportRequestsToExcel() {
+            let data = []; allRequests.forEach(r => { data.push({ "رقم": r.reqId, "الصنف": r.item, "الكمية": `${r.qty} ${r.unit||''}`, "طالب الطلب": r.empName, "الحالة": r.status }); });
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Requests"); XLSX.writeFile(wb, "Requests.xlsx"); toastr.success("تم التصدير");
         }
     </script>
 </body>
