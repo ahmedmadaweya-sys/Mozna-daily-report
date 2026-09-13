@@ -15,6 +15,128 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #212529; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; overflow-y: auto; }
+        .sidebar a { color: #d1d3d4; text-decoration: none; padding: 12px 15px; display: block; transition: 0.3s; font-size: 0.95rem; }
+        .sidebar a:hover, .sidebar a.active { background-color: #007bff; color: white; }
+        .table th { background-color: #e9ecef; }
+        .req-row { cursor: pointer; transition: 0.2s; }
+        .req-row:hover { background-color: #f1f3f5; }
+        .quick-link { transition: 0.3s; cursor: pointer; }
+        .quick-link:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+        .task-card { transition: 0.2s; border-right: 4px solid #007bff; }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+        .task-card.late { border-right-color: #dc3545; background-color: #fff5f5; }
+        .chat-box { max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6; }
+        .chat-msg { margin-bottom: 10px; padding: 8px; border-radius: 8px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .break-timer { font-size: 2rem; font-weight: bold; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 5px; }
+        .notif-item { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; cursor: pointer; }
+        .notif-item:hover { background-color: #f8f9fa; }
+        .notif-unread { background-color: #e7f1ff; font-weight: bold; }
+        .top-bar { background: white; padding: 10px 20px; border-bottom: 1px solid #dee2e6; position: sticky; top: 0; z-index: 1000; }
+        .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff; }
+        .inventory-item { border-left: 5px solid #007bff; }
+        .inventory-item.low-stock { border-left-color: #dc3545; background-color: #fff5f5; }
+        /* Fix for select text visibility */
+        select option { color: #212529 !important; background-color: #ffffff !important; }
+        select { color: #212529; }
+    </style>
+</head>
+<body>
+
+    <div id="loginSection" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card p-4 shadow" style="width: 400px;">
+            <h3 class="text-center mb-4"><i class="fas fa-lock"></i> تسجيل الدخول</h3>
+            <div class="mb-3"><input type="email" id="email" class="form-control" placeholder="البريد الإلكتروني"></div>
+            <div class="mb-3"><input type="password" id="password" class="form-control" placeholder="كلمة المرور"></div>
+            <button onclick="doLogin()" class="btn btn-primary w-100">دخول</button>
+        </div>
+    </div>
+
+    <div id="appSection" class="d-none">
+        <div class="d-flex">
+            <div class="sidebar" style="width: 230px;">
+                <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
+                <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
+                <a href="#" id="navVisits" onclick="showSection('visits', event)"><i class="fas fa-file-invoice-dollar"></i> الفواتير والمبيعات</a>
+                <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق والرواتب</a>
+                <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
+                <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
+                <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
+                <a href="#" id="navRequests" onclick="showSection('requests', event)"><i class="fas fa-cart-plus"></i> المشتريات</a>
+                <a href="#" id="navProduction" onclick="showSection('production', event)"><i class="fas fa-industry"></i> الإنتاج</a>
+                <a href="#" id="navMissions" onclick="showSection('missions', event)"><i class="fas fa-plane-departure"></i> المأموريات</a>
+                <a href="#" id="navLeaves" onclick="showSection('leaves', event)"><i class="fas fa-umbrella-beach"></i> الإجازات</a>
+                <a href="#" id="navCustomers" onclick="showSection('customers', event)"><i class="fas fa-address-book"></i> العملاء</a>
+                <a href="#" id="navInventory" onclick="showSection('inventory', event)"><i class="fas fa-warehouse"></i> المخزن</a>
+                <a href="#" id="navLabSettings" onclick="showSection('labSettings', event)"><i class="fas fa-flask"></i> إعدادات التحاليل</a>
+                <a href="#" id="navReports" onclick="showSection('reports', event)"><i class="fas fa-chart-line"></i> التقارير</a>
+                <a href="#" id="navPermissions" onclick="showSection('permissions', event)" style="display:none;"><i class="fas fa-user-shield"></i> الصلاحيات</a>
+                <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
+            </div>
+
+            <div class="p-4 w-100" style="overflow-y: auto; height: 100vh;">
+                <div id="announcementBar" class="alert alert-warning text-center mb-3 d-none" role="alert"></div>
+                <div class="top-bar d-flex justify-content-end mb-4">
+                    <button onclick="openEditMyProfileModal()" class="btn btn-outline-primary btn-sm ms-2"><i class="fas fa-user-circle"></i> ملفي</button>
+                    <button id="installAppBtn" class="btn btn-success btn-sm ms-2 d-none"><i class="fas fa-download"></i> تثبيت</button>
+                    <button id="postAnnouncementBtn" onclick="postAnnouncement()" class="btn btn-warning btn-sm ms-2 d-none"><i class="fas fa-bullhorn"></i> إعلان</button>
+                    <div class="dropdown">
+                        <button class="btn btn-light position-relative shadow-sm" id="notifBell" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            <i class="fas fa-bell fa-lg"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="display:none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-0 shadow" style="width: 350px; max-height: 400px; overflow-y: auto;"><h6 class="dropdown-header bg-light">الإشعارات</h6><div id="notifList"></div></div>
+                    </div>
+                </div>
+
+                <div id="dashboardSection">
+                    <h2 class="mb-4">الرئيسية</h2>
+                    <div id="attendanceCard" class="card shadow-sm mb-4 border-primary"><div class="card-body text-center"><h5><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5><div class="d-flex justify-content-center gap-2 mb-3"><button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg">تسجيل حضور</button><button id="breakBtn" onclick="toggleBreak()" class="btn btn-info btn-lg text-white d-none">بدء استراحة</button></div><div id="breakTimerDisplay" class="break-timer mb-3 d-none"></div><div class="row mt-3"><div class="col-md-4"><small>الحضور</small><p id="checkInTime" class="fw-bold text-success mb-0">--:--</p></div><div class="col-md-4"><small>الانصراف</small><p id="checkOutTime" class="fw-bold text-danger mb-0">--:--</p></div><div class="col-md-4"><small>ساعات اليوم</small><p id="dailyHours" class="fw-bold text-primary mb-0">0</p></div></div></div></div>
+                    <div id="dailyTasksCard" class="card shadow-sm mb-4 border-success"><div class="card-body text-center"><h5><i class="fas fa-list-check text-success"></i> المهام اليومية (KPI)</h5><button onclick="openDailyTasksModal()" class="btn btn-success btn-lg w-50 mb-3">تسجيل مهام اليوم</button><div id="dailyTasksList" class="text-start mt-2"></div></div></div>
+                    <div class="row mb-4" id="dashboardCards"></div>
+                    <div class="row mb-4 d-none" id="analyticsRow"><div class="col-md-12"><div class="card shadow-sm"><div class="card-header bg-light"><i class="fas fa-chart-bar text-primary"></i> تحليلات النظام</div><div class="card-body"><canvas id="analyticsChart" height="50"></canvas></div></div></div></div>
+                </div>
+
+                <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفواتير والمبيعات</h2><div id="visitsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>نوع العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="visitsTbody"></tbody></table></div></div></div>
+                <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق والرواتب</h2><div id="teamActions"></div></div><div class="row" id="teamList"></div></div>
+                <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
+                <div id="departmentsSection" style="display: none;"><div class="d-flex justify
+يا بطل، إنت بتقفل النظام بقواعد إدارية ممتازة جداً! قصر الإكسيل على الأدمن (وللموظف في مهامه ومشترياته الخاصة فقط) هيمنع تسريب البيانات. كمان مشكلة القائمة المنسدلة البيضاء دي مشكلة CSS معروفة في الـ Bootstrap RTL مع خلفيات الوضع الداكن، وتم حلها.
+
+بما إننا هنبدأ الكود من الصفر بكل التفاصيل دي، **ده هو الكود الشامل النهائي (من أول سطر لآخر سطر)**، وفيه كل اللي اتفقنا عليه:
+
+### التعديلات اللي تمت في الكود ده:
+1. **قسم الماركتينج:** لو الموظف قسمه "Marketing" أو "ماركتينج"، السيستم بيخفي عنه كل حاجة ويظهرله بس (العملاء) و (الفواتير والمبيعات) و (التحاليل).
+2. **صلاحيات الإكسيل:** زرار الإكسيل الأخضر ده بقى شغّال بس للأدمن في كل التابات. أما الموظف والمدير، بيشوفوه بس في (المهام) و (المشتريات) الخاصة بيهم.
+3. **مشكلة القائمة البيضاء:** اتعدلت بـ `select option { color: #000; }` عشان النص يظهر واضح بأي لون خلفية.
+4. **نظام الفواتير الكامل:**
+   * المندوب بيعمل الفاتورة وبيبعتها "بانتظار الاعتماد".
+   * الأدمن بيفتحها، بيضيف الخصم، وبيعتمدها.
+   * الموظف بيلاقيها "معتمدة" وبيقدر يسحبها PDF.
+   * شكل الـ PDF فيه (اسم المندوب، بيانات العميل كاملة، المنتجات، التحاليل، الإجمالي، الخصم، والصافي) عشان العمولات.
+
+### 📋 الكود الكامل (انسخه واستبدله بالكامل في `index.html`):
+
+```html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الإدارة المتكامل ERP - مزنة</title>
+    <meta name="theme-color" content="#343a40">
+    <link rel="manifest" id="manifest-placeholder">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .sidebar { min-height: 100vh; background-color: #343a40; color: white; overflow-y: auto; }
         .sidebar a { color: #d1d3d4; text-decoration: none; padding: 12px 15px; display: block; transition: 0.3s; font-size: 0.95rem; }
