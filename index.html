@@ -37,6 +37,7 @@
         .top-bar { background: white; padding: 10px 20px; border-bottom: 1px solid #dee2e6; position: sticky; top: 0; z-index: 1000; }
         .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff; }
         .inventory-item { border-left: 5px solid #007bff; }
+        .inventory-item.low-stock { border-left-color: #dc3545; background-color: #fff5f5; }
     </style>
 </head>
 <body>
@@ -137,13 +138,16 @@
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
                 
                 <div id="tasksSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tasksActive">نشطة / جديدة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksLate">متأخرة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksDone">منتهية</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="tasksActive"><div class="row mt-3" id="tasksListActive"></div></div><div class="tab-pane fade" id="tasksLate"><div class="row mt-3" id="tasksListLate"></div></div><div class="tab-pane fade" id="tasksDone"><div class="row mt-3" id="tasksListDone"></div></div></div></div>
-                <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم الطلب</th><th>الصنف</th><th>طالب الطلب</th><th>موجه لـ</th><th>الموظف المسؤول</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
+                
+                <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم الطلب</th><th>الصنف</th><th>الكمية</th><th>طالب الطلب</th><th>موجه لـ</th><th>الموظف المسؤول</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
                 <div id="productionSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>طلبات الإنتاج</h2><div id="productionActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="productionTable"><thead><tr><th>كود الطلب</th><th>المنتج</th><th>الكمية</th><th>تاريخ الاستلام</th><th>الحالة</th></tr></thead><tbody id="productionTbody"></tbody></table></div></div></div>
-                <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="missionsTable"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>الحالة</th></tr></thead><tbody id="missionsTbody"></tbody></table></div></div></div>
+                
+                <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#missionsActive">جارية / معتمدة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#missionsDone">مكتملة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#missionsLate">متأخرة</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="missionsActive"><div class="table-responsive"><table class="table table-hover" id="missionsTableActive"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>التكلفة المتوقعة</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyActive"></tbody></table></div></div><div class="tab-pane fade" id="missionsDone"><div class="table-responsive"><table class="table table-hover" id="missionsTableDone"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>التكلفة الفعلية</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyDone"></tbody></table></div></div><div class="tab-pane fade" id="missionsLate"><div class="table-responsive"><table class="table table-hover" id="missionsTableLate"><thead><tr><th>النوع</th><th>الوجهة</th><th>التاريخ</th><th>الموظف</th><th>التكلفة المتوقعة</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyLate"></tbody></table></div></div></div></div>
+                
                 <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات والأرصدة</h2><div id="leavesActions"></div></div><div id="leaveBalanceCard" class="card text-white bg-info mb-3 d-none"><div class="card-body">رصيدك الحالي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
                 <div id="salesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المبيعات</h2><div id="salesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="salesTable"><thead><tr><th>المندوب</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="salesTbody"></tbody></table></div></div></div>
                 <div id="customersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div id="customersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>المساحة/المحصول</th><th>الإحداثيات</th><th>المتابعة</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div></div>
-                <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن (جمعية)</h2><div id="inventoryActions"></div></div><div class="card shadow-sm p-3"><div id="inventoryList"></div></div></div>
+                <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن</h2><div id="inventoryActions"></div></div><div class="card shadow-sm p-3"><div id="inventoryList"></div></div></div>
                 <div id="reportsSection" style="display: none;"><h2 class="mb-4">التقارير</h2><div class="row" id="reportsList"></div></div>
                 <div id="permissionsSection" style="display: none;"><h2 class="mb-4">إدارة الصلاحيات</h2><div class="card shadow-sm p-3"><div id="permissionsContainer"></div><button onclick="savePermissions()" class="btn btn-primary mt-3"><i class="fas fa-save"></i> حفظ الصلاحيات</button></div></div>
 
@@ -185,7 +189,8 @@
         let analyticsChart = null;
         let deferredPrompt = null;
 
-        const PRODUCTS = ["مو نوب", "واج سعت", "سخت"];
+        const PRODUCTS = ["مو", "نوب", "واج", "سعت", "سخت"];
+        const UNITS = ["جركن 10لتر"];
 
         const manifest = { name: "نظام الإدارة المتكامل - مزنة", short_name: "مزنة ERP", display: "standalone", background_color: "#f8f9fa", theme_color: "#343a40", icons: [{ src: "https://via.placeholder.com/192x192/343a40/ffffff?text=M", sizes: "192x192", type: "image/png" }] };
         const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
@@ -369,9 +374,13 @@
             db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
         async function toggleAttendance() {
+            const now = new Date(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            const lockedSnap = await db.ref('settings/lockedMonths').once('value');
+            const lockedMonths = lockedSnap.val() || "";
+            if (lockedMonths.includes(monthYear)) return toastr.error("هذا الشهر مقفل مالياً، لا يمكن تعديل الحضور.");
             if (!currentDayRef) return;
             const data = (await currentDayRef.once('value')).val() || {};
-            const now = new Date(); const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
             const locData = await getSecureLocation();
             if (!data.activeSession) {
                 const newRef = currentDayRef.child('sessions').push();
@@ -422,7 +431,10 @@
             });
         }
         function openDailyTasksModal() { const today = new Date().toLocaleDateString('ar-EG'); document.getElementById('dtDate').value = today; document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; new bootstrap.Modal(document.getElementById('dailyTasksModal')).show(); }
-        function saveDailyTask() {
+        async function saveDailyTask() {
+            const now = new Date(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            const lockedSnap = await db.ref('settings/lockedMonths').once('value');
+            if (lockedSnap.val() && lockedSnap.val().includes(monthYear)) return toastr.error("هذا الشهر مقفل مالياً، لا يمكن تسجيل مهام.");
             const start = document.getElementById('dtStart').value; const end = document.getElementById('dtEnd').value; const details = document.getElementById('dtDetails').value;
             if(!start || !end || !details.trim()) return toastr.warning('من فضلك أدخل الوقت والتفاصيل');
             currentDailyTasksRef.push({ startTime: start, endTime: end, details, timestamp: new Date().toLocaleString() }).then(() => { toastr.success('تم إضافة المهمة'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; });
@@ -482,7 +494,7 @@
                         html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.role}</td><td>${u.salary || '-'}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('usersTbody').innerHTML = html;
-                    document.getElementById('usersActions').innerHTML = `${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                    document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 }
                 renderTeam(); loadKPIs();
             });
@@ -497,15 +509,20 @@
                         html += `<tr><td>${d.name}</td><td>${d.managerName || ''}</td><td>${d.desc || ''}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('departmentsTbody').innerHTML = html;
-                    document.getElementById('departmentsActions').innerHTML = `${can('add', 'departments') ? `<button onclick="openAddModal('department')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                    document.getElementById('departmentsActions').innerHTML = `${can('export', 'departments') ? `<button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'departments') ? `<button onclick="openAddModal('department')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 });
             }
             
             db.ref('tasks').on('value', snap => {
                 allTasks = [];
                 snap.forEach(child => { const t = child.val(); t.id = child.key; allTasks.push(t); });
+                let visibleTasks = [];
+                if (isAdmin) visibleTasks = allTasks;
+                else if (isManager) visibleTasks = allTasks.filter(t => t.createdById === currentUserData.id || myDepts.includes(t.deptName));
+                else visibleTasks = allTasks.filter(t => t.userId === currentUserData.id);
+
                 let activeHtml = '', lateHtml = '', doneHtml = '', activeCount = 0;
-                allTasks.forEach(t => {
+                visibleTasks.forEach(t => {
                     let isLate = false;
                     if(t.endDate && t.status !== 'مكتملة' && t.status !== 'مرفوضة') { const end = new Date(t.endDate); const today = new Date(); if(end < today) isLate = true; }
                     if(t.status === 'مكتملة' && t.endDate && t.approvedAt && new Date(t.endDate) < new Date(t.approvedAt)) isLate = true;
@@ -514,7 +531,6 @@
                     if(t.status === 'قيد التنفيذ' || t.status === 'معلقة') badge = 'warning';
                     if(t.status === 'بانتظار اعتماد الإدارة' || t.status === 'بانتظار اعتماد المدير') badge = 'info';
                     if(t.status === 'مكتملة') badge = 'success'; if(t.status === 'مرفوضة') badge = 'danger';
-                    
                     let cardHtml = `<div class="col-md-6 mb-3"><div class="card shadow-sm task-card ${isLate ? 'late' : ''}" onclick="openTaskChat('${t.id}')"><div class="card-body"><div class="d-flex justify-content-between"><h5 class="card-title">${t.title}</h5><span class="badge bg-${badge}">${t.status}</span></div><p class="mb-1"><small class="text-muted">المسؤول: ${t.userName}</small></p><p class="mb-1"><small class="text-muted">أنشأها: ${t.createdByName || 'غير معروف'}</small></p><p class="mb-0"><small class="text-muted">من ${t.startDate || ''} إلى ${t.endDate || ''}</small> ${isLate ? '<span class="badge bg-danger ms-1">متأخرة</span>' : ''}</p>${t.attachmentUrl ? '<i class="fas fa-paperclip text-secondary mt-2"></i>' : ''}</div></div></div>`;
                     if (t.status === 'مكتملة' || t.status === 'مرفوضة') doneHtml += cardHtml;
                     else if (isLate) lateHtml += cardHtml;
@@ -524,42 +540,58 @@
                 document.getElementById('tasksListActive').innerHTML = activeHtml || '<div class="col-12 text-center text-muted">لا توجد مهام نشطة</div>';
                 document.getElementById('tasksListLate').innerHTML = lateHtml || '<div class="col-12 text-center text-muted">لا توجد مهام متأخرة</div>';
                 document.getElementById('tasksListDone').innerHTML = doneHtml || '<div class="col-12 text-center text-muted">لا توجد مهام منتهية</div>';
-                document.getElementById('tasksActions').innerHTML = `${can('add', 'tasks') ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                document.getElementById('tasksActions').innerHTML = `${can('export', 'tasks') ? `<button onclick="exportTasksToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'tasks') ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 loadAnalyticsCharts();
             });
 
             db.ref('requests').on('value', snap => {
                 allRequests = [];
                 snap.forEach(child => { const r = child.val(); r.id = child.key; allRequests.push(r); });
+                let visibleRequests = [];
+                if (isAdmin) visibleRequests = allRequests;
+                else if (isManager) visibleRequests = allRequests.filter(r => myDepts.includes(r.targetDeptName) || r.empId === currentUserData.id);
+                else visibleRequests = allRequests.filter(r => r.empId === currentUserData.id);
+
                 let html = '';
-                allRequests.forEach(r => { html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item} ${r.attachmentUrl ? '<i class="fas fa-paperclip"></i>' : ''}</td><td>${r.empName}</td><td>${r.targetDeptName || ''}</td><td>${r.assignedEmpName || '-'}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':r.status==='مرفوض'?'danger':r.status==='موافقة الإدارة'?'info':'secondary'}">${r.status}</span></td></tr>`; });
-                document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات</td></tr>';
-                document.getElementById('requestsActions').innerHTML = `${can('add', 'requests') ? `<button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button>` : ''}`;
+                visibleRequests.forEach(r => { html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item} ${r.attachmentUrl ? '<i class="fas fa-paperclip"></i>' : ''}</td><td>${r.qty} ${r.unit || ''}</td><td>${r.empName}</td><td>${r.targetDeptName || ''}</td><td>${r.assignedEmpName || '-'}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':r.status==='مرفوض'?'danger':r.status==='موافقة الإدارة'?'info':'secondary'}">${r.status}</span></td></tr>`; });
+                document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد طلبات</td></tr>';
+                document.getElementById('requestsActions').innerHTML = `${can('export', 'requests') ? `<button onclick="exportRequestsToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'requests') ? `<button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button>` : ''}`;
             });
 
             db.ref('production').on('value', snap => {
                 allProduction = []; let pendingCount = 0;
                 snap.forEach(child => { const p = child.val(); p.id = child.key; allProduction.push(p); if(p.status === 'جديد') pendingCount++; });
+                let visibleProduction = isAdmin ? allProduction : allProduction.filter(p => p.userId === currentUserData.id);
                 let html = '';
-                allProduction.forEach(p => {
-                    html += `<tr class="req-row" onclick="openProductionDetails('${p.id}')"><td>${p.code}</td><td>${p.product}</td><td>${p.qty}</td><td>${p.deliveryDate}</td><td><span class="badge bg-${p.status==='تم الإنتاج'?'success':'warning'}">${p.status}</span></td></tr>`;
+                visibleProduction.forEach(p => {
+                    html += `<tr class="req-row" onclick="openProductionDetails('${p.id}')"><td>${p.code}</td><td>${p.product}</td><td>${p.qty} ${p.unit || ''}</td><td>${p.deliveryDate}</td><td><span class="badge bg-${p.status==='تم الإنتاج'?'success':'warning'}">${p.status}</span></td></tr>`;
                 });
-                if(document.getElementById('statProduction')) document.getElementById('statProduction').innerText = pendingCount;
+                if(document.getElementById('statProduction')) document.getElementById('statProduction').innerText = isAdmin ? pendingCount : visibleProduction.filter(p => p.status === 'جديد').length;
                 document.getElementById('productionTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد طلبات إنتاج</td></tr>';
-                document.getElementById('productionActions').innerHTML = `<button onclick="openAddModal('production')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إنتاج</button>`;
+                document.getElementById('productionActions').innerHTML = `${isAdmin ? `<button onclick="exportToExcel('productionTable', 'طلبات_الانتاج')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('production')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إنتاج</button>`;
             });
 
             db.ref('missions').on('value', snap => {
-                allMissions = []; snap.forEach(child => { const m = child.val(); m.id = child.key; allMissions.push(m); });
-                let html = '';
-                allMissions.forEach(m => {
+                allMissions = []; 
+                snap.forEach(child => { const m = child.val(); m.id = child.key; allMissions.push(m); });
+                let visibleMissions = isAdmin ? allMissions : allMissions.filter(m => m.userId === currentUserData.id);
+                
+                let activeHtml = '', doneHtml = '', lateHtml = '';
+                visibleMissions.forEach(m => {
+                    let isLate = false;
+                    if(m.endDate && m.status !== 'مكتملة' && m.status !== 'مرفوضة') { const end = new Date(m.endDate); const today = new Date(); if(end < today) isLate = true; }
                     let badge = 'secondary';
-                    if(m.status === 'بانتظار الموافقة') badge = 'warning'; if(m.status === 'معتمدة') badge = 'info';
-                    if(m.status === 'جارية') badge = 'primary'; if(m.status === 'مكتملة') badge = 'success'; if(m.status === 'مرفوضة') badge = 'danger';
-                    html += `<tr class="req-row" onclick="openMissionDetails('${m.id}')"><td>${m.type}</td><td>${m.destination}</td><td>${m.startDate} إلى ${m.endDate}</td><td>${m.userName}</td><td><span class="badge bg-${badge}">${m.status}</span></td></tr>`;
+                    if(m.status === 'بانتظار الموافقة') badge = 'warning'; if(m.status === 'معتمدة' || m.status === 'جارية') badge = 'info';
+                    if(m.status === 'مكتملة') badge = 'success'; if(m.status === 'مرفوضة') badge = 'danger';
+                    let row = `<tr class="req-row" onclick="openMissionDetails('${m.id}')"><td>${m.type}</td><td>${m.destination}</td><td>${m.startDate} إلى ${m.endDate}</td><td>${m.userName}</td><td>${m.expectedCost || '-'}</td><td><span class="badge bg-${badge}">${m.status}</span></td></tr>`;
+                    if (m.status === 'مكتملة' || m.status === 'مرفوضة') doneHtml += row;
+                    else if (isLate) lateHtml += row;
+                    else activeHtml += row;
                 });
-                document.getElementById('missionsTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد مأموريات</td></tr>';
-                document.getElementById('missionsActions').innerHTML = `<button onclick="openAddModal('mission')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> تسجيل مأمورية</button>`;
+                document.getElementById('missionsTbodyActive').innerHTML = activeHtml || '<tr><td colspan="6" class="text-center text-muted">لا توجد مأموريات جارية</td></tr>';
+                document.getElementById('missionsTbodyDone').innerHTML = doneHtml || '<tr><td colspan="6" class="text-center text-muted">لا توجد مأموريات مكتملة</td></tr>';
+                document.getElementById('missionsTbodyLate').innerHTML = lateHtml || '<tr><td colspan="6" class="text-center text-muted">لا توجد مأموريات متأخرة</td></tr>';
+                document.getElementById('missionsActions').innerHTML = `${isAdmin ? `<button onclick="exportToExcel('missionsTableActive', 'المأموريات_الجارية')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${isAdmin ? `<button onclick="openAddModal('mission')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> تكليف بمأمورية</button>` : ''}`;
             });
 
             db.ref('leaves').on('value', snap => {
@@ -581,10 +613,10 @@
                 db.ref('sales').on('value', snap => {
                     allSales = []; let html = ''; snap.forEach(child => { const s = child.val(); s.id = child.key; allSales.push(s); 
                         let act = `<button onclick="openEditModal('sale','${s.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${s.id}','sales')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
-                        html += `<tr><td>${s.repName}</td><td>${s.customerName}</td><td>${s.productType}</td><td>${s.qty}</td><td>${s.amount}</td><td><span class="badge bg-${s.status==='تم التوصيل'?'success':'warning'}">${s.status}</span></td><td>${act}</td></tr>`;
+                        html += `<tr><td>${s.repName}</td><td>${s.customerName}</td><td>${s.productType}</td><td>${s.qty} ${s.unit || ''}</td><td>${s.amount}</td><td><span class="badge bg-${s.status==='تم التوصيل'?'success':'warning'}">${s.status}</span></td><td>${act}</td></tr>`;
                     });
                     document.getElementById('salesTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد مبيعات</td></tr>';
-                    document.getElementById('salesActions').innerHTML = `<button onclick="openAddModal('sale')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> بيع جديد</button>`;
+                    document.getElementById('salesActions').innerHTML = `${can('export', 'sales') ? `<button onclick="exportToExcel('salesTable', 'المبيعات')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'sales') ? `<button onclick="openAddModal('sale')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> بيع جديد</button>` : ''}`;
                 });
             }
             if (can('view', 'customers')) {
@@ -594,23 +626,30 @@
                         html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td>${c.landArea} (${c.crop})</td><td>${c.location || '-'}</td><td><button onclick="addFollowUp('${c.id}')" class="btn btn-sm btn-info text-white"><i class="fas fa-comment"></i></button></td><td>${act}</td></tr>`;
                     });
                     document.getElementById('customersTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا يوجد عملاء</td></tr>';
-                    document.getElementById('customersActions').innerHTML = `<button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل جديد</button>`;
+                    document.getElementById('customersActions').innerHTML = `${can('export', 'customers') ? `<button onclick="exportCustomersToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'customers') ? `<button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل جديد</button>` : ''}`;
                 });
             }
             if (can('view', 'inventory')) {
                 db.ref('inventory').on('value', snap => {
                     allInventory = []; let html = '<div class="list-group">';
                     snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); 
-                        html += `<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center inventory-item"><div><h6 class="mb-1">${i.name} <span class="badge bg-primary">${i.code || 'moz000'}</span></h6><small>${i.category} | الحجم: ${i.size || i.unit || '-'} | الكمية: ${i.qty}</small></div><div><button onclick="openEditModal('inventory','${i.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${i.id}','inventory')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></div></div>`;
+                        let isLowStock = parseFloat(i.qty) < 10;
+                        if (isLowStock && i.category === 'منتج نهائي') {
+                            db.ref('users').once('value').then(usersSnap => {
+                                usersSnap.forEach(u => { if (u.val().role === 'admin') sendNotification(u.key, `تنبيه: مخزون ${i.name} (${i.code}) أقل من 10 جراكن!`); });
+                            });
+                        }
+                        html += `<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center inventory-item ${isLowStock ? 'low-stock' : ''}"><div><h6 class="mb-1">${i.name} <span class="badge bg-primary">${i.code || 'moz000'}</span> ${isLowStock ? '<span class="badge bg-danger">مخزون منخفض</span>' : ''}</h6><small>${i.category} | الحجم: ${i.size || i.unit || '-'} | الكمية: ${i.qty}</small></div><div><button onclick="openEditModal('inventory','${i.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> <button onclick="openDeleteModal('${i.id}','inventory')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></div></div>`;
                     });
                     html += '</div>';
                     document.getElementById('inventoryList').innerHTML = html || '<p class="text-muted">المخزن فارغ</p>';
-                    document.getElementById('inventoryActions').innerHTML = `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة صنف</button>`;
+                    document.getElementById('inventoryActions').innerHTML = `${can('export', 'inventory') ? `<button onclick="exportInventoryToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'inventory') ? `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة صنف</button>` : ''}`;
                 });
             }
 
             let repHtml = '';
             if (can('view', 'reports')) {
+                if (isAdmin) repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-dark shadow-sm h-100 quick-link" onclick="lockCurrentMonth()"><div class="card-body text-center"><i class="fas fa-lock fa-3x mb-2"></i><h5>إقفال الشهر مالياً</h5></div></div></div>`;
                 repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-danger shadow-sm h-100 quick-link" onclick="generatePayrollReport()"><div class="card-body text-center"><i class="fas fa-money-bill-wave fa-3x mb-2"></i><h5>كشف رواتب الشهر</h5></div></div></div>`;
                 repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="openAttendanceReportModal()"><div class="card-body text-center"><i class="fas fa-clock fa-3x mb-2"></i><h5>تقرير الحضور</h5></div></div></div>`;
                 repHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="exportToExcel('salesTable', 'تقرير_المبيعات')"><div class="card-body text-center"><i class="fas fa-hand-holding-usd fa-3x mb-2"></i><h5>تقرير المبيعات</h5></div></div></div>`;
@@ -653,7 +692,6 @@
                 allUsers.forEach(u => {
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
-                    // Admin is always online
                     const statusColor = (isCheckedIn || u.role === 'admin') ? 'success' : 'warning';
                     const depts = u.departments ? u.departments.join(', ') : (u.deptName || 'غير محدد');
                     const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
@@ -694,17 +732,14 @@
             const isManager = currentUserData.role === 'manager';
             const isAssignedUser = t.userId === currentUserData.id;
             document.getElementById('taskChatTitle').innerText = `متابعة: ${t.title}`;
-            
             let infoHtml = `<p><b>الموظف المسؤول:</b> ${t.userName} <br><b>أنشأها:</b> ${t.createdByName || 'غير معروف'} <br><b>الحالة:</b> ${t.status}</p>`;
             if(t.attachmentUrl) infoHtml += `<a href="${t.attachmentUrl}" target="_blank" class="btn btn-sm btn-secondary mb-2"><i class="fas fa-paperclip"></i> عرض المرفق</a>`;
-            
             document.getElementById('taskChatInfo').innerHTML = infoHtml;
             let chatHtml = '';
             if(t.chat) { Object.values(t.chat).forEach(msg => { chatHtml += `<div class="chat-msg"><small class="text-muted fw-bold">${msg.senderName}</small> <small class="float-left text-muted">${msg.time}</small><p class="mb-0 mt-1">${msg.text}</p></div>`; }); }
             document.getElementById('taskChatHistory').innerHTML = chatHtml || '<p class="text-center text-muted">لا توجد تعليقات</p>';
             document.getElementById('taskChatInput').value = ''; 
             document.getElementById('taskNextFollowUp').value = '';
-            
             let footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin && t.status !== 'مكتملة' && t.status !== 'مرفوضة') footer += `<button type="button" class="btn btn-danger" onclick="adminForceCompleteTask()"><i class="fas fa-flag-checkered"></i> إنهاء (إجباري)</button>`;
             if (isAdmin || isManager) footer += `<button type="button" class="btn btn-warning" onclick="changeTaskAssignee()"><i class="fas fa-user-plus"></i> تغيير المسؤول</button>`;
@@ -717,7 +752,6 @@
             document.getElementById('taskChatFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
         }
-        
         function changeTaskAssignee() {
             let opts = '<select id="newAssignee" class="form-control">';
             allUsers.forEach(u => opts += `<option value="${u.id}" ${u.id === currentTaskChatId.userId ? 'selected' : ''}>${u.name}</option>`);
@@ -731,7 +765,6 @@
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();
             });
         }
-
         function adminForceCompleteTask() {
             const comment = prompt("سبب الإنهاء الإجباري (كومنت إلزامي):");
             if(!comment) return toastr.warning("يجب كتابة سبب الإنهاء");
@@ -776,14 +809,15 @@
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
                 let depOpts = '<option value="">-- اختر القسم --</option>'; for(let d in depOptsData) depOpts += `<option value="${depOptsData[d].name}">${depOptsData[d].name}</option>`;
-                body.innerHTML = `<input type="text" id="reqEmpName" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="reqTargetDept" class="form-control mb-2">${depOpts}</select><input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><input type="number" id="reqQty" class="form-control mb-2" placeholder="الكمية"><textarea id="reqPurpose" class="form-control" placeholder="الغرض"></textarea><label>مرفقات (صورة/فيديو/PDF)</label><input type="file" id="reqFile" class="form-control mb-2">`;
+                body.innerHTML = `<input type="text" id="reqEmpName" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="reqTargetDept" class="form-control mb-2">${depOpts}</select><input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><div class="row"><div class="col-6"><input type="number" id="reqQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><select id="reqUnit" class="form-control">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div></div><textarea id="reqPurpose" class="form-control mt-2" placeholder="الغرض"></textarea><label class="mt-2">مرفقات (صورة/فيديو/PDF)</label><input type="file" id="reqFile" class="form-control mb-2">`;
             } else if (type === 'production') {
                 title.innerText = 'طلب إنتاج جديد';
                 let prodOpts = PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
-                body.innerHTML = `<label>المنتج</label><select id="prodName" class="form-control mb-2">${prodOpts}</select><label>الكمية المطلوبة</label><input type="number" id="prodQty" class="form-control mb-2" placeholder="الكمية"><label>تاريخ الاستلام</label><input type="date" id="prodDeliveryDate" class="form-control mb-2"><textarea id="prodNotes" class="form-control" placeholder="ملاحظات"></textarea>`;
+                body.innerHTML = `<label>المنتج</label><select id="prodName" class="form-control mb-2">${prodOpts}</select><div class="row"><div class="col-6"><label>الكمية</label><input type="number" id="prodQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><label>الوحدة</label><select id="prodUnit" class="form-control">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div></div><label>تاريخ الاستلام</label><input type="date" id="prodDeliveryDate" class="form-control mb-2"><textarea id="prodNotes" class="form-control" placeholder="ملاحظات"></textarea>`;
             } else if (type === 'mission') {
-                title.innerText = 'تسجيل مأمورية جديدة';
-                body.innerHTML = `<select id="missionType" class="form-control mb-2"><option value="سفر عمل">سفر عمل</option><option value="مؤتمر">مؤتمر</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="missionStart" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="missionEnd" class="form-control"></div></div><input type="text" id="missionDest" class="form-control mb-2" placeholder="الوجهة"><textarea id="missionPurpose" class="form-control mb-2" placeholder="الغرض"></textarea>`;
+                title.innerText = 'تكليف بمأمورية جديدة';
+                let userOpts = '<option value="">-- اختر الموظف --</option>'; allUsers.forEach(u => userOpts += `<option value="${u.id}">${u.name}</option>`);
+                body.innerHTML = `<select id="missionUser" class="form-control mb-2">${userOpts}</select><select id="missionType" class="form-control mb-2"><option value="سفر عمل">سفر عمل</option><option value="مؤتمر">مؤتمر</option><option value="زيارة عميل">زيارة عميل</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="missionStart" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="missionEnd" class="form-control"></div></div><input type="text" id="missionDest" class="form-control mb-2" placeholder="الوجهة"><textarea id="missionPurpose" class="form-control mb-2" placeholder="الغرض"></textarea><input type="number" id="missionCost" class="form-control mb-2" placeholder="التكلفة المتوقعة">`;
             } else if (type === 'leave') {
                 title.innerText = 'طلب إجازة جديد';
                 const bal = calculateLeaveBalance(currentUserData.hireDate);
@@ -795,10 +829,12 @@
             } else if (type === 'sale') {
                 title.innerText = 'بيع جديد';
                 let cOpts = '<option value="">--</option>'; allCustomers.forEach(c => cOpts += `<option value="${c.name}">${c.name}</option>`);
-                body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="saleCustomer" class="form-control mb-2">${cOpts}</select><input type="text" id="saleProduct" class="form-control mb-2" placeholder="المنتج"><input type="number" id="saleQty" class="form-control mb-2" placeholder="الكمية"><input type="number" id="saleAmount" class="form-control mb-2" placeholder="المبلغ">`;
+                let prodOpts = PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
+                body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${currentUserData.name}" readonly><select id="saleCustomer" class="form-control mb-2">${cOpts}</select><select id="saleProduct" class="form-control mb-2">${prodOpts}</select><div class="row"><div class="col-6"><input type="number" id="saleQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><select id="saleUnit" class="form-control">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div></div><input type="number" id="saleAmount" class="form-control mt-2 mb-2" placeholder="المبلغ">`;
             } else if (type === 'inventory') {
                 title.innerText = 'إضافة صنف للمخزن';
-                body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" placeholder="اسم الصنف"><select id="invCategory" class="form-control mb-2"><option>مواد خام</option><option>منتج نهائي</option></select><select id="invSize" class="form-control mb-2"><option>1 لتر</option><option>10 لتر</option><option>20 لتر</option><option>استيكرات</option><option>قطعة</option></select><input type="number" id="invQty" class="form-control mb-2" placeholder="الكمية">`;
+                let prodOpts = PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
+                body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" placeholder="اسم الصنف" list="prodList"><datalist id="prodList">${prodOpts}</datalist><select id="invCategory" class="form-control mb-2"><option>مواد خام</option><option>منتج نهائي</option></select><select id="invSize" class="form-control mb-2">${UNITS.map(u=>`<option>${u}</option>`).join('')}</select><input type="number" id="invQty" class="form-control mb-2" placeholder="الكمية">`;
             }
             document.getElementById('confirmAddBtn').setAttribute('onclick', 'confirmAdd()');
             new bootstrap.Modal(document.getElementById('addModal')).show();
@@ -838,17 +874,42 @@
                 }
                 db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
                     const newId = res.snapshot.val(); const formattedId = "#" + String(newId).padStart(4, '0'); 
-                    db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, attachmentUrl: attachmentUrl, status: 'جديد', comment: '' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); 
+                    db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, unit: document.getElementById('reqUnit').value, attachmentUrl: attachmentUrl, status: 'جديد', comment: '' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); 
                 }); 
             }
             else if (type === 'production') {
                 db.ref('counters/production').transaction(c => (c || 0) + 1).then(res => {
                     const newId = res.snapshot.val(); const code = "PROD-" + String(newId).padStart(4, '0');
-                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, deliveryDate: document.getElementById('prodDeliveryDate').value, notes: document.getElementById('prodNotes').value, status: 'جديد', userId: currentUserData.id, userName: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'); });
+                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, unit: document.getElementById('prodUnit').value, deliveryDate: document.getElementById('prodDeliveryDate').value, notes: document.getElementById('prodNotes').value, status: 'جديد', userId: currentUserData.id, userName: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'); });
                 });
             }
             else if (type === 'mission') {
-                db.ref('missions').push({ type: document.getElementById('missionType').value, startDate: document.getElementById('missionStart').value, endDate: document.getElementById('missionEnd').value, destination: document.getElementById('missionDest').value, purpose: document.getElementById('missionPurpose').value, status: 'بانتظار الموافقة', userId: currentUserData.id, userName: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل المأمورية'); });
+                const u = document.getElementById('missionUser');
+                const mStart = document.getElementById('missionStart').value;
+                const today = new Date(); today.setHours(0,0,0,0);
+                const startDt = new Date(mStart);
+                const diffDays = (startDt - today) / (1000 * 60 * 60 * 24);
+                
+                if (!isAdmin) {
+                    if (diffDays < 3) return toastr.error('المأموريات يجب أن تُطلب قبل 3 أيام على الأقل');
+                }
+                
+                db.ref('missions').push({ 
+                    type: document.getElementById('missionType').value, 
+                    startDate: mStart, 
+                    endDate: document.getElementById('missionEnd').value, 
+                    destination: document.getElementById('missionDest').value, 
+                    purpose: document.getElementById('missionPurpose').value, 
+                    expectedCost: document.getElementById('missionCost').value, 
+                    actualCost: 0,
+                    status: isAdmin ? 'معتمدة' : 'بانتظار الموافقة', 
+                    userId: u.value, 
+                    userName: u.options[u.selectedIndex].text 
+                }).then(() => { 
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); 
+                    toastr.success('تم تسجيل المأمورية'); 
+                    if (isAdmin && u.value !== currentUserData.id) sendNotification(u.value, `لديك مأمورية جديدة إلى ${document.getElementById('missionDest').value}`);
+                });
             }
             else if (type === 'leave') {
                 const lType = document.getElementById('leaveType').value;
@@ -880,7 +941,7 @@
                 const deduct = document.getElementById('leaveDeductSalary').checked;
                 db.ref('leaves').push({ type: lType, startDate: lStart, endDate: lEnd, reason: lReason, deductSalary: deduct, status: 'معتمدة', userId: u.value, userName: u.options[u.selectedIndex].text, approvedBy: currentUserData.name }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم اعتماد الإجازة للموظف'); });
             }
-            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, amount: document.getElementById('saleAmount').value, status: 'إنتاج', timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
+            else if (type === 'sale') { db.ref('sales').push({ repId: currentUserData.id, repName: currentUserData.name, customerName: document.getElementById('saleCustomer').value, productType: document.getElementById('saleProduct').value, qty: document.getElementById('saleQty').value, unit: document.getElementById('saleUnit').value, amount: document.getElementById('saleAmount').value, status: 'إنتاج', timestamp: new Date().toLocaleString() }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل البيع'); }); }
             else if (type === 'inventory') { 
                 db.ref('counters/inventory').transaction(c => (c || 0) + 1).then(res => {
                     const num = res.snapshot.val(); const code = `moz${String(num).padStart(3, '0')}`;
@@ -892,13 +953,15 @@
         async function openRequestDetails(id) {
             const r = allRequests.find(req => req.id === id); if (!r) return;
             const isAdmin = currentUserData.role === 'admin';
+            const isManager = currentUserData.role === 'manager' && (currentUserData.departments || [currentUserData.deptName]).includes(r.targetDeptName);
             document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
-            let bodyHtml = `<h5>${r.item}</h5><p>الكمية: ${r.qty}</p><p>طالب الطلب: ${r.empName}</p>`;
+            let bodyHtml = `<h5>${r.item}</h5><p>الكمية: ${r.qty} ${r.unit||''}</p><p>طالب الطلب: ${r.empName}</p>`;
             if (r.attachmentUrl) bodyHtml += `<a href="${r.attachmentUrl}" target="_blank" class="btn btn-secondary mb-2"><i class="fas fa-paperclip"></i> عرض المرفق</a>`;
             bodyHtml += `<textarea class="form-control" id="detailComment" placeholder="تعليق">${r.comment || ''}</textarea>`;
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin && r.status !== 'تم التنفيذ') footer += `<button class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">إنهاء واعتماد</button>`;
+            if (isManager && r.status === 'جديد') footer += `<button class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة الإدارة</button>`;
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
@@ -911,7 +974,7 @@
             const p = allProduction.find(prod => prod.id === id); if (!p) return;
             const isAdmin = currentUserData.role === 'admin';
             document.getElementById('detailsModalTitle').innerText = `طلب إنتاج ${p.code}`;
-            document.getElementById('detailsModalBody').innerHTML = `<h5>${p.product}</h5><p>الكمية: ${p.qty}</p><p>تاريخ الاستلام: ${p.deliveryDate}</p><p>ملاحظات: ${p.notes || ''}</p>`;
+            document.getElementById('detailsModalBody').innerHTML = `<h5>${p.product}</h5><p>الكمية: ${p.qty} ${p.unit||''}</p><p>تاريخ الاستلام: ${p.deliveryDate}</p><p>ملاحظات: ${p.notes || ''}</p>`;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin && p.status !== 'تم الإنتاج') footer += `<button class="btn btn-success" onclick="updateProductionStatus('${id}','تم الإنتاج')">اعتماد وإنهاء</button>`;
             document.getElementById('detailsModalFooter').innerHTML = footer;
@@ -922,18 +985,35 @@
         async function openMissionDetails(id) {
             const m = allMissions.find(mis => mis.id === id); if (!m) return;
             const isAdmin = currentUserData.role === 'admin';
+            const isOwner = m.userId === currentUserData.id;
             document.getElementById('detailsModalTitle').innerText = `تفاصيل المأمورية`;
-            document.getElementById('detailsModalBody').innerHTML = `<h5>${m.type} إلى ${m.destination}</h5><p>التاريخ: ${m.startDate} إلى ${m.endDate}</p><textarea class="form-control" id="missionFeedback" placeholder="ملخص المأمورية">${m.feedback || ''}</textarea>`;
+            let bodyHtml = `<h5>${m.type} إلى ${m.destination}</h5><p>التاريخ: ${m.startDate} إلى ${m.endDate}</p><p>التكلفة المتوقعة: ${m.expectedCost || '-'}</p>`;
+            if (m.status === 'مكتملة' && m.actualCost) bodyHtml += `<p>التكلفة الفعلية: ${m.actualCost}</p>`;
+            bodyHtml += `<textarea class="form-control" id="missionFeedback" placeholder="ملخص المأمورية">${m.feedback || ''}</textarea>`;
+            document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin) {
                 if (m.status === 'بانتظار الموافقة') footer += `<button class="btn btn-success" onclick="updateMissionStatus('${id}', 'معتمدة')">اعتماد</button><button class="btn btn-danger" onclick="updateMissionStatus('${id}', 'مرفوضة')">رفض</button>`;
                 if (m.status === 'معتمدة') footer += `<button class="btn btn-primary" onclick="updateMissionStatus('${id}', 'جارية')">بدء</button>`;
                 if (m.status === 'جارية') footer += `<button class="btn btn-warning" onclick="updateMissionStatus('${id}', 'مكتملة')">إنهاء</button>`;
             }
+            if (isOwner) {
+                if (m.status === 'معتمدة') footer += `<button class="btn btn-info text-white" onclick="updateMissionStatus('${id}', 'جارية')">استلمت المأمورية</button>`;
+                if (m.status === 'جارية') footer += `<button class="btn btn-success" onclick="completeMissionWithCost('${id}')">إنهاء وإدخال التكلفة</button>`;
+            }
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
         function updateMissionStatus(id, status) { db.ref('missions/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); }); }
+        function completeMissionWithCost(id) {
+            const cost = prompt("أدخل التكلفة الفعلية للمأمورية:");
+            if (cost === null) return;
+            const feedback = document.getElementById('missionFeedback').value;
+            db.ref('missions/' + id).update({ status: 'مكتملة', actualCost: cost, feedback: feedback }).then(() => { 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); 
+                toastr.success('تم إنهاء المأمورية'); 
+            });
+        }
 
         async function openLeaveDetails(id) {
             const l = allLeaves.find(lv => lv.id === id); if (!l) return;
@@ -975,7 +1055,7 @@
             else if (type === 'task') { const users = (await db.ref('users').once('value')).val() || {}; let opts = '<option value="">--</option>'; for(let u in users) opts += `<option value="${u}" ${data.userId===u?'selected':''}>${users[u].name}</option>`; title.innerText='تعديل مهمة'; body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" value="${data.title}"><input type="hidden" id="taskDept" value="${data.deptName}"><select id="taskUser" class="form-control mb-2">${opts}</select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2" value="${data.startDate||''}"></div><div class="col-6"><label>تاريخ الانتهاء</label><input type="date" id="taskEnd" class="form-control mb-2" value="${data.endDate||''}"></div></div>`; }
             else if (type === 'sale') { title.innerText='تعديل بيع'; body.innerHTML = `<input type="text" id="saleRep" class="form-control mb-2" value="${data.repName}" readonly><input type="text" id="saleCustomer" class="form-control mb-2" value="${data.customerName}"><input type="text" id="saleProduct" class="form-control mb-2" value="${data.productType}"><input type="number" id="saleQty" class="form-control mb-2" value="${data.qty}"><input type="number" id="saleAmount" class="form-control mb-2" value="${data.amount}"><input type="text" id="saleAddress" class="form-control mb-2" value="${data.address||''}"><select id="saleStatus" class="form-control mb-2"><option ${data.status==='إنتاج'?'selected':''}>إنتاج</option><option ${data.status==='جارٍ التوصيل'?'selected':''}>جارٍ التوصيل</option><option ${data.status==='تم التوصيل'?'selected':''}>تم التوصيل</option></select><textarea id="saleNotes" class="form-control">${data.notes||''}</textarea>`; }
             else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}"><input type="text" id="custLand" class="form-control mb-2" value="${data.landArea||''}"><input type="text" id="custCrop" class="form-control mb-2" value="${data.crop}"><textarea id="custReq" class="form-control mb-2">${data.requests||''}</textarea>`; }
-            else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='مواد خام'?'selected':''}>مواد خام</option><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option></select><select id="invSize" class="form-control mb-2"><option ${data.size==='1 لتر'?'selected':''}>1 لتر</option><option ${data.size==='10 لتر'?'selected':''}>10 لتر</option><option ${data.size==='20 لتر'?'selected':''}>20 لتر</option><option ${data.size==='استيكرات'?'selected':''}>استيكرات</option><option ${data.size==='قطعة'?'selected':''}>قطعة</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}">`; }
+            else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='مواد خام'?'selected':''}>مواد خام</option><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option></select><select id="invSize" class="form-control mb-2">${UNITS.map(u=>`<option ${data.size===u?'selected':''}>${u}</option>`).join('')}</select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}">`; }
             else if (type === 'leave') {
                 title.innerText = 'تعديل إجازة';
                 body.innerHTML = `<select id="leaveType" class="form-control mb-2"><option ${data.type==='سنوية'?'selected':''}>سنوية</option><option ${data.type==='مرضية'?'selected':''}>مرضية</option><option ${data.type==='عارضة'?'selected':''}>عارضة</option><option ${data.type==='وفاة'?'selected':''}>وفاة</option></select><div class="row mb-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="leaveStart" class="form-control" value="${data.startDate}"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="leaveEnd" class="form-control" value="${data.endDate}"></div></div><textarea id="leaveReason" class="form-control mb-2" placeholder="السبب">${data.reason}</textarea><select id="leaveStatus" class="form-control mb-2"><option ${data.status==='بانتظار الموافقة'?'selected':''}>بانتظار الموافقة</option><option ${data.status==='معتمدة'?'selected':''}>معتمدة</option><option ${data.status==='مرفوضة'?'selected':''}>مرفوضة</option></select><div class="form-check"><input type="checkbox" id="leaveDeductSalary" class="form-check-input" ${data.deductSalary?'checked':''}><label class="form-check-label">خصم من الراتب</label></div>`;
@@ -1066,6 +1146,43 @@
             toastr.success("تم تصدير كشف الرواتب");
         }
         
+        async function lockCurrentMonth() {
+            const monthYear = new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            if(!confirm(`هل أنت متأكد من إقفال الشهر الحالي (${monthYear}) مالياً؟ سيتم منع الموظفين من تسجيل الحضور أو المهام في هذا الشهر.`)) return;
+            const lockedSnap = await db.ref('settings/lockedMonths').once('value');
+            let lockedMonths = lockedSnap.val() || "";
+            if (!lockedMonths.includes(monthYear)) {
+                lockedMonths += (lockedMonths ? "," : "") + monthYear;
+                db.ref('settings/lockedMonths').set(lockedMonths).then(() => toastr.success("تم إقفال الشهر مالياً بنجاح"));
+            } else {
+                toastr.warning("هذا الشهر مقفل بالفعل");
+            }
+        }
+
+        async function exportTasksToExcel() {
+            let data = [];
+            allTasks.forEach(t => { data.push({ "العنوان": t.title, "الموظف": t.userName, "تاريخ البدء": t.startDate, "تاريخ الانتهاء": t.endDate, "الحالة": t.status }); });
+            if(!data.length) return toastr.warning("لا توجد مهام");
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Tasks"); XLSX.writeFile(wb, "Tasks_Report.xlsx"); toastr.success("تم التصدير");
+        }
+        async function exportCustomersToExcel() {
+            let data = [];
+            allCustomers.forEach(c => { data.push({ "اسم العميل": c.name, "النوع": c.type, "التليفون": c.phone, "مساحة الأرض": c.landArea, "المحصول": c.crop }); });
+            if(!data.length) return toastr.warning("لا يوجد عملاء");
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Customers"); XLSX.writeFile(wb, "Customers_Report.xlsx"); toastr.success("تم التصدير");
+        }
+        async function exportRequestsToExcel() {
+            let data = [];
+            allRequests.forEach(r => { data.push({ "رقم": r.reqId, "الصنف": r.item, "الكمية": `${r.qty} ${r.unit||''}`, "طالب الطلب": r.empName, "القسم": r.targetDeptName, "الحالة": r.status }); });
+            if(!data.length) return toastr.warning("لا توجد طلبات");
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Requests"); XLSX.writeFile(wb, "Requests.xlsx"); toastr.success("تم التصدير");
+        }
+        async function exportInventoryToExcel() {
+            let data = [];
+            allInventory.forEach(i => { data.push({ "الكود": i.code, "الصنف": i.name, "التصنيف": i.category, "الحجم": i.size, "الكمية": i.qty }); });
+            if(!data.length) return toastr.warning("المخزن فارغ");
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inventory"); XLSX.writeFile(wb, "Inventory.xlsx"); toastr.success("تم التصدير");
+        }
         function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
     </script>
 </body>
