@@ -56,7 +56,7 @@
             <div class="sidebar" style="width: 230px;">
                 <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
-                <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق</a>
+                <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق والرواتب</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
                 <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
@@ -133,7 +133,14 @@
                     <div class="alert alert-info"><i class="fas fa-heart text-danger"></i> اهلا بك في مزنة Done By Love . Madawey</div>
                 </div>
 
-                <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق</h2></div><div class="row" id="teamList"></div></div>
+                <div id="teamSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>الفريق والرواتب</h2>
+                        <div id="teamActions"></div>
+                    </div>
+                    <div class="row" id="teamList"></div>
+                </div>
+                
                 <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الصلاحية</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
                 
@@ -254,10 +261,10 @@
             }
             let cardsHtml = '';
             if (isAdmin || isManager) {
-                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body"><h6>مبيعات اليوم</h6><h2 id="statTodaySales" class="display-6 mb-0">0</h2><small>جنيه</small></div></div></div>`;
-                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body"><h6>تأخر اليوم</h6><h2 id="statLateToday" class="display-6 mb-0">0</h2><small>موظف</small></div></div></div>`;
-                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body"><h6>مهام مكتملة</h6><h2 id="statDoneTasks" class="display-6 mb-0">0</h2><small>مهمة</small></div></div></div>`;
-                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body"><h6>طلبات إنتاج</h6><h2 id="statProduction" class="display-6 mb-0">0</h2><small>طلب</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showKPIDetails('sales')"><div class="card-body"><h6>مبيعات اليوم</h6><h2 id="statTodaySales" class="display-6 mb-0">0</h2><small>جنيه</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showKPIDetails('late')"><div class="card-body"><h6>تأخر اليوم</h6><h2 id="statLateToday" class="display-6 mb-0">0</h2><small>موظف</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100 quick-link" onclick="showKPIDetails('done_tasks')"><div class="card-body"><h6>مهام مكتملة</h6><h2 id="statDoneTasks" class="display-6 mb-0">0</h2><small>مهمة</small></div></div></div>`;
+                cardsHtml += `<div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100 quick-link" onclick="showKPIDetails('production')"><div class="card-body"><h6>طلبات إنتاج</h6><h2 id="statProduction" class="display-6 mb-0">0</h2><small>طلب</small></div></div></div>`;
             } else {
                 if (can('view', 'requests')) cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-warning shadow-sm h-100 quick-link" onclick="showSection('requests', null)"><div class="card-body"><h6>طلبات المشتريات</h6><h2 id="statPendingReq" class="display-6 mb-0">0</h2></div></div></div>`;
                 if (can('view', 'tasks')) cardsHtml += `<div class="col-md-4 mb-3"><div class="card text-white bg-success shadow-sm h-100 quick-link" onclick="showSection('tasks', null)"><div class="card-body"><h6>المهام النشطة</h6><h2 id="statPendingTasks" class="display-6 mb-0">0</h2></div></div></div>`;
@@ -267,6 +274,72 @@
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             document.getElementById('dailyTasksCard').classList.toggle('d-none', isAdmin);
             showSection('dashboard', null);
+        }
+
+        function showKPIDetails(type) {
+            let html = '';
+            let title = '';
+            if (type === 'late') {
+                title = 'المتأخرون اليوم';
+                const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+                db.ref('attendance').once('value').then(attSnap => {
+                    html = '<ul class="list-group">';
+                    let count = 0;
+                    attSnap.forEach(userAttSnap => {
+                        const userAtt = userAttSnap.val()[monthYear]?.[day];
+                        if (userAtt && userAtt.sessions) {
+                            const firstSession = Object.values(userAtt.sessions)[0];
+                            if (firstSession && firstSession.checkIn) {
+                                const [h, m] = firstSession.checkIn.split(':').map(Number);
+                                if (h > 9 || (h === 9 && m > 0)) {
+                                    const u = allUsers.find(us => us.id === userAttSnap.key);
+                                    if (u) { html += `<li class="list-group-item">${u.name} - حضر: ${firstSession.checkIn}</li>`; count++; }
+                                }
+                            }
+                        }
+                    });
+                    html += '</ul>';
+                    if (count === 0) html = '<p class="text-center text-success">لا يوجد متأخرون اليوم</p>';
+                    document.getElementById('detailsModalBody').innerHTML = html;
+                    document.getElementById('detailsModalTitle').innerText = title;
+                    document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+                    new bootstrap.Modal(document.getElementById('detailsModal')).show();
+                });
+            } else if (type === 'sales') {
+                title = 'مبيعات اليوم';
+                const todayStr = new Date().toLocaleDateString();
+                let todaySales = allSales.filter(s => new Date(s.timestamp).toLocaleDateString() === todayStr);
+                html = '<ul class="list-group">';
+                todaySales.forEach(s => { html += `<li class="list-group-item">${s.customerName} - ${s.productType} - ${s.qty} ${s.unit||''} - ${s.amount} جنيه</li>`; });
+                html += '</ul>';
+                if (todaySales.length === 0) html = '<p class="text-center text-muted">لا توجد مبيعات اليوم</p>';
+                document.getElementById('detailsModalBody').innerHTML = html;
+                document.getElementById('detailsModalTitle').innerText = title;
+                document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            } else if (type === 'done_tasks') {
+                title = 'المهام المكتملة';
+                let done = allTasks.filter(t => t.status === 'مكتملة');
+                html = '<ul class="list-group">';
+                done.forEach(t => { html += `<li class="list-group-item">${t.title} - ${t.userName}</li>`; });
+                html += '</ul>';
+                if (done.length === 0) html = '<p class="text-center text-muted">لا توجد مهام مكتملة</p>';
+                document.getElementById('detailsModalBody').innerHTML = html;
+                document.getElementById('detailsModalTitle').innerText = title;
+                document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            } else if (type === 'production') {
+                title = 'طلبات الإنتاج';
+                let pending = allProduction.filter(p => p.status === 'جديد');
+                html = '<ul class="list-group">';
+                pending.forEach(p => { html += `<li class="list-group-item">${p.code} - ${p.product} - ${p.qty} ${p.unit||''}</li>`; });
+                html += '</ul>';
+                if (pending.length === 0) html = '<p class="text-center text-muted">لا توجد طلبات إنتاج</p>';
+                document.getElementById('detailsModalBody').innerHTML = html;
+                document.getElementById('detailsModalTitle').innerText = title;
+                document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            }
         }
 
         function showSection(section, evt) {
@@ -494,7 +567,7 @@
                         html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.role}</td><td>${u.salary || '-'}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('usersTbody').innerHTML = html;
-                    document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                    document.getElementById('usersActions').innerHTML = `${can('export', 'users') ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'users')" hidden></label> ${can('add', 'users') ? `<button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 }
                 renderTeam(); loadKPIs();
             });
@@ -509,7 +582,7 @@
                         html += `<tr><td>${d.name}</td><td>${d.managerName || ''}</td><td>${d.desc || ''}</td><td>${act}</td></tr>`; 
                     });
                     document.getElementById('departmentsTbody').innerHTML = html;
-                    document.getElementById('departmentsActions').innerHTML = `${can('export', 'departments') ? `<button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'departments') ? `<button onclick="openAddModal('department')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
+                    document.getElementById('departmentsActions').innerHTML = `${can('export', 'departments') ? `<button onclick="exportToExcel('departmentsTable', 'الأقسام')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'departments')" hidden></label> ${can('add', 'departments') ? `<button onclick="openAddModal('department')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
                 });
             }
             
@@ -626,7 +699,7 @@
                         html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td>${c.landArea} (${c.crop})</td><td>${c.location || '-'}</td><td><button onclick="addFollowUp('${c.id}')" class="btn btn-sm btn-info text-white"><i class="fas fa-comment"></i></button></td><td>${act}</td></tr>`;
                     });
                     document.getElementById('customersTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا يوجد عملاء</td></tr>';
-                    document.getElementById('customersActions').innerHTML = `${can('export', 'customers') ? `<button onclick="exportCustomersToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'customers') ? `<button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل جديد</button>` : ''}`;
+                    document.getElementById('customersActions').innerHTML = `${can('export', 'customers') ? `<button onclick="exportCustomersToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'customers')" hidden></label> ${can('add', 'customers') ? `<button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل جديد</button>` : ''}`;
                 });
             }
             if (can('view', 'inventory')) {
@@ -643,7 +716,7 @@
                     });
                     html += '</div>';
                     document.getElementById('inventoryList').innerHTML = html || '<p class="text-muted">المخزن فارغ</p>';
-                    document.getElementById('inventoryActions').innerHTML = `${can('export', 'inventory') ? `<button onclick="exportInventoryToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} ${can('add', 'inventory') ? `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة صنف</button>` : ''}`;
+                    document.getElementById('inventoryActions').innerHTML = `${can('export', 'inventory') ? `<button onclick="exportInventoryToExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'inventory')" hidden></label> ${can('add', 'inventory') ? `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة صنف</button>` : ''}`;
                 });
             }
 
@@ -686,9 +759,11 @@
 
         function renderTeam() {
             db.ref('attendance').once('value').then(attSnap => {
-                const allAtt = attSnap.val() || {}; let html = '';
-                const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+                const allAtt = attSnap.val() || {}; 
                 const isAdmin = currentUserData.role === 'admin';
+                document.getElementById('teamActions').innerHTML = isAdmin ? `<button onclick="calculateSalaries()" class="btn btn-danger btn-sm"><i class="fas fa-calculator"></i> حساب الرواتب</button>` : '';
+                let html = '';
+                const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
                 allUsers.forEach(u => {
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
@@ -700,6 +775,46 @@
                 });
                 document.getElementById('teamList').innerHTML = html || '<p class="text-muted">لا يوجد أعضاء</p>';
             });
+        }
+
+        async function calculateSalaries() {
+            const monthYear = prompt("أدخل شهر وسنة الحساب (مثال: 05-2024):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
+            if (!monthYear) return;
+            const [m, y] = monthYear.split('-').map(Number);
+            const daysInMonth = new Date(y, m, 0).getDate();
+            const expectedHours = daysInMonth * 8;
+            const attSnap = await db.ref('attendance').once('value');
+            const allAtt = attSnap.val() || {};
+            
+            let html = `<h5 class="mb-3">رواتب شهر: ${monthYear}</h5><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الراتب الأساسي</th><th>ساعات العمل</th><th>ساعات النقص</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody>`;
+            
+            for (const u of allUsers) {
+                if (!u.salary || u.role === 'admin') continue;
+                const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
+                let totalHours = 0;
+                for (const day in monthlyAtt) {
+                    if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours);
+                }
+                const missingHours = Math.max(0, expectedHours - totalHours);
+                const hourlyRate = u.salary / expectedHours;
+                const deduction = missingHours * hourlyRate;
+                const netSalary = u.salary - deduction;
+                
+                html += `<tr><td>${u.name}</td><td>${u.salary}</td><td>${totalHours.toFixed(1)}</td><td>${missingHours.toFixed(1)}</td><td>${deduction.toFixed(2)}</td><td class="fw-bold text-success">${netSalary.toFixed(2)}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            
+            document.getElementById('detailsModalTitle').innerText = 'كشف حساب الرواتب';
+            document.getElementById('detailsModalBody').innerHTML = html;
+            document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-success" onclick="exportDetailsToExcel()"><i class="fas fa-file-excel"></i> تصدير</button> <button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
+            new bootstrap.Modal(document.getElementById('detailsModal')).show();
+        }
+        
+        function exportDetailsToExcel() {
+            const table = document.querySelector('#detailsModalBody table');
+            if(!table) return;
+            XLSX.writeFile(XLSX.utils.table_to_book(table), "Payroll_Details.xlsx");
+            toastr.success('تم التصدير');
         }
 
         async function loadPermissionsUI() {
@@ -1116,36 +1231,6 @@
             XLSX.writeFile(wb, "Attendance_Report.xlsx"); bootstrap.Modal.getOrCreateInstance(document.getElementById('attendanceReportModal')).hide(); toastr.success('تم التصدير');
         }
 
-        async function generatePayrollReport() {
-            const monthYear = prompt("أدخل شهر وسنة الرواتب (مثال: 05-2024):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
-            if (!monthYear) return;
-            const attSnap = await db.ref('attendance').once('value');
-            const allAtt = attSnap.val() || {};
-            let data = [];
-            allUsers.forEach(u => {
-                if (!u.salary) return;
-                const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
-                let totalHours = 0;
-                let absentDays = 0;
-                const daysInMonth = new Date(parseInt(monthYear.split('-')[1]), parseInt(monthYear.split('-')[0]), 0).getDate();
-                for (const day in monthlyAtt) {
-                    if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours);
-                }
-                let presentDays = Math.round(totalHours / 8);
-                absentDays = Math.max(0, daysInMonth - presentDays);
-                const dailyRate = u.salary / daysInMonth;
-                const deduction = absentDays * dailyRate;
-                const netSalary = u.salary - deduction;
-                data.push({ "الموظف": u.name, "الراتب الأساسي": u.salary, "أيام الغياب": absentDays, "الخصومات": deduction.toFixed(2), "الصافي": netSalary.toFixed(2) });
-            });
-            if(!data.length) return toastr.warning("لا توجد بيانات رواتب للموظفين. تأكد من تحديد الراتب الأساسي لكل موظف.");
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Payroll");
-            XLSX.writeFile(wb, `Payroll_${monthYear}.xlsx`);
-            toastr.success("تم تصدير كشف الرواتب");
-        }
-        
         async function lockCurrentMonth() {
             const monthYear = new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
             if(!confirm(`هل أنت متأكد من إقفال الشهر الحالي (${monthYear}) مالياً؟ سيتم منع الموظفين من تسجيل الحضور أو المهام في هذا الشهر.`)) return;
@@ -1184,6 +1269,41 @@
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inventory"); XLSX.writeFile(wb, "Inventory.xlsx"); toastr.success("تم التصدير");
         }
         function exportToExcel(tableId, fileName) { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(tableId)), fileName + ".xlsx"); toastr.success('تم التصدير'); }
+        
+        function importExcel(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(ws);
+                
+                jsonData.forEach(row => {
+                    let item = {};
+                    if (type === 'users') {
+                        item = { name: row['الاسم'], email: row['البريد'], phone: String(row['التليفون']), hireDate: row['تاريخ التعيين'], jobTitle: row['المسمى'], salary: row['الراتب'], role: 'user' };
+                        if(item.email) db.ref('users').orderByChild('email').equalTo(item.email).once('value').then(snap => { if(!snap.exists()) db.ref('users').push(item); });
+                    } else if (type === 'departments') {
+                        item = { name: row['الاسم'], desc: row['الوصف'], managerName: row['المدير'] };
+                        if(item.name) db.ref('departments').push(item);
+                    } else if (type === 'customers') {
+                        item = { name: row['اسم العميل'], type: row['النوع'], phone: String(row['التليفون']), landArea: row['مساحة الأرض'], crop: row['المحصول'] };
+                        if(item.name) db.ref('customers').push(item);
+                    } else if (type === 'inventory') {
+                        db.ref('counters/inventory').transaction(c => (c || 0) + 1).then(res => {
+                            const num = res.snapshot.val(); const code = `moz${String(num).padStart(3, '0')}`;
+                            item = { code: code, name: row['الصنف'], category: row['التصنيف'] || 'منتج نهائي', size: row['الحجم'] || 'جركن 10لتر', qty: row['الكمية'] || 0 };
+                            if(item.name) db.ref('inventory').push(item);
+                        });
+                    }
+                });
+                toastr.success('تم الاستيراد بنجاح');
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
     </script>
 </body>
 </html>
