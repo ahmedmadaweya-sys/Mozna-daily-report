@@ -686,6 +686,7 @@
             db.ref('tasks/' + currentTaskChatId).update({ status: newStatus }).then(() => { toastr.success('تم تحديث الحالة'); bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); });
         }
 
+        
         async function openAddModal(type) {
             currentAdd.type = type;
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
