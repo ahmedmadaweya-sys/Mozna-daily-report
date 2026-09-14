@@ -38,6 +38,9 @@
         .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff; }
         .inventory-item { border-left: 5px solid #007bff; }
         .inventory-item.low-stock { border-left-color: #dc3545; background-color: #fff5f5; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #dee2e6; }
+        .calendar-day.weekend { background-color: #d1e7dd; color: #0f5132; font-weight: bold; }
+        .calendar-day.official-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; }
         select option { color: #000 !important; background-color: #fff !important; }
     </style>
 </head>
@@ -57,7 +60,7 @@
             <div class="sidebar" style="width: 230px;">
                 <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
-                <a href="#" id="navInvoices" onclick="showSection('invoices', event)"><i class="fas fa-file-invoice-dollar"></i> الفواتير والمبيعات</a>
+                <a href="#" id="navVisits" onclick="showSection('visits', event)"><i class="fas fa-map-marked-alt"></i> الزيارات والمبيعات</a>
                 <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق والرواتب</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
@@ -66,11 +69,11 @@
                 <a href="#" id="navProduction" onclick="showSection('production', event)"><i class="fas fa-industry"></i> الإنتاج</a>
                 <a href="#" id="navMissions" onclick="showSection('missions', event)"><i class="fas fa-plane-departure"></i> المأموريات</a>
                 <a href="#" id="navLeaves" onclick="showSection('leaves', event)"><i class="fas fa-umbrella-beach"></i> الإجازات</a>
-                <a href="#" id="navCustomers" onclick="showSection('customers', event)"><i class="fas fa-address-book"></i> العملاء</a>
                 <a href="#" id="navInventory" onclick="showSection('inventory', event)"><i class="fas fa-warehouse"></i> المخزن</a>
                 <a href="#" id="navProducts" onclick="showSection('products', event)"><i class="fas fa-box"></i> إعدادات المنتجات</a>
                 <a href="#" id="navRawMaterials" onclick="showSection('rawMaterials', event)"><i class="fas fa-flask"></i> المواد الخام</a>
                 <a href="#" id="navLabSettings" onclick="showSection('labSettings', event)"><i class="fas fa-vials"></i> إعدادات التحاليل</a>
+                <a href="#" id="navCalendar" onclick="showSection('calendar', event)"><i class="fas fa-calendar-alt"></i> تقويم العمل</a>
                 <a href="#" id="navReports" onclick="showSection('reports', event)"><i class="fas fa-chart-line"></i> التقارير</a>
                 <a href="#" id="navPermissions" onclick="showSection('permissions', event)" style="display:none;"><i class="fas fa-user-shield"></i> الصلاحيات</a>
                 <a href="#" onclick="logout()" class="text-danger mt-auto"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</a>
@@ -97,23 +100,22 @@
                     <div id="leaveBalanceCard" class="card text-white bg-info mb-4 d-none"><div class="card-body">رصيد إجازاتك المتبقي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div>
                     <div id="dailyTasksCard" class="card shadow-sm mb-4 border-success"><div class="card-body text-center"><h5><i class="fas fa-list-check text-success"></i> المهام اليومية (KPI)</h5><button onclick="openDailyTasksModal()" class="btn btn-success btn-lg w-50 mb-3">تسجيل مهام اليوم</button><div id="dailyTasksList" class="text-start mt-2"></div></div></div>
                     <div class="row mb-4" id="dashboardCards"></div>
-                    <div class="row mb-4 d-none" id="analyticsRow"><div class="col-md-12"><div class="card shadow-sm"><div class="card-header bg-light"><i class="fas fa-chart-bar text-primary"></i> تحليلات النظام</div><div class="card-body"><canvas id="analyticsChart" height="50"></canvas></div></div></div></div>
                 </div>
 
-                <div id="invoicesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفواتير والمبيعات</h2><div id="invoicesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="invoicesTbody"></tbody></table></div></div></div>
+                <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الزيارات والمبيعات</h2><div id="invoicesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="invoicesTbody"></tbody></table></div></div></div>
                 <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق والرواتب</h2><div id="teamActions"></div></div><div class="row" id="teamList"></div></div>
                 <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
                 <div id="tasksSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tasksActive">نشطة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksLate">متأخرة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksDone">منتهية</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="tasksActive"><div class="row mt-3" id="tasksListActive"></div></div><div class="tab-pane fade" id="tasksLate"><div class="row mt-3" id="tasksListLate"></div></div><div class="tab-pane fade" id="tasksDone"><div class="row mt-3" id="tasksListDone"></div></div></div></div>
-                <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم</th><th>الصنف</th><th>الكمية</th><th>طالب الطلب</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
+                <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم</th><th>الصنف</th><th>الكمية</th><th>طالب الطلب</th><th>موجه لـ</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
                 <div id="productionSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>طلبات الإنتاج</h2><div id="productionActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="productionTable"><thead><tr><th>كود</th><th>المنتج</th><th>الكمية</th><th>القسم</th><th>الموظف</th><th>الحالة</th></tr></thead><tbody id="productionTbody"></tbody></table></div></div></div>
                 <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#missionsActive">جارية</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#missionsDone">مكتملة</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="missionsActive"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة المتوقعة</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyActive"></tbody></table></div></div><div class="tab-pane fade" id="missionsDone"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة الفعلية</th></tr></thead><tbody id="missionsTbodyDone"></tbody></table></div></div></div></div>
-                <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات</h2><div id="leavesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
-                <div id="customersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>العملاء</h2><div id="customersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="customersTable"><thead><tr><th>العميل</th><th>النوع</th><th>التليفون</th><th>إجراءات</th></tr></thead><tbody id="customersTbody"></tbody></table></div></div></div>
+                <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات</h2><div id="leavesActions"></div></div><div id="leaveBalanceCard" class="card text-white bg-info mb-4 d-none"><div class="card-body">رصيد إجازاتك المتبقي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
                 <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن (منتجات نهائية)</h2><div id="inventoryActions"></div></div><div class="card shadow-sm p-3"><div id="inventoryList"></div></div></div>
                 <div id="productsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>إعدادات المنتجات والأسعار</h2></div><div class="card shadow-sm p-3"><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>اسم المنتج</th><th>الوحدة</th><th>السعر (جنيه)</th><th>تعديل</th><th>حذف</th></tr></thead><tbody id="productsTbody"></tbody><tfoot><tr class="fw-bold"><td colspan="2">الإجمالي</td><td id="totalProductsPrice">0</td><td colspan="2"></td></tr></tfoot></table></div><div class="row g-2 mt-3"><div class="col-md-4"><input type="text" id="prod_name" class="form-control" placeholder="اسم المنتج"></div><div class="col-md-3"><select id="prod_unit" class="form-control"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select></div><div class="col-md-3"><input type="number" id="prod_price" class="form-control" placeholder="السعر"></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="addProduct()"><i class="fas fa-plus"></i></button></div></div></div></div>
                 <div id="rawMaterialsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المواد الخام</h2></div><div class="card shadow-sm p-3"><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>اسم الخامة</th><th>الحجم</th><th>الكمية المتاحة</th><th>تعديل</th><th>حذف</th></tr></thead><tbody id="rawMaterialsTbody"></tbody></table></div><div class="row g-2 mt-3"><div class="col-md-4"><input type="text" id="raw_name" class="form-control" placeholder="اسم الخامة"></div><div class="col-md-3"><select id="raw_size" class="form-control"><option>كيلو</option><option>لتر</option><option>طن</option><option>جرام</option><option>قرص</option><option>عبوة</option></select></div><div class="col-md-3"><input type="number" id="raw_qty" class="form-control" placeholder="الكمية"></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="addRawMaterial()"><i class="fas fa-plus"></i></button></div></div></div></div>
                 <div id="labSettingsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>إعدادات التحاليل والباقات</h2></div><ul class="nav nav-tabs mb-3" id="labTabsNav"></ul><div class="tab-content" id="labTabsContent"></div></div>
+                <div id="calendarSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>تقويم العمل والإجازات</h2></div><div class="card shadow-sm p-4"><div id="calendarContainer"></div></div></div>
                 <div id="reportsSection" style="display: none;"><h2 class="mb-4">التقارير</h2><div class="row" id="reportsList"></div></div>
                 <div id="permissionsSection" style="display: none;"><h2 class="mb-4">إدارة الصلاحيات</h2><div class="card shadow-sm p-3"><div id="permissionsContainer"></div><button onclick="savePermissions()" class="btn btn-primary mt-3">حفظ</button></div></div>
             </div>
@@ -124,7 +126,6 @@
     <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="addModalTitle">إضافة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="addModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" id="confirmAddBtn" class="btn btn-primary" onclick="confirmAdd()">تأكيد</button></div></div></div></div>
     <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد؟</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button></div></div></div></div>
     <div class="modal fade" id="taskChatModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="taskChatInfo" class="mb-3"></div><hr><h6>التعليقات</h6><div class="chat-box mb-3" id="taskChatHistory"></div><textarea id="taskChatInput" class="form-control mb-2" placeholder="تحديث جديد..."></textarea></div><div class="modal-footer" id="taskChatFooter"></div></div></div></div>
-    <div class="modal fade" id="dailyTasksModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> مهام يومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label>من</label><input type="time" id="dtStart" class="form-control"></div><div class="col-6"><label>إلى</label><input type="time" id="dtEnd" class="form-control"></div></div><textarea id="dtDetails" class="form-control mt-2" rows="2" placeholder="تفاصيل"></textarea><button onclick="saveDailyTask()" class="btn btn-success w-100 mt-2">إضافة</button><hr><div id="todayTasksList"></div></div></div></div></div>
     <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -140,79 +141,60 @@
 
         let currentDelete = { id: '', type: '' }, currentAdd = { type: '' }, currentEdit = { id: '', type: '' };
         let allUsers = [], allTasks = [], allRequests = [], allMissions = [], allCustomers = [], allInventory = [], allLeaves = [], allProduction = [], allVisits = [], allDepartments = [], labSettings = {}, productsSettings = [], rawMaterials = [];
-        let currentUserData = null, currentDayRef = null, currentTaskChatId = null, userPermissions = {}, currentDailyTasksRef = null, breakInterval = null, isInitialNotifLoad = true, analyticsChart = null, deferredPrompt = null;
+        let currentUserData = null, currentDayRef = null, currentTaskChatId = null, userPermissions = {}, currentDailyTasksRef = null, breakInterval = null, isInitialNotifLoad = true;
         let currentVisitCart = [], currentGpsLoc = null;
         const LAB_CATEGORIES = ['المياه', 'النبات', 'الأعلاف', 'الأسمدة', 'الميكروبيولوجي', 'الباقات والعروض'];
-
-        const manifest = { name: "نظام مزنة", short_name: "مزنة ERP", display: "standalone", background_color: "#f8f9fa", theme_color: "#343a40", icons: [{ src: "https://via.placeholder.com/192x192/343a40/ffffff?text=M", sizes: "192x192", type: "image/png" }] };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-        document.querySelector('#manifest-placeholder').setAttribute('href', URL.createObjectURL(manifestBlob));
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installAppBtn').classList.remove('d-none'); });
-        document.getElementById('installAppBtn').addEventListener('click', async () => { if (deferredPrompt !== null) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { deferredPrompt = null; document.getElementById('installAppBtn').classList.add('d-none'); } } });
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
         function logout() { auth.signOut(); }
 
         auth.onAuthStateChanged(async user => {
-            const loginSec = document.getElementById('loginSection'), appSec = document.getElementById('appSection');
             if (user) {
-                loginSec.classList.add('d-none'); appSec.classList.remove('d-none');
+                document.getElementById('loginSection').classList.add('d-none'); document.getElementById('appSection').classList.remove('d-none');
                 const userSnap = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
                 if (userSnap.exists()) {
                     userSnap.forEach(child => { currentUserData = child.val(); currentUserData.id = child.key; });
                     const permSnap = await db.ref('permissions/employee').once('value');
                     userPermissions = permSnap.val() || {};
-                    applyPermissions(); loadAttendanceStatus(); loadDailyTasks(); loadNotifications(); loadAnnouncements();
-                    if (currentUserData.role === 'admin') document.getElementById('analyticsRow').classList.remove('d-none');
+                    applyPermissions(); loadAttendanceStatus(); loadDailyTasks(); loadNotifications(); loadAnnouncements(); loadLeaveBalanceUI();
                 }
-                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadLeaveBalanceUI();
-            } else { loginSec.classList.remove('d-none'); appSec.classList.add('d-none'); currentUserData = null; }
+                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadCalendar();
+            } else { document.getElementById('loginSection').classList.remove('d-none'); document.getElementById('appSection').classList.add('d-none'); currentUserData = null; }
         });
-
-        function isMarketing() {
-            if (!currentUserData || !currentUserData.departments) return false;
-            return currentUserData.departments.some(d => d.toLowerCase().includes('marketing') || d.includes('ماركتينج'));
-        }
 
         function can(action, section) {
             if (currentUserData?.role === 'admin') return true;
-            if (isMarketing()) return ['customers', 'invoices', 'labSettings', 'products'].includes(section);
             if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'invoices', 'customers'].includes(section);
             return userPermissions[section] && userPermissions[section][action];
         }
 
         function applyPermissions() {
             const isAdmin = currentUserData.role === 'admin', isManager = currentUserData.role === 'manager';
-            const marketing = isMarketing();
-            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'LabSettings', 'Products', 'RawMaterials'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
-            document.getElementById('navInvoices').style.display = 'block';
-            document.getElementById('navCustomers').style.display = 'block';
+            ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'LabSettings', 'Products', 'RawMaterials', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
+            document.getElementById('navVisits').style.display = 'block';
             document.getElementById('postAnnouncementBtn').classList.toggle('d-none', !isAdmin);
-            document.getElementById('navLabSettings').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('navProducts').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('navRawMaterials').style.display = isAdmin ? 'block' : 'none';
             
-            if (marketing && !isAdmin) {
-                ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team', 'RawMaterials'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
-            } else if (isAdmin) {
-                ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
-            } else if (isManager) {
-                document.getElementById('navTasks').style.display = 'block';
-                document.getElementById('navRequests').style.display = 'block';
-            } else { 
-                document.getElementById('navTasks').style.display = 'block';
-                document.getElementById('navRequests').style.display = 'block';
+            if (isAdmin) ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team', 'Products', 'RawMaterials', 'LabSettings', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
+            else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
+            else { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
+            
+            // Allow specific departments to view inventory
+            const allowedDepts = ['الإنتاج', 'المخزن', 'الحسابات', 'العمليات', 'المشتريات'];
+            if (currentUserData.departments && currentUserData.departments.some(d => allowedDepts.includes(d))) {
+                document.getElementById('navInventory').style.display = 'block';
             }
+            
             showSection('dashboard', null);
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'customers', 'inventory', 'invoices', 'products', 'rawMaterials', 'labSettings', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
+            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'inventory', 'invoices', 'products', 'rawMaterials', 'labSettings', 'calendar', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
             document.getElementById(section + 'Section').style.display = 'block';
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             if(evt && evt.target.closest('a')) evt.target.closest('a').classList.add('active');
             else { const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1))); if(navLink) navLink.classList.add('active'); }
             if (section === 'permissions') loadPermissionsUI();
+            if (section === 'calendar') loadCalendar();
         }
 
         function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
@@ -270,7 +252,6 @@
                     document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = '--:--';
                 }
             });
-            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
         async function toggleAttendance() {
             if (!currentDayRef) return;
@@ -383,7 +364,37 @@
         }
         function deleteLabItem(catKey, idx) { db.ref(`labSettings/${catKey}`).transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
-        // INVOICES & SALES
+        // CALENDAR
+        function loadCalendar() {
+            const now = new Date(); const month = now.getMonth(); const year = now.getFullYear();
+            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            db.ref(`settings/calendar/${monthYear}`).once('value').then(snap => {
+                const holidays = snap.val() || {};
+                const firstDay = new Date(year, month, 1).getDate();
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                const startDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun, 6=Sat
+                let html = `<h4 class="mb-3 text-center">${now.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</h4><div class="row text-center fw-bold mb-2"><div class="col">الأحد</div><div class="col">الإثنين</div><div class="col">الثلاثاء</div><div class="col">الأربعاء</div><div class="col">الخميس</div><div class="col">الجمعة</div><div class="col">السبت</div></div><div class="row">`;
+                for(let i=0; i<startDayOfWeek; i++) html += `<div class="col"></div>`;
+                for(let d=firstDay; d<=lastDay; d++) {
+                    const dateObj = new Date(year, month, d);
+                    const dayOfWeek = dateObj.getDay();
+                    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    let classes = "calendar-day";
+                    if(dayOfWeek === 5 || dayOfWeek === 6) classes += " weekend";
+                    if(holidays[dateStr]) classes += " official-holiday";
+                    html += `<div class="col"><div class="${classes}" onclick="toggleHoliday('${dateStr}')">${d}<br><small>${holidays[dateStr] ? 'رسمي' : ''}</small></div></div>`;
+                }
+                html += `</div><p class="mt-3 text-muted"><small>الضغط على اليوم يحدده كإجازة رسمية (يوم أحمر). الجمعة والسبت تلقائياً (أيام خضراء).</small></p>`;
+                document.getElementById('calendarContainer').innerHTML = html;
+            });
+        }
+        function toggleHoliday(dateStr) {
+            const monthYear = dateStr.substring(0, 7);
+            const ref = db.ref(`settings/calendar/${monthYear}/${dateStr}`);
+            ref.transaction(val => { return val ? null : true; }).then(() => { loadCalendar(); toastr.success('تم تحديث حالة اليوم'); });
+        }
+
+        // VISITS & SALES
         function openVisitModal() {
             currentVisitCart = []; currentGpsLoc = null;
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
@@ -396,6 +407,7 @@
                     <h6>بيانات العميل الجديد</h6>
                     <input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل">
                     <select id="custType" class="form-control mb-2"><option value="تاجر">تاجر</option><option value="موزع">موزع</option><option value="منفذ بيع">منفذ بيع</option><option value="جمعية">جمعية</option><option value="مزارع">مزارع</option><option value="أخرى">أخرى</option></select>
+                    <div id="farmerFields"><input type="text" id="custCrop" class="form-control mb-2" placeholder="نوع المحصول"><input type="text" id="custLand" class="form-control mb-2" placeholder="مساحة الأرض"></div>
                     <input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون">
                 </div>
                 <div class="mb-3 border p-3 rounded bg-light">
@@ -463,6 +475,7 @@
                 custPhone = document.getElementById('custPhone').value; custType = document.getElementById('custType').value;
                 const newCustRef = db.ref('customers').push();
                 let custData = { name: custName, type: custType, phone: custPhone };
+                if(custType === 'مزارع') { custData.crop = document.getElementById('custCrop').value; custData.land = document.getElementById('custLand').value; }
                 await newCustRef.set(custData); custId = newCustRef.key;
             } else { const c = allCustomers.find(c => c.id === custId); custName = c ? c.name : ''; custPhone = c ? c.phone : ''; custType = c ? c.type : ''; }
             
@@ -608,13 +621,17 @@
             document.getElementById('tasksListActive').innerHTML = activeHtml || '<div class="col-12 text-center text-muted">لا توجد مهام نشطة</div>';
             document.getElementById('tasksListLate').innerHTML = lateHtml || '<div class="col-12 text-center text-muted">لا توجد مهام متأخرة</div>';
             document.getElementById('tasksListDone').innerHTML = doneHtml || '<div class="col-12 text-center text-muted">لا توجد مهام منتهية</div>';
-            document.getElementById('tasksActions').innerHTML = `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
+            const canAddTask = currentUserData.role === 'admin' || currentUserData.role === 'manager';
+            document.getElementById('tasksActions').innerHTML = `${canAddTask ? `<button onclick="openAddModal('task')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
         }
         function renderRequests() {
-            let visibleRequests = currentUserData.role === 'admin' ? allRequests : allRequests.filter(r => r.empId === currentUserData.id);
+            let visibleRequests = currentUserData.role === 'admin' ? allRequests : allRequests.filter(r => r.empId === currentUserData.id || r.assignedEmpId === currentUserData.id);
             let html = '';
-            visibleRequests.forEach(r => { html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item}</td><td>${r.qty} ${r.unit || ''}</td><td>${r.empName}</td><td><span class="badge bg-${r.status==='تم التنفيذ'?'success':'warning'}">${r.status}</span></td></tr>`; });
-            document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">لا توجد طلبات</td></tr>';
+            visibleRequests.forEach(r => { 
+                let badge = r.status === 'تم التنفيذ' ? 'success' : r.status === 'مرفوض' ? 'danger' : 'warning';
+                html += `<tr class="req-row" onclick="openRequestDetails('${r.id}')"><td>${r.reqId}</td><td>${r.item}</td><td>${r.qty} ${r.unit || ''}</td><td>${r.empName}</td><td>${r.assignedEmpName || '-'}</td><td><span class="badge bg-${badge}">${r.status}</span></td></tr>`; 
+            });
+            document.getElementById('requestsTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات</td></tr>';
             document.getElementById('requestsActions').innerHTML = `<button onclick="openAddModal('request')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب جديد</button>`;
         }
         function renderMissions() {
@@ -656,7 +673,8 @@
             });
             html += '</div>';
             document.getElementById('inventoryList').innerHTML = html || '<p class="text-muted">المخزن فارغ</p>';
-            document.getElementById('inventoryActions').innerHTML = `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
+            const canManageInventory = currentUserData.role === 'admin' || (currentUserData.departments && currentUserData.departments.some(d => ['الإنتاج', 'المخزن', 'الحسابات', 'العمليات', 'المشتريات'].includes(d)));
+            document.getElementById('inventoryActions').innerHTML = `${canManageInventory ? `<button onclick="openAddModal('inventory')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>` : ''}`;
         }
         function renderProduction() {
             let html = '';
@@ -688,20 +706,53 @@
             const monthYear = prompt("أدخل شهر وسنة الحساب (مثال: 05-2024):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
             if (!monthYear) return;
             const [m, y] = monthYear.split('-').map(Number);
+            
+            // Calculate working days (excluding Fri/Sat)
             const daysInMonth = new Date(y, m, 0).getDate();
-            const expectedHours = daysInMonth * 8;
+            let workingDays = 0;
+            for(let i=1; i<=daysInMonth; i++) {
+                const dayOfWeek = new Date(y, m-1, i).getDay();
+                if(dayOfWeek !== 5 && dayOfWeek !== 6) workingDays++;
+            }
+            
+            // Fetch Official Holidays
+            const holidaysSnap = await db.ref(`settings/calendar/${monthYear}`).once('value');
+            const officialHolidays = holidaysSnap.val() || {};
+            const holidaysCount = Object.keys(officialHolidays).length;
+            const actualWorkingDays = workingDays - holidaysCount;
+            const expectedHours = actualWorkingDays * 8;
+
             const attSnap = await db.ref('attendance').once('value');
             const allAtt = attSnap.val() || {};
-            let html = `<h5>رواتب: ${monthYear}</h5><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الأساسي</th><th>ساعات العمل</th><th>النقص</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody>`;
+            const leavesSnap = await db.ref('leaves').once('value');
+            const allLeaves = leavesSnap.val() || {};
+            
+            let html = `<h5>رواتب: ${monthYear}</h5><p>أيام العمل المتوقعة: ${actualWorkingDays} يوم (${expectedHours} ساعة)</p><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الأساسي</th><th>ساعات العمل</th><th>النقص</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody>`;
+            
             for (const u of allUsers) {
                 if (!u.salary || u.role === 'admin') continue;
                 const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
                 let totalHours = 0;
                 for (const day in monthlyAtt) { if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours); }
-                const missingHours = Math.max(0, expectedHours - totalHours);
+                
+                // Calculate unpaid leaves (deducted from salary)
+                let unpaidLeaveDays = 0;
+                for (const key in allLeaves) {
+                    const l = allLeaves[key];
+                    if(l.userId === u.id && l.status === 'معتمدة' && l.deductSalary) {
+                        const start = new Date(l.startDate);
+                        const end = new Date(l.endDate);
+                        if(start.getMonth()+1 == m && start.getFullYear() == y) {
+                            unpaidLeaveDays += Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                        }
+                    }
+                }
+                
+                const missingHours = Math.max(0, expectedHours - totalHours) + (unpaidLeaveDays * 8);
                 const hourlyRate = u.salary / expectedHours;
                 const deduction = missingHours * hourlyRate;
                 const netSalary = u.salary - deduction;
+                
                 html += `<tr><td>${u.name}</td><td>${u.salary}</td><td>${totalHours.toFixed(1)}</td><td>${missingHours.toFixed(1)}</td><td>${deduction.toFixed(2)}</td><td class="fw-bold text-success">${netSalary.toFixed(2)}</td></tr>`;
             }
             html += '</tbody></table>';
@@ -747,9 +798,26 @@
                 footer += `<button class="btn btn-primary" onclick="updateTaskStatus('مكتملة')">إنهاء المهمة</button>`;
                 footer += `<button class="btn btn-warning" onclick="addTaskComment()">حفظ تعليق</button>`;
             }
-            if (isAdmin) footer += `<button class="btn btn-danger" onclick="openDeleteModal('${t.id}','tasks'); bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();"><i class="fas fa-trash"></i> حذف</button>`;
+            if (isAdmin) {
+                footer += `<button class="btn btn-danger" onclick="openDeleteModal('${t.id}','tasks'); bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();"><i class="fas fa-trash"></i> حذف</button>`;
+                if (t.status === 'بانتظار اعتماد الإدارة') footer += `<button class="btn btn-success" onclick="updateTaskStatus('جديدة')">اعتماد المهمة</button>`;
+                footer += `<button class="btn btn-info text-white" onclick="changeTaskAssignee()">توكيل لموظف</button>`;
+            }
             document.getElementById('taskChatFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('taskChatModal')).show();
+        }
+        function changeTaskAssignee() {
+            let opts = '<select id="newAssignee" class="form-control">';
+            allUsers.forEach(u => opts += `<option value="${u.id}" ${u.id === currentTaskChatId.userId ? 'selected' : ''}>${u.name}</option>`);
+            opts += '</select>';
+            document.getElementById('taskChatInfo').innerHTML += `<hr><h6>تغيير الموظف المسؤول</h6>${opts}<button class="btn btn-primary mt-2" onclick="saveTaskAssignee()">حفظ</button>`;
+        }
+        function saveTaskAssignee() {
+            const sel = document.getElementById('newAssignee');
+            db.ref('tasks/' + currentTaskChatId).update({ userId: sel.value, userName: sel.options[sel.selectedIndex].text }).then(() => {
+                toastr.success('تم تغيير الموظف المسؤول');
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();
+            });
         }
         function addTaskComment() {
             const text = document.getElementById('taskChatInput').value;
@@ -763,14 +831,18 @@
         async function openRequestDetails(id) {
             const r = allRequests.find(req => req.id === id); if (!r) return;
             const isAdmin = currentUserData.role === 'admin';
+            const isManager = currentUserData.role === 'manager';
             document.getElementById('detailsModalTitle').innerText = `طلب ${r.reqId}`;
-            let bodyHtml = `<h5>${r.item}</h5><p>الكمية: ${r.qty} ${r.unit||''}</p><p>طالب الطلب: ${r.empName}</p><textarea class="form-control" id="detailComment" placeholder="تعليق">${r.comment || ''}</textarea>`;
+            let bodyHtml = `<h5>${r.item}</h5><p>الكمية: ${r.qty} ${r.unit||''}</p><p>طالب الطلب: ${r.empName}</p><p>موجه لـ: ${r.assignedEmpName || '-'}</p><textarea class="form-control" id="detailComment" placeholder="تعليق">${r.comment || ''}</textarea>`;
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin) {
-                footer += `<button class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">اعتماد</button>`;
+                footer += `<button class="btn btn-success" onclick="updateReqStatus('${id}','تم التنفيذ')">اعتماد وتوجيه للحسابات</button>`;
                 footer += `<button class="btn btn-danger" onclick="updateReqStatus('${id}','مرفوض')">رفض</button>`;
                 footer += `<button class="btn btn-warning" onclick="openDeleteModal('${id}','requests'); bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide();"><i class="fas fa-trash"></i> حذف</button>`;
+            }
+            if (isManager) {
+                footer += `<button class="btn btn-info text-white" onclick="updateReqStatus('${id}','موافقة الإدارة')">موافقة وتسعير</button>`;
             }
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
@@ -784,7 +856,7 @@
             const p = allProduction.find(prod => prod.id === id); if (!p) return;
             const isAdmin = currentUserData.role === 'admin';
             document.getElementById('detailsModalTitle').innerText = `طلب إنتاج ${p.code}`;
-            let bodyHtml = `<h5>${p.product}</h5><p>الكمية: ${p.qty} ${p.unit||''}</p><p>القسم: ${p.deptName||'-'}</p><p>الموظف: ${p.userName||'-'}</p><textarea class="form-control" id="prodComment" placeholder="تحديثات حالة الإنتاج">${p.comment || ''}</textarea>`;
+            let bodyHtml = `<h5>${p.product}</h5><p>الكمية: ${p.qty} ${p.unit||''}</p><p>القسم: ${p.deptName||'-'}</p><p>الموظف: ${p.userName||'-'}</p><p>ملاحظات: ${p.notes || ''}</p><textarea class="form-control" id="prodComment" placeholder="تحديثات حالة الإنتاج">${p.comment || ''}</textarea>`;
             document.getElementById('detailsModalBody').innerHTML = bodyHtml;
             let footer = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             if (isAdmin) {
@@ -799,10 +871,6 @@
             const comment = document.getElementById('prodComment').value; 
             db.ref('production/' + id).update({ status, comment }).then(() => { 
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); 
-                if(status === 'تم الإنتاج') {
-                    // Deduct Raw Materials (simplified: just send notification to admin)
-                    sendNotification(currentUserData.id, `تم اعتماد إنتاج ${id}. برجاء مراجعة خصم المواد الخام من المخزن.`);
-                }
             }); 
         }
 
@@ -873,13 +941,15 @@
                 body.innerHTML = `<input type="text" id="taskTitle" class="form-control mb-2" placeholder="العنوان">${deptField}<select id="taskUser" class="form-control mb-2"><option value="">-- اختر القسم أولاً --</option></select><div class="row"><div class="col-6"><label>تاريخ البدء</label><input type="date" id="taskStart" class="form-control mb-2"></div><div class="col-6"><label>تاريخ الانتهاء المتوقع</label><input type="date" id="taskEnd" class="form-control mb-2"></div></div>`;
             } else if (type === 'request') {
                 title.innerText = 'طلب شراء جديد';
-                body.innerHTML = `<input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><div class="row"><div class="col-6"><input type="number" id="reqQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><select id="reqUnit" class="form-control"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select></div></div>`;
+                let deptOpts = depOptsData.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');
+                let userOpts = allUsers.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+                body.innerHTML = `<input type="text" id="reqItem" class="form-control mb-2" placeholder="الصنف"><div class="row"><div class="col-6"><input type="number" id="reqQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><input type="text" id="reqUnit" class="form-control" placeholder="الوحدة (طن/لتر/متر)"></div></div><div class="row mt-2"><div class="col-6"><select id="reqTargetDept" class="form-control"><option value="">-- القسم الموجه له --</option>${deptOpts}</select></div><div class="col-6"><select id="reqAssignedEmp" class="form-control"><option value="">-- الموظف المسؤول --</option>${userOpts}</select></div></div><div class="row mt-2"><div class="col-6"><label>من تاريخ</label><input type="date" id="reqStartDate" class="form-control"></div><div class="col-6"><label>إلى تاريخ</label><input type="date" id="reqEndDate" class="form-control"></div></div><textarea id="reqPurpose" class="form-control mt-2" placeholder="الغرض"></textarea>`;
             } else if (type === 'production') {
                 title.innerText = 'طلب إنتاج جديد';
                 let prodOpts = productsSettings.map((p, i) => `<option value="${p.name}">${p.name}</option>`).join('');
                 let deptOpts = depOptsData.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');
                 let userOpts = allUsers.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
-                body.innerHTML = `<select id="prodName" class="form-control mb-2">${prodOpts}</select><div class="row"><div class="col-6"><input type="number" id="prodQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><select id="prodUnit" class="form-control"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select></div></div><div class="row mt-2"><div class="col-6"><select id="prodDept" class="form-control"><option value="">-- القسم --</option>${deptOpts}</select></div><div class="col-6"><select id="prodUser" class="form-control"><option value="">-- الموظف --</option>${userOpts}</select></div></div><input type="date" id="prodDeliveryDate" class="form-control mt-2 mb-2">`;
+                body.innerHTML = `<select id="prodName" class="form-control mb-2">${prodOpts}</select><div class="row"><div class="col-6"><input type="number" id="prodQty" class="form-control" placeholder="الكمية"></div><div class="col-6"><select id="prodUnit" class="form-control"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select></div></div><div class="row mt-2"><div class="col-6"><select id="prodDept" class="form-control"><option value="">-- القسم --</option>${deptOpts}</select></div><div class="col-6"><select id="prodUser" class="form-control"><option value="">-- الموظف --</option>${userOpts}</select></div></div><input type="date" id="prodDeliveryDate" class="form-control mt-2 mb-2"><textarea id="prodNotes" class="form-control" placeholder="ملاحظات (العبوات، الأحجام، موجه لمن)"></textarea>`;
             } else if (type === 'mission') {
                 title.innerText = 'تكليف بمأمورية جديدة';
                 let userOpts = '<option value="">-- اختر الموظف --</option>'; allUsers.forEach(u => userOpts += `<option value="${u.id}">${u.name}</option>`);
@@ -909,13 +979,24 @@
                 }).catch(err => toastr.error(err.message)); 
             }
             else if (type === 'department') { db.ref('departments').push({ name: document.getElementById('depName').value, managerName: document.getElementById('depManager').value, desc: document.getElementById('depDesc').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
-            else if (type === 'task') { const u = document.getElementById('taskUser'); db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: document.getElementById('taskDept').value, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: 'جديدة' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة'); }); }
-            else if (type === 'request') { db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { const newId = res.snapshot.val(); const formattedId = "#" + String(newId).padStart(4, '0'); db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, unit: document.getElementById('reqUnit').value, status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); }); }
+            else if (type === 'task') { 
+                const u = document.getElementById('taskUser'); 
+                const status = currentUserData.role === 'manager' ? 'بانتظار اعتماد الإدارة' : 'جديدة';
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: document.getElementById('taskDept').value, createdById: currentUserData.id, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة'); }); 
+            }
+            else if (type === 'request') { 
+                db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
+                    const newId = res.snapshot.val(); const formattedId = "#" + String(newId).padStart(4, '0'); 
+                    const assignedEmpSel = document.getElementById('reqAssignedEmp');
+                    const targetDeptSel = document.getElementById('reqTargetDept');
+                    db.ref('requests').push({ reqId: formattedId, empId: currentUserData.id, empName: currentUserData.name, item: document.getElementById('reqItem').value, qty: document.getElementById('reqQty').value, unit: document.getElementById('reqUnit').value, targetDeptName: targetDeptSel.value, assignedEmpId: assignedEmpSel.value, assignedEmpName: assignedEmpSel.options[assignedEmpSel.selectedIndex]?.text || '', startDate: document.getElementById('reqStartDate').value, endDate: document.getElementById('reqEndDate').value, purpose: document.getElementById('reqPurpose').value, status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الطلب ' + formattedId); }); 
+                }); 
+            }
             else if (type === 'production') { 
                 db.ref('counters/production').transaction(c => (c || 0) + 1).then(res => { 
                     const newId = res.snapshot.val(); const code = "PROD-" + String(newId).padStart(4, '0'); 
                     const u = document.getElementById('prodUser'); const d = document.getElementById('prodDept');
-                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, unit: document.getElementById('prodUnit').value, deliveryDate: document.getElementById('prodDeliveryDate').value, deptName: d.value, userId: u.value, userName: u.options[u.selectedIndex]?.text || '', status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'); }); 
+                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, unit: document.getElementById('prodUnit').value, deliveryDate: document.getElementById('prodDeliveryDate').value, deptName: d.value, userId: u.value, userName: u.options[u.selectedIndex]?.text || '', notes: document.getElementById('prodNotes').value, status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'); }); 
                 }); 
             }
             else if (type === 'mission') { const u = document.getElementById('missionUser'); db.ref('missions').push({ type: document.getElementById('missionType').value, startDate: document.getElementById('missionStart').value, endDate: document.getElementById('missionEnd').value, destination: document.getElementById('missionDest').value, expectedCost: document.getElementById('missionCost').value, status: 'معتمدة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل المأمورية'); }); }
