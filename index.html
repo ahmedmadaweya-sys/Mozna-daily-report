@@ -334,7 +334,7 @@
         function addRawMaterial() {
             const m = { name: document.getElementById('raw_name').value, size: document.getElementById('raw_size').value, qty: document.getElementById('raw_qty').value };
             if(!m.name || !m.qty) return toastr.warning('أدخل الاسم والكمية');
-            db.ref('rawMaterials').transaction(arr => { arr = arr || []; arr.push(m); return arr; }).then(() => { toastr.success('تمت الإضافة'; document.getElementById('raw_name').value = ''; document.getElementById('raw_qty').value = ''; });
+            db.ref('rawMaterials').transaction(arr => { arr = arr || []; arr.push(m); return arr; }).then(() => { toastr.success('تمت الإضافة'); document.getElementById('raw_name').value = ''; document.getElementById('raw_qty').value = ''; });
         }
         function deleteRawMaterial(idx) { db.ref('rawMaterials').transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
