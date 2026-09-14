@@ -801,7 +801,7 @@
             let opts = '<select id="newAssignee" class="form-control">';
             allUsers.forEach(u => opts += `<option value="${u.id}" ${u.id === currentTaskChatId.userId ? 'selected' : ''}>${u.name}</option>`);
             opts += '</select>';
-            document.getElementById('taskChatInfo').innerHTML += `<hr><h6>تغيير الموظف المسؤول</h6>${opts><button class="btn btn-primary mt-2" onclick="saveTaskAssignee()">حفظ</button>`;
+            document.getElementById('taskChatInfo').innerHTML += `<hr><h6>تغيير الموظف المسؤول</h6>${opts}<button class="btn btn-primary mt-2" onclick="saveTaskAssignee()">حفظ</button>`;
         }
         function saveTaskAssignee() {
             const sel = document.getElementById('newAssignee');
