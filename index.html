@@ -563,11 +563,18 @@
             const v = allVisits.find(vis => vis.id === id); if (!v) return;
             const isAdmin = currentUserData.role === 'admin';
             document.getElementById('detailsModalTitle').innerText = `فاتورة - ${v.custName}`;
+            
+            // FIX for v.cart undefined error
             let cartHtml = '<ul class="list-group">';
-            v.cart.forEach(c => { cartHtml += `<li class="list-group-item">${c.type}: ${c.name} ${c.qty ? `(${c.qty} ${c.unit})` : ''} - ${c.price || 0} جنيه</li>`; });
+            if (v.cart && Array.isArray(v.cart)) {
+                v.cart.forEach(c => { cartHtml += `<li class="list-group-item">${c.type}: ${c.name} ${c.qty ? `(${c.qty} ${c.unit})` : ''} - ${c.price || 0} جنيه</li>`; });
+            } else {
+                cartHtml += '<li class="list-group-item text-muted">لا توجد أصناف مسجلة في هذه الفاتورة</li>';
+            }
             cartHtml += '</ul>';
+            
             let bodyHtml = `<p><b>المندوب:</b> ${v.repName}<br><b>العميل:</b> ${v.custName} (${v.custType})<br><b>تليفون:</b> ${v.custPhone}<br><b>الموقع:</b> <a href="${v.loc}" target="_blank">عرض الخريطة</a> ${v.suspicious ? '<span class="badge bg-danger">موقع مشبوه</span>' : ''}</p><hr>${cartHtml}<hr>`;
-            bodyHtml += `<div class="row"><div class="col-6"><b>الإجمالي:</b> ${v.total} جنيه</div><div class="col-6"><b>الخصم:</b> ${v.discount || 0}%</div></div><h4 class="mt-3 text-success text-end">الصافي: ${v.net} جنيه</h4>`;
+            bodyHtml += `<div class="row"><div class="col-6"><b>الإجمالي:</b> ${v.total || 0} جنيه</div><div class="col-6"><b>الخصم:</b> ${v.discount || 0}%</div></div><h4 class="mt-3 text-success text-end">الصافي: ${v.net || 0} جنيه</h4>`;
             
             if (isAdmin && v.status === 'pending_approval') {
                 bodyHtml += `<hr><h6>تطبيق خصم واعتماد</h6><div class="input-group"><input type="number" id="discountInput" class="form-control" value="${v.discount || 0}" min="0" max="100"><span class="input-group-text">%</span><button class="btn btn-success" onclick="approveInvoice('${id}')">اعتماد</button><button class="btn btn-danger" onclick="rejectInvoice('${id}')">رفض</button></div>`;
@@ -616,12 +623,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${v.cart.map(c => `<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;">${c.name}</td><td style="text-align:center; padding:8px;">${c.qty || 1} ${c.unit || ''}</td><td style="text-align:left; padding:8px;">${c.price || 0}</td></tr>`).join('')}
+                            ${(v.cart || []).map(c => `<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;">${c.name}</td><td style="text-align:center; padding:8px;">${c.qty || 1} ${c.unit || ''}</td><td style="text-align:left; padding:8px;">${c.price || 0}</td></tr>`).join('')}
                         </tbody>
                     </table>
-                    <h3 style="text-align:left;">الإجمالي قبل الخصم: ${v.total} جنيه</h3>
-                    <h3 style="text-align:left;">نسبة الخصم: ${v.discount}%</h3>
-                    <h2 style="text-align:left; color:green;">الصافي المطلوب: ${v.net} جنيه</h2>
+                    <h3 style="text-align:left;">الإجمالي قبل الخصم: ${v.total || 0} جنيه</h3>
+                    <h3 style="text-align:left;">نسبة الخصم: ${v.discount || 0}%</h3>
+                    <h2 style="text-align:left; color:green;">الصافي المطلوب: ${v.net || 0} جنيه</h2>
                 </div>`;
             html2pdf().from(element).save(`Invoice_${v.custName}.pdf`);
         }
