@@ -182,7 +182,6 @@
             else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             else { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             
-            // Admin Dashboard Analytics
             document.getElementById('attendanceCard').classList.toggle('d-none', isAdmin);
             const adminCards = document.getElementById('adminDashboardCards');
             if (isAdmin) {
@@ -309,7 +308,6 @@
             }
         }
 
-        // PRODUCTS SETTINGS
         function loadProductsSettings() {
             db.ref('productsSettings').on('value', snap => {
                 productsSettings = snap.val() || [];
@@ -327,11 +325,10 @@
         function addProduct() {
             const p = { name: document.getElementById('prod_name').value, unit: document.getElementById('prod_unit').value, price: document.getElementById('prod_price').value };
             if(!p.name || !p.price) return toastr.warning('أدخل الاسم والسعر');
-            db.ref('productsSettings').transaction(arr => { arr = arr || []; arr.push(p); return arr; }).then(() => { toastr.success('تمت الإضافة'; document.getElementById('prod_name').value = ''; document.getElementById('prod_price').value = ''; });
+            db.ref('productsSettings').transaction(arr => { arr = arr || []; arr.push(p); return arr; }).then(() => { toastr.success('تمت الإضافة'); document.getElementById('prod_name').value = ''; document.getElementById('prod_price').value = ''; });
         }
         function deleteProduct(idx) { db.ref('productsSettings').transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
-        // RAW MATERIALS
         function loadRawMaterials() {
             db.ref('rawMaterials').on('value', snap => {
                 rawMaterials = snap.val() || [];
@@ -347,11 +344,10 @@
         function addRawMaterial() {
             const m = { name: document.getElementById('raw_name').value, size: document.getElementById('raw_size').value, qty: document.getElementById('raw_qty').value };
             if(!m.name || !m.qty) return toastr.warning('أدخل الاسم والكمية');
-            db.ref('rawMaterials').transaction(arr => { arr = arr || []; arr.push(m); return arr; }).then(() => { toastr.success('تمت الإضافة'; document.getElementById('raw_name').value = ''; document.getElementById('raw_qty').value = ''; });
+            db.ref('rawMaterials').transaction(arr => { arr = arr || []; arr.push(m); return arr; }).then(() => { toastr.success('تمت الإضافة'); document.getElementById('raw_name').value = ''; document.getElementById('raw_qty').value = ''; });
         }
         function deleteRawMaterial(idx) { db.ref('rawMaterials').transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
-        // LAB SETTINGS
         function loadLabSettings() {
             db.ref('labSettings').on('value', snap => {
                 labSettings = snap.val() || {};
@@ -385,11 +381,9 @@
         }
         function deleteLabItem(catKey, idx) { db.ref(`labSettings/${catKey}`).transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
 
-        // CALENDAR (Google/Laptop Style - Full Year View)
         function loadCalendar() {
             const container = document.getElementById('calendarContainer');
             if (!container) return;
-
             let html = `
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <button class="btn btn-secondary" onclick="changeCalendarYear(-1)"><i class="fas fa-chevron-right"></i> السنة السابقة</button>
@@ -398,56 +392,42 @@
                 </div>
                 <div class="row">
             `;
-
             const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
             const dayNames = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
             db.ref(`settings/calendar/${currentCalendarYear}`).once('value').then(snap => {
                 const holidays = snap.val() || {};
-
                 for (let m = 0; m < 12; m++) {
                     const firstDay = new Date(currentCalendarYear, m, 1).getDay();
                     const daysInMonth = new Date(currentCalendarYear, m + 1, 0).getDate();
-
                     html += `<div class="col-md-4 mb-4"><div class="card shadow-sm h-100"><div class="card-header bg-light text-center fw-bold">${monthNames[m]}</div><div class="card-body p-2"><table class="calendar-table"><thead><tr>`;
                     dayNames.forEach(d => html += `<th>${d}</th>`);
                     html += `</tr></thead><tbody><tr>`;
-
                     for (let i = 0; i < firstDay; i++) html += `<td class="empty"></td>`;
-
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateObj = new Date(currentCalendarYear, m, d);
                         const dayOfWeek = dateObj.getDay();
                         const dateStr = `${currentCalendarYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                        
                         let classes = "";
                         if (dayOfWeek === 5 || dayOfWeek === 6) classes += " weekend";
                         if (holidays[dateStr]) classes += " official-holiday";
-
                         html += `<td class="${classes}" onclick="toggleHoliday('${dateStr}', ${currentCalendarYear})" title="${holidays[dateStr] ? 'إجازة رسمية' : 'يوم عمل'}">${d}</td>`;
-
                         if (dayOfWeek === 6 && d < daysInMonth) html += `</tr><tr>`;
                     }
-                    
                     const lastDay = new Date(currentCalendarYear, m, daysInMonth).getDay();
                     for (let i = lastDay; i < 6; i++) html += `<td class="empty"></td>`;
-                    
                     html += `</tr></tbody></table></div></div></div>`;
                 }
                 html += `</div><p class="text-muted mt-3"><small>الأخضر: إجازة أسبوعية (جمعة وسبت) | الأحمر: إجازة رسمية (اضغط على اليوم لتغيير حالته)</small></p>`;
                 container.innerHTML = html;
             });
         }
-        function changeCalendarYear(delta) {
-            currentCalendarYear += delta;
-            loadCalendar();
-        }
+        function changeCalendarYear(delta) { currentCalendarYear += delta; loadCalendar(); }
         function toggleHoliday(dateStr, year) {
             const ref = db.ref(`settings/calendar/${year}/${dateStr}`);
             ref.transaction(val => { return val ? null : true; }).then(() => { loadCalendar(); toastr.success('تم تحديث حالة اليوم'); });
         }
 
-        // VISITS & SALES
         function openVisitModal() {
             currentVisitCart = []; currentGpsLoc = null;
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
@@ -626,7 +606,7 @@
         }
         function rejectInvoice(id) {
             db.ref('visits/' + id).update({ status: 'rejected' }).then(() => { 
-                toastr.warning('تم رفض الفاتورة'; 
+                toastr.warning('تم رفض الفاتورة'); 
                 const v = allVisits.find(vis => vis.id === id);
                 sendNotification(v.repId, `تم رفض فاتورتك للعميل ${v.custName}. برجاء المراجعة.`);
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); 
@@ -860,7 +840,7 @@
         async function savePermissions() {
             let updates = {};
             document.querySelectorAll('#permissionsContainer input[type="checkbox"]').forEach(cb => { const sec = cb.dataset.sec; const act = cb.dataset.act; if(!updates[sec]) updates[sec] = {}; updates[sec][act] = cb.checked; });
-            await db.ref('permissions/employee').set(updates); toastr.success('تم حفظ الصلاحيات'; userPermissions = updates; applyPermissions();
+            await db.ref('permissions/employee').set(updates); toastr.success('تم حفظ الصلاحيات'); userPermissions = updates; applyPermissions();
         }
         function resetUserPassword(email) { if(!confirm(`إرسال رابط إعادة تعيين كلمة المرور إلى ${email}؟`)) return; auth.sendPasswordResetEmail(email).then(() => toastr.success('تم الإرسال')).catch(err => toastr.error('خطأ: ' + err.message)); }
 
@@ -897,17 +877,17 @@
         function saveTaskAssignee() {
             const sel = document.getElementById('newAssignee');
             db.ref('tasks/' + currentTaskChatId).update({ userId: sel.value, userName: sel.options[sel.selectedIndex].text }).then(() => {
-                toastr.success('تم تغيير الموظف المسؤول';
+                toastr.success('تم تغيير الموظف المسؤول');
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide();
             });
         }
         function addTaskComment() {
             const text = document.getElementById('taskChatInput').value;
             if(!text.trim()) return toastr.warning('اكتب تعليقاً');
-            db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: text }).then(() => { toastr.success('تم إضافة التحديث'; openTaskChat(currentTaskChatId); });
+            db.ref('tasks/' + currentTaskChatId + '/chat').push({ senderId: currentUserData.id, senderName: currentUserData.name, text: text }).then(() => { toastr.success('تم إضافة التحديث'); openTaskChat(currentTaskChatId); });
         }
         function updateTaskStatus(newStatus) {
-            db.ref('tasks/' + currentTaskChatId).update({ status: newStatus }).then(() => { toastr.success('تم تحديث الحالة'; bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); });
+            db.ref('tasks/' + currentTaskChatId).update({ status: newStatus }).then(() => { toastr.success('تم تحديث الحالة'); bootstrap.Modal.getOrCreateInstance(document.getElementById('taskChatModal')).hide(); });
         }
 
         async function openRequestDetails(id) {
@@ -932,7 +912,7 @@
         }
         function updateReqStatus(id, status) { 
             const comment = document.getElementById('detailComment').value; 
-            db.ref('requests/' + id).update({ status, comment }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'; }); 
+            db.ref('requests/' + id).update({ status, comment }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); }); 
         }
 
         async function openProductionDetails(id) {
@@ -954,7 +934,7 @@
         function updateProductionStatus(id, status) { 
             const comment = document.getElementById('prodComment').value; 
             db.ref('production/' + id).update({ status, comment }).then(() => { 
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'; 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); 
             }); 
         }
 
@@ -980,13 +960,13 @@
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
-        function updateMissionStatus(id, status) { db.ref('missions/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'; }); }
+        function updateMissionStatus(id, status) { db.ref('missions/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); }); }
         function closeMission(id) {
             const feedback = document.getElementById('missionFeedback').value;
             const cost = document.getElementById('missionActualCost').value;
             db.ref('missions/' + id).update({ status: 'مكتملة', actualCost: cost, feedback: feedback }).then(() => { 
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); 
-                toastr.success('تم إغلاق المأمورية'; 
+                toastr.success('تم إغلاق المأمورية'); 
             });
         }
 
@@ -1006,7 +986,7 @@
             document.getElementById('detailsModalFooter').innerHTML = footer;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
-        function updateLeaveStatus(id, status) { db.ref('leaves/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'; }); }
+        function updateLeaveStatus(id, status) { db.ref('leaves/' + id).update({ status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal')).hide(); toastr.success('تم التحديث'); }); }
 
         async function openAddModal(type) {
             currentAdd.type = type;
@@ -1058,14 +1038,14 @@
             if (type === 'user') { 
                 const selectedDepts = Array.from(document.querySelectorAll('.dept-check:checked')).map(cb => cb.value);
                 auth.createUserWithEmailAndPassword(document.getElementById('newEmail').value, document.getElementById('newPassword').value).then(userRec => { 
-                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'; }); 
+                    db.ref('users/' + userRec.user.uid).set({ name: document.getElementById('newName').value, email: document.getElementById('newEmail').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value, departments: selectedDepts, role: document.getElementById('newRole').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); 
                 }).catch(err => toastr.error(err.message)); 
             }
-            else if (type === 'department') { db.ref('departments').push({ name: document.getElementById('depName').value, managerName: document.getElementById('depManager').value, desc: document.getElementById('depDesc').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'; }); }
+            else if (type === 'department') { db.ref('departments').push({ name: document.getElementById('depName').value, managerName: document.getElementById('depManager').value, desc: document.getElementById('depDesc').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الإضافة'); }); }
             else if (type === 'task') { 
                 const u = document.getElementById('taskUser'); 
                 const status = currentUserData.role === 'manager' ? 'بانتظار اعتماد الإدارة' : 'جديدة';
-                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: document.getElementById('taskDept').value, createdById: currentUserData.id, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة'; }); 
+                db.ref('tasks').push({ title: document.getElementById('taskTitle').value, userId: u.value, userName: u.options[u.selectedIndex].text, deptName: document.getElementById('taskDept').value, createdById: currentUserData.id, startDate: document.getElementById('taskStart').value, endDate: document.getElementById('taskEnd').value, status: status }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم إضافة المهمة'); }); 
             }
             else if (type === 'request') { 
                 db.ref('counters/requests').transaction(c => (c || 0) + 1).then(res => { 
@@ -1079,10 +1059,10 @@
                 db.ref('counters/production').transaction(c => (c || 0) + 1).then(res => { 
                     const newId = res.snapshot.val(); const code = "PROD-" + String(newId).padStart(4, '0'); 
                     const u = document.getElementById('prodUser'); const d = document.getElementById('prodDept');
-                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, unit: document.getElementById('prodUnit').value, deliveryDate: document.getElementById('prodDeliveryDate').value, deptName: d.value, userId: u.value, userName: u.options[u.selectedIndex]?.text || '', notes: document.getElementById('prodNotes').value, status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'; }); 
+                    db.ref('production').push({ code: code, product: document.getElementById('prodName').value, qty: document.getElementById('prodQty').value, unit: document.getElementById('prodUnit').value, deliveryDate: document.getElementById('prodDeliveryDate').value, deptName: d.value, userId: u.value, userName: u.options[u.selectedIndex]?.text || '', notes: document.getElementById('prodNotes').value, status: 'جديد' }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل طلب الإنتاج'); }); 
                 }); 
             }
-            else if (type === 'mission') { const u = document.getElementById('missionUser'); db.ref('missions').push({ type: document.getElementById('missionType').value, startDate: document.getElementById('missionStart').value, endDate: document.getElementById('missionEnd').value, destination: document.getElementById('missionDest').value, expectedCost: document.getElementById('missionCost').value, status: 'معتمدة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل المأمورية'; }); }
+            else if (type === 'mission') { const u = document.getElementById('missionUser'); db.ref('missions').push({ type: document.getElementById('missionType').value, startDate: document.getElementById('missionStart').value, endDate: document.getElementById('missionEnd').value, destination: document.getElementById('missionDest').value, expectedCost: document.getElementById('missionCost').value, status: 'معتمدة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل المأمورية'); }); }
             else if (type === 'leave' || type === 'leave_admin') { 
                 const u = type === 'leave_admin' ? document.getElementById('leaveAdminUser') : { value: currentUserData.id, options: [{text: currentUserData.name}] }; 
                 const lStart = document.getElementById('leaveStart').value;
@@ -1092,11 +1072,11 @@
                     const bal = calculateLeaveBalance(currentUserData.hireDate);
                     const days = (new Date(lEnd) - new Date(lStart)) / (1000 * 60 * 60 * 24) + 1;
                     if (days > bal) {
-                        return toastr.error("رصيدك غير كافٍ. برجى الرجوع إلى أحمد معداوي للموافقة";
+                        return toastr.error("رصيدك غير كافٍ. برجى الرجوع إلى أحمد معداوي للموافقة");
                     }
                 }
                 
-                db.ref('leaves').push({ type: document.getElementById('leaveType').value, startDate: lStart, endDate: lEnd, reason: document.getElementById('leaveReason').value, status: type === 'leave_admin' ? 'معتمدة' : 'بانتظار الموافقة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الإجازة'; }); 
+                db.ref('leaves').push({ type: document.getElementById('leaveType').value, startDate: lStart, endDate: lEnd, reason: document.getElementById('leaveReason').value, status: type === 'leave_admin' ? 'معتمدة' : 'بانتظار الموافقة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الإجازة'); }); 
             }
             else if (type === 'inventory') { db.ref('counters/inventory').transaction(c => (c || 0) + 1).then(res => { const num = res.snapshot.val(); const code = `moz${String(num).padStart(3, '0')}`; db.ref('inventory').push({ code: code, name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, size: document.getElementById('invSize').value, qty: document.getElementById('invQty').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تمت الإضافة بكود: ' + code); }); }); }
         }
@@ -1123,7 +1103,7 @@
             if (t === 'users') { 
                 upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value }; 
                 const fileInput = document.getElementById('profilePhoto');
-                if (fileInput && fileInput.files[0]) { toastr.info('جاري رفع الصورة...'; upd.photoURL = await uploadFile(fileInput.files[0]); }
+                if (fileInput && fileInput.files[0]) { toastr.info('جاري رفع الصورة...'); upd.photoURL = await uploadFile(fileInput.files[0]); }
             }
             else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, size: document.getElementById('invSize').value, qty: document.getElementById('invQty').value }; }
             else if (t === 'departments') { upd = { name: document.getElementById('depName').value, managerName: document.getElementById('depManager').value, desc: document.getElementById('depDesc').value }; }
@@ -1134,11 +1114,11 @@
             else if (t === 'missions') { upd = { destination: document.getElementById('missionDest').value, expectedCost: document.getElementById('missionCost').value, status: document.getElementById('missionStatus').value }; }
             else if (t === 'leaves') { upd = { status: document.getElementById('leaveStatus').value }; }
             
-            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'; });
+            db.ref(t + '/' + id).update(upd).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم الحفظ'); });
         }
 
         function openDeleteModal(id, type) { currentDelete = { id, type }; new bootstrap.Modal(document.getElementById('deleteModal')).show(); }
-        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'; }); }
+        function confirmDelete() { db.ref(currentDelete.type + '/' + currentDelete.id).remove().then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).hide(); toastr.success('تم الحذف'); }); }
 
         function loadReports() {
             const isAdmin = currentUserData.role === 'admin';
@@ -1159,9 +1139,9 @@
 
         function exportToExcel(tableId, fileName) { 
             const table = document.getElementById(tableId); 
-            if(!table) return toastr.warning("لا توجد بيانات للتصدير";
+            if(!table) return toastr.warning("لا توجد بيانات للتصدير");
             XLSX.writeFile(XLSX.utils.table_to_book(table), fileName + ".xlsx"); 
-            toastr.success('تم التصدير'; 
+            toastr.success('تم التصدير'); 
         }
         
         function importExcel(event, type) {
@@ -1178,7 +1158,7 @@
                     let item = {};
                     if (type === 'users') {
                         item = { name: row['الاسم'], email: row['البريد'], phone: String(row['التليفون']), hireDate: row['تاريخ التعيين'], jobTitle: row['المسمى'], salary: row['الراتب'], role: 'user' };
-                        if(item.email) db.ref('users').push(item); // Note: doesn't create auth account
+                        if(item.email) db.ref('users').push(item); 
                     } else if (type === 'departments') {
                         item = { name: row['الاسم'], desc: row['الوصف'], managerName: row['المدير'] };
                         if(item.name) db.ref('departments').push(item);
@@ -1199,7 +1179,7 @@
                         if(item.name) db.ref('rawMaterials').transaction(arr => { arr = arr || []; arr.push(item); return arr; });
                     }
                 });
-                toastr.success('تم الاستيراد بنجاح';
+                toastr.success('تم الاستيراد بنجاح');
             };
             reader.readAsArrayBuffer(file);
             event.target.value = '';
