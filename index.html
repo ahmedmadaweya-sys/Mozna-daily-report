@@ -102,7 +102,7 @@
                     <div class="row mb-4" id="dashboardCards"></div>
                 </div>
 
-                <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الزيارات والمبيعات</h2><div id="invoicesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="invoicesTbody"></tbody></table></div></div></div>
+                <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الزيارات والمبيعات</h2><div id="visitsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="visitsTbody"></tbody></table></div></div></div>
                 <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق والرواتب</h2><div id="teamActions"></div></div><div class="row" id="teamList"></div></div>
                 <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
@@ -110,7 +110,7 @@
                 <div id="requestsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المشتريات</h2><div id="requestsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="requestsTable"><thead><tr><th>رقم</th><th>الصنف</th><th>الكمية</th><th>طالب الطلب</th><th>موجه لـ</th><th>الحالة</th></tr></thead><tbody id="requestsTbody"></tbody></table></div></div></div>
                 <div id="productionSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>طلبات الإنتاج</h2><div id="productionActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="productionTable"><thead><tr><th>كود</th><th>المنتج</th><th>الكمية</th><th>القسم</th><th>الموظف</th><th>الحالة</th></tr></thead><tbody id="productionTbody"></tbody></table></div></div></div>
                 <div id="missionsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المأموريات</h2><div id="missionsActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#missionsActive">جارية</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#missionsDone">مكتملة</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="missionsActive"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة المتوقعة</th><th>الحالة</th></tr></thead><tbody id="missionsTbodyActive"></tbody></table></div></div><div class="tab-pane fade" id="missionsDone"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>النوع</th><th>الوجهة</th><th>الموظف</th><th>التكلفة الفعلية</th></tr></thead><tbody id="missionsTbodyDone"></tbody></table></div></div></div></div>
-                <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات</h2><div id="leavesActions"></div></div><div id="leaveBalanceCard" class="card text-white bg-info mb-4 d-none"><div class="card-body">رصيد إجازاتك المتبقي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
+                <div id="leavesSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الإجازات</h2><div id="leavesActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="leavesTable"><thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody id="leavesTbody"></tbody></table></div></div></div>
                 <div id="inventorySection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المخزن (منتجات نهائية)</h2><div id="inventoryActions"></div></div><div class="card shadow-sm p-3"><div id="inventoryList"></div></div></div>
                 <div id="productsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>إعدادات المنتجات والأسعار</h2></div><div class="card shadow-sm p-3"><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>اسم المنتج</th><th>الوحدة</th><th>السعر (جنيه)</th><th>تعديل</th><th>حذف</th></tr></thead><tbody id="productsTbody"></tbody><tfoot><tr class="fw-bold"><td colspan="2">الإجمالي</td><td id="totalProductsPrice">0</td><td colspan="2"></td></tr></tfoot></table></div><div class="row g-2 mt-3"><div class="col-md-4"><input type="text" id="prod_name" class="form-control" placeholder="اسم المنتج"></div><div class="col-md-3"><select id="prod_unit" class="form-control"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select></div><div class="col-md-3"><input type="number" id="prod_price" class="form-control" placeholder="السعر"></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="addProduct()"><i class="fas fa-plus"></i></button></div></div></div></div>
                 <div id="rawMaterialsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المواد الخام</h2></div><div class="card shadow-sm p-3"><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>اسم الخامة</th><th>الحجم</th><th>الكمية المتاحة</th><th>تعديل</th><th>حذف</th></tr></thead><tbody id="rawMaterialsTbody"></tbody></table></div><div class="row g-2 mt-3"><div class="col-md-4"><input type="text" id="raw_name" class="form-control" placeholder="اسم الخامة"></div><div class="col-md-3"><select id="raw_size" class="form-control"><option>كيلو</option><option>لتر</option><option>طن</option><option>جرام</option><option>قرص</option><option>عبوة</option></select></div><div class="col-md-3"><input type="number" id="raw_qty" class="form-control" placeholder="الكمية"></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="addRawMaterial()"><i class="fas fa-plus"></i></button></div></div></div></div>
@@ -164,7 +164,7 @@
 
         function can(action, section) {
             if (currentUserData?.role === 'admin') return true;
-            if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'invoices', 'customers'].includes(section);
+            if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'visits', 'customers'].includes(section);
             return userPermissions[section] && userPermissions[section][action];
         }
 
@@ -178,7 +178,6 @@
             else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             else { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             
-            // Allow specific departments to view inventory
             const allowedDepts = ['الإنتاج', 'المخزن', 'الحسابات', 'العمليات', 'المشتريات'];
             if (currentUserData.departments && currentUserData.departments.some(d => allowedDepts.includes(d))) {
                 document.getElementById('navInventory').style.display = 'block';
@@ -188,8 +187,13 @@
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'inventory', 'invoices', 'products', 'rawMaterials', 'labSettings', 'calendar', 'reports', 'permissions'].forEach(s => document.getElementById(s + 'Section').style.display = 'none');
-            document.getElementById(section + 'Section').style.display = 'block';
+            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'inventory', 'visits', 'products', 'rawMaterials', 'labSettings', 'calendar', 'reports', 'permissions'].forEach(s => {
+                const el = document.getElementById(s + 'Section');
+                if (el) el.style.display = 'none';
+            });
+            const activeEl = document.getElementById(section + 'Section');
+            if (activeEl) activeEl.style.display = 'block';
+            
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             if(evt && evt.target.closest('a')) evt.target.closest('a').classList.add('active');
             else { const navLink = document.getElementById('nav' + (section.charAt(0).toUpperCase() + section.slice(1))); if(navLink) navLink.classList.add('active'); }
@@ -372,7 +376,7 @@
                 const holidays = snap.val() || {};
                 const firstDay = new Date(year, month, 1).getDate();
                 const lastDay = new Date(year, month + 1, 0).getDate();
-                const startDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun, 6=Sat
+                const startDayOfWeek = new Date(year, month, 1).getDay(); 
                 let html = `<h4 class="mb-3 text-center">${now.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</h4><div class="row text-center fw-bold mb-2"><div class="col">الأحد</div><div class="col">الإثنين</div><div class="col">الثلاثاء</div><div class="col">الأربعاء</div><div class="col">الخميس</div><div class="col">الجمعة</div><div class="col">السبت</div></div><div class="row">`;
                 for(let i=0; i<startDayOfWeek; i++) html += `<div class="col"></div>`;
                 for(let d=firstDay; d<=lastDay; d++) {
@@ -503,21 +507,21 @@
             db.ref('requests').on('value', snap => { allRequests = []; snap.forEach(child => { const r = child.val(); r.id = child.key; allRequests.push(r); }); renderRequests(); });
             db.ref('missions').on('value', snap => { allMissions = []; snap.forEach(child => { const m = child.val(); m.id = child.key; allMissions.push(m); }); renderMissions(); });
             db.ref('leaves').on('value', snap => { allLeaves = []; snap.forEach(child => { const l = child.val(); l.id = child.key; allLeaves.push(l); }); renderLeaves(); });
-            db.ref('customers').on('value', snap => { allCustomers = []; snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); }); renderCustomers(); });
+            db.ref('customers').on('value', snap => { allCustomers = []; snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); }); });
             db.ref('inventory').on('value', snap => { allInventory = []; snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); }); renderInventory(); });
             db.ref('production').on('value', snap => { allProduction = []; snap.forEach(child => { const p = child.val(); p.id = child.key; allProduction.push(p); }); renderProduction(); });
-            db.ref('visits').on('value', snap => { allVisits = []; snap.forEach(child => { const v = child.val(); v.id = child.key; allVisits.push(v); }); renderInvoices(); });
+            db.ref('visits').on('value', snap => { allVisits = []; snap.forEach(child => { const v = child.val(); v.id = child.key; allVisits.push(v); }); renderVisits(); });
         }
         
-        function renderInvoices() {
+        function renderVisits() {
             let html = '';
-            let visibleInvoices = currentUserData.role === 'admin' ? allVisits : allVisits.filter(v => v.repId === currentUserData.id);
-            visibleInvoices.forEach(v => {
+            let visibleVisits = currentUserData.role === 'admin' ? allVisits : allVisits.filter(v => v.repId === currentUserData.id);
+            visibleVisits.forEach(v => {
                 let statusBadge = v.status === 'pending_approval' ? '<span class="badge bg-warning">بانتظار الاعتماد</span>' : v.status === 'rejected' ? '<span class="badge bg-danger">مرفوضة</span>' : '<span class="badge bg-success">معتمدة</span>';
                 html += `<tr class="req-row" onclick="openInvoiceDetails('${v.id}')"><td>${v.repName}</td><td>${v.custName}</td><td>${v.custPhone || '-'}</td><td>${statusBadge}</td><td>${v.total || 0}</td><td>${v.discount || 0}%</td><td class="fw-bold">${v.net || 0}</td></tr>`;
             });
-            document.getElementById('invoicesTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد فواتير</td></tr>';
-            document.getElementById('invoicesActions').innerHTML = `<button onclick="openVisitModal()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> فاتورة جديدة</button>`;
+            document.getElementById('visitsTbody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">لا توجد فواتير</td></tr>';
+            document.getElementById('visitsActions').innerHTML = `<button onclick="openVisitModal()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> فاتورة جديدة</button>`;
         }
         function openInvoiceDetails(id) {
             const v = allVisits.find(vis => vis.id === id); if (!v) return;
@@ -655,16 +659,6 @@
             document.getElementById('leavesTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد إجازات</td></tr>';
             document.getElementById('leavesActions').innerHTML = currentUserData.role === 'admin' ? `<button onclick="openAddModal('leave_admin')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إجازة لموظف</button>` : `<button onclick="openAddModal('leave')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إجازة</button>`;
         }
-        function renderCustomers() {
-            let html = '';
-            allCustomers.forEach(c => { 
-                let act = `<button onclick="openEditModal('customer','${c.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button>`;
-                if (currentUserData.role === 'admin') act += ` <button onclick="openDeleteModal('${c.id}','customers')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
-                html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td>${act}</td></tr>`; 
-            });
-            document.getElementById('customersTbody').innerHTML = html || '<tr><td colspan="4" class="text-center text-muted">لا يوجد عملاء</td></tr>';
-            document.getElementById('customersActions').innerHTML = `${currentUserData.role === 'admin' ? `<button onclick="exportToExcel('customersTable', 'العملاء')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('customer')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> عميل</button>`;
-        }
         function renderInventory() {
             let html = '<div class="list-group">';
             allInventory.forEach(i => {
@@ -707,7 +701,6 @@
             if (!monthYear) return;
             const [m, y] = monthYear.split('-').map(Number);
             
-            // Calculate working days (excluding Fri/Sat)
             const daysInMonth = new Date(y, m, 0).getDate();
             let workingDays = 0;
             for(let i=1; i<=daysInMonth; i++) {
@@ -715,7 +708,6 @@
                 if(dayOfWeek !== 5 && dayOfWeek !== 6) workingDays++;
             }
             
-            // Fetch Official Holidays
             const holidaysSnap = await db.ref(`settings/calendar/${monthYear}`).once('value');
             const officialHolidays = holidaysSnap.val() || {};
             const holidaysCount = Object.keys(officialHolidays).length;
@@ -735,7 +727,6 @@
                 let totalHours = 0;
                 for (const day in monthlyAtt) { if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours); }
                 
-                // Calculate unpaid leaves (deducted from salary)
                 let unpaidLeaveDays = 0;
                 for (const key in allLeaves) {
                     const l = allLeaves[key];
@@ -810,7 +801,7 @@
             let opts = '<select id="newAssignee" class="form-control">';
             allUsers.forEach(u => opts += `<option value="${u.id}" ${u.id === currentTaskChatId.userId ? 'selected' : ''}>${u.name}</option>`);
             opts += '</select>';
-            document.getElementById('taskChatInfo').innerHTML += `<hr><h6>تغيير الموظف المسؤول</h6>${opts}<button class="btn btn-primary mt-2" onclick="saveTaskAssignee()">حفظ</button>`;
+            document.getElementById('taskChatInfo').innerHTML += `<hr><h6>تغيير الموظف المسؤول</h6>${opts><button class="btn btn-primary mt-2" onclick="saveTaskAssignee()">حفظ</button>`;
         }
         function saveTaskAssignee() {
             const sel = document.getElementById('newAssignee');
@@ -959,9 +950,6 @@
                 let userOpts = '<option value="">-- اختر الموظف --</option>'; allUsers.forEach(u => userOpts += `<option value="${u.id}">${u.name}</option>`);
                 body.innerHTML = type === 'leave_admin' ? `<select id="leaveAdminUser" class="form-control mb-2">${userOpts}</select>` : ``;
                 body.innerHTML += `<select id="leaveType" class="form-control mb-2"><option value="سنوية">سنوية</option><option value="عارضة">عارضة</option><option value="مرضية">مرضية</option></select><div class="row mb-2"><div class="col-6"><label>من</label><input type="date" id="leaveStart" class="form-control"></div><div class="col-6"><label>إلى</label><input type="date" id="leaveEnd" class="form-control"></div></div><textarea id="leaveReason" class="form-control mb-2" placeholder="السبب"></textarea>`;
-            } else if (type === 'customer') {
-                title.innerText = 'عميل جديد';
-                body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" placeholder="اسم العميل"><select id="custType" class="form-control mb-2"><option>تاجر</option><option>موزع</option><option>منفذ بيع</option><option>جمعية</option><option>مزارع</option><option>أخرى</option></select><input type="text" id="custPhone" class="form-control mb-2" placeholder="التليفون">`;
             } else if (type === 'inventory') {
                 title.innerText = 'إضافة صنف للمخزن';
                 body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" placeholder="اسم الصنف"><select id="invCategory" class="form-control mb-2"><option>مواد خام</option><option>منتج نهائي</option></select><select id="invSize" class="form-control mb-2"><option>جركن 10لتر</option><option>طن</option><option>لتر</option></select><input type="number" id="invQty" class="form-control mb-2" placeholder="الكمية">`;
@@ -1005,7 +993,6 @@
                 const lStart = document.getElementById('leaveStart').value;
                 const lEnd = document.getElementById('leaveEnd').value;
                 
-                // Check Leave Balance for normal user
                 if (type === 'leave') {
                     const bal = calculateLeaveBalance(currentUserData.hireDate);
                     const days = (new Date(lEnd) - new Date(lStart)) / (1000 * 60 * 60 * 24) + 1;
@@ -1016,7 +1003,6 @@
                 
                 db.ref('leaves').push({ type: document.getElementById('leaveType').value, startDate: lStart, endDate: lEnd, reason: document.getElementById('leaveReason').value, status: type === 'leave_admin' ? 'معتمدة' : 'بانتظار الموافقة', userId: u.value, userName: u.options[u.selectedIndex].text }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تم تسجيل الإجازة'); }); 
             }
-            else if (type === 'customer') { db.ref('customers').push({ name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تمت الإضافة'); }); }
             else if (type === 'inventory') { db.ref('counters/inventory').transaction(c => (c || 0) + 1).then(res => { const num = res.snapshot.val(); const code = `moz${String(num).padStart(3, '0')}`; db.ref('inventory').push({ code: code, name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, size: document.getElementById('invSize').value, qty: document.getElementById('invQty').value }).then(() => { bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).hide(); toastr.success('تمت الإضافة بكود: ' + code); }); }); }
         }
 
@@ -1025,7 +1011,6 @@
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
             if (type === 'user') { title.innerText='تعديل مستخدم'; const imgSrc = data.photoURL || 'https://via.placeholder.com/100'; body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}"><input type="number" id="newSalary" class="form-control mb-2" value="${data.salary || 0}">`; document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); }); }
-            else if (type === 'customer') { title.innerText='تعديل عميل'; body.innerHTML = `<input type="text" id="custName" class="form-control mb-2" value="${data.name}"><select id="custType" class="form-control mb-2"><option ${data.type==='تاجر'?'selected':''}>تاجر</option><option ${data.type==='موزع'?'selected':''}>موزع</option><option ${data.type==='منفذ بيع'?'selected':''}>منفذ بيع</option><option ${data.type==='جمعية'?'selected':''}>جمعية</option><option ${data.type==='مزارع'?'selected':''}>مزارع</option><option ${data.type==='أخرى'?'selected':''}>أخرى</option></select><input type="text" id="custPhone" class="form-control mb-2" value="${data.phone}">`; }
             else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='مواد خام'?'selected':''}>مواد خام</option><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option></select><select id="invSize" class="form-control mb-2"><option ${data.size==='جركن 10لتر'?'selected':''}>جركن 10لتر</option><option ${data.size==='طن'?'selected':''}>طن</option><option ${data.size==='لتر'?'selected':''}>لتر</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}">`; }
             else if (type === 'department') { title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><input type="text" id="depManager" class="form-control mb-2" value="${data.managerName || ''}"><textarea id="depDesc" class="form-control">${data.desc || ''}</textarea>`; }
             else if (type === 'product') { title.innerText='تعديل منتج'; body.innerHTML = `<input type="text" id="prod_name_edit" class="form-control mb-2" value="${data.name}"><select id="prod_unit_edit" class="form-control mb-2"><option ${data.unit==='جركن 10لتر'?'selected':''}>جركن 10لتر</option><option ${data.unit==='طن'?'selected':''}>طن</option><option ${data.unit==='لتر'?'selected':''}>لتر</option></select><input type="number" id="prod_price_edit" class="form-control mb-2" value="${data.price}">`; }
@@ -1041,7 +1026,6 @@
                 const fileInput = document.getElementById('profilePhoto');
                 if (fileInput && fileInput.files[0]) { toastr.info('جاري رفع الصورة...'); upd.photoURL = await uploadFile(fileInput.files[0]); }
             }
-            else if (t === 'customers') { upd = { name: document.getElementById('custName').value, type: document.getElementById('custType').value, phone: document.getElementById('custPhone').value }; }
             else if (t === 'inventory') { upd = { name: document.getElementById('invName').value, category: document.getElementById('invCategory').value, size: document.getElementById('invSize').value, qty: document.getElementById('invQty').value }; }
             else if (t === 'departments') { upd = { name: document.getElementById('depName').value, managerName: document.getElementById('depManager').value, desc: document.getElementById('depDesc').value }; }
             else if (t === 'productsSettings') { upd = { name: document.getElementById('prod_name_edit').value, unit: document.getElementById('prod_unit_edit').value, price: document.getElementById('prod_price_edit').value }; }
