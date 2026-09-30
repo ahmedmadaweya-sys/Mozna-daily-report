@@ -99,9 +99,9 @@
 
                 <div id="dashboardSection">
                     <h2 class="mb-4">الرئيسية</h2>
-                    <div id="attendanceCard" class="card shadow-sm mb-4 border-primary"><div class="card-body text-center"><h5><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5><div class="d-flex justify-content-center gap-2 mb-3"><button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg">تسجيل حضور</button><button id="breakBtn" onclick="toggleBreak()" class="btn btn-info btn-lg text-white d-none">بدء استراحة</button></div><div id="breakTimerDisplay" class="break-timer mb-3 d-none"></div><div class="row mt-3"><div class="col-md-4"><small>الحضور</small><p id="checkInTime" class="fw-bold text-success mb-0">--:--</p></div><div class="col-md-4"><small>الانصراف</small><p id="checkOutTime" class="fw-bold text-danger mb-0">--:--</p></div><div class="col-md-4"><small>ساعات اليوم</small><p id="dailyHours" class="fw-bold text-primary mb-0">0</p></div></div><div class="mt-2"><small>إجمالي ساعات الشهر (مطلوب 8 ساعات/يوم)</small><p id="monthlyHours" class="fw-bold text-info mb-0">0 ساعة</p></div></div></div>
+                    <div id="attendanceCard" class="card shadow-sm mb-4 border-primary"><div class="card-body text-center"><h5><i class="fas fa-clock text-primary"></i> الحضور والانصراف</h5><div class="d-flex justify-content-center gap-2 mb-3"><button id="attendanceBtn" onclick="toggleAttendance()" class="btn btn-success btn-lg">تسجيل حضور</button><button id="breakBtn" onclick="toggleBreak()" class="btn btn-info btn-lg text-white d-none">بدء استراحة</button></div><div id="breakTimerDisplay" class="break-timer mb-3 d-none"></div><div class="row mt-3"><div class="col-md-3"><small>الحضور</small><p id="checkInTime" class="fw-bold text-success mb-0">--:--</p></div><div class="col-md-3"><small>الانصراف</small><p id="checkOutTime" class="fw-bold text-danger mb-0">--:--</p></div><div class="col-md-3"><small>ساعات اليوم</small><p id="dailyHours" class="fw-bold text-primary mb-0">0</p></div><div class="col-md-3"><small>إجمالي ساعات الشهر</small><p id="monthlyHours" class="fw-bold text-info mb-0">0</p></div></div></div></div>
                     <div id="leaveBalanceCard" class="card text-white bg-info mb-4 d-none"><div class="card-body">رصيد إجازاتك المتبقي: <span id="myLeaveBalance" class="fw-bold fs-4">0</span> يوم</div></div>
-                    <div id="dailyTasksCard" class="card shadow-sm mb-4 border-success"><div class="card-body text-center"><h5><i class="fas fa-list-check text-success"></i> المهام اليومية (KPI)</h5><button onclick="openDailyTasksModal()" class="btn btn-success btn-lg w-50 mb-3">تسجيل مهام اليوم</button><div id="dailyTasksList" class="text-start mt-2"></div></div></div>
+                    <div id="dailyTasksCard" class="card shadow-sm mb-4 border-success"><div class="card-body text-center"><h5><i class="fas fa-list-check text-success"></i> المهام اليومية (KPI Engine)</h5><button onclick="openDailyTasksModal()" class="btn btn-success btn-lg w-50 mb-3">تسجيل مهام اليوم</button><div id="dailyTasksList" class="text-start mt-2"></div></div></div>
                     <div class="row mb-4" id="adminDashboardCards"></div>
                 </div>
 
@@ -130,6 +130,7 @@
     <div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">تأكيد الحذف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">هل أنت متأكد؟</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">تراجع</button><button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button></div></div></div></div>
     <div class="modal fade" id="taskChatModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="taskChatInfo" class="mb-3"></div><hr><h6>التعليقات</h6><div class="chat-box mb-3" id="taskChatHistory"></div><textarea id="taskChatInput" class="form-control mb-2" placeholder="تحديث جديد..."></textarea></div><div class="modal-footer" id="taskChatFooter"></div></div></div></div>
     <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
+    <div class="modal fade" id="dailyTasksModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> مهام يومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label>من الساعة</label><input type="time" id="dtStart" class="form-control"></div><div class="col-6"><label>إلى الساعة</label><input type="time" id="dtEnd" class="form-control"></div></div><div class="mb-3"><label>تفاصيل المهمة</label><textarea id="dtDetails" class="form-control" rows="2"></textarea></div><button onclick="saveDailyTask()" class="btn btn-success w-100 mb-3"><i class="fas fa-plus"></i> إضافة المهمة</button><hr><h6>المهام المسجلة اليوم:</h6><div id="todayTasksList" class="text-start"></div></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -268,6 +269,7 @@
                     document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = '--:--';
                 }
             });
+            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
         async function toggleAttendance() {
             if (!currentDayRef) return;
@@ -651,7 +653,7 @@
                 if (isAdmin) act += `<button onclick="resetUserPassword('${u.email}')" class="btn btn-sm btn-warning"><i class="fas fa-key"></i></button> `;
                 act += `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-success"><i class="fas fa-edit"></i></button> `;
                 if (isAdmin) act += `<button onclick="openDeleteModal('${u.id}','users')" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>`;
-                html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${u.salary || '-'}</td><td>${act}</td></tr>`;
+                html += `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.departments ? u.departments.join(', ') : u.deptName || ''}</td><td>${isAdmin || u.id === currentUserData.id ? (u.salary || '-') : 'مخفي'}</td><td>${act}</td></tr>`;
             });
             document.getElementById('usersTbody').innerHTML = html;
             document.getElementById('usersActions').innerHTML = `${isAdmin ? `<button onclick="exportToExcel('usersTable', 'المستخدمين')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button> <label class="btn btn-warning btn-sm"><i class="fas fa-file-import"></i> استيراد<input type="file" accept=".xlsx" onchange="importExcel(event, 'users')" hidden></label>` : ''} <button onclick="openAddModal('user')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> إضافة</button>`;
@@ -754,14 +756,14 @@
             db.ref('attendance').once('value').then(attSnap => {
                 const allAtt = attSnap.val() || {}; let html = '';
                 const isAdmin = currentUserData.role === 'admin';
-                document.getElementById('teamActions').innerHTML = isAdmin ? `<button onclick="calculateSalaries()" class="btn btn-danger btn-sm">حساب الرواتب</button>` : '';
+                document.getElementById('teamActions').innerHTML = isAdmin ? `<button onclick="calculateSalaries()" class="btn btn-danger btn-sm">حساب الرواتب والـ KPI</button>` : '';
                 const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
                 allUsers.forEach(u => {
                     const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
                     const isCheckedIn = userAtt && userAtt.activeSession;
                     const statusColor = (isCheckedIn || u.role === 'admin') ? 'success' : 'warning';
                     const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
-                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm text-center h-100"><div class="card-body"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle}</p></div></div></div>`;
+                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm text-center h-100"><div class="card-body"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle}</p>${isAdmin ? `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-primary mt-2"><i class="fas fa-user-edit"></i> تعديل الملف والراتب</button>` : ''}</div></div></div>`;
                 });
                 document.getElementById('teamList').innerHTML = html;
             });
@@ -782,42 +784,74 @@
             const allYearHolidays = holidaysSnap.val() || {};
             const holidaysCount = Object.keys(allYearHolidays).filter(k => k.startsWith(`${y}-${String(m).padStart(2,'0')}-`)).length;
             const actualWorkingDays = workingDays - holidaysCount;
-            const expectedHours = actualWorkingDays * 8;
+            const expectedHours = actualWorkingDays * 7; // 7 hours after 1 hour break
 
             const attSnap = await db.ref('attendance').once('value');
             const allAtt = attSnap.val() || {};
             const leavesSnap = await db.ref('leaves').once('value');
             const allLeaves = leavesSnap.val() || {};
+            const tasksSnap = await db.ref('tasks').once('value');
+            const allTasksData = tasksSnap.val() || {};
+            const dailyTasksSnap = await db.ref('dailyTasks').once('value');
+            const allDailyTasks = dailyTasksSnap.val() || {};
             
-            let html = `<h5>رواتب: ${monthYear}</h5><p>أيام العمل المتوقعة: ${actualWorkingDays} يوم (${expectedHours} ساعة)</p><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الأساسي</th><th>ساعات العمل</th><th>النقص</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody>`;
+            let html = `<h5>رواتب: ${monthYear}</h5><p>أيام العمل المتوقعة: ${actualWorkingDays} يوم (${expectedHours} ساعة إنتاج مطلوبة)</p><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الأساسي</th><th>ساعات الإنتاج الفعلي</th><th>نسبة الانضباط (40%)</th><th>نسبة الأداء (60%)</th><th>الصافي</th></tr></thead><tbody>`;
             
             for (const u of allUsers) {
                 if (!u.salary || u.role === 'admin') continue;
                 const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
-                let totalHours = 0;
-                for (const day in monthlyAtt) { if (monthlyAtt[day].totalHours) totalHours += parseFloat(monthlyAtt[day].totalHours); }
                 
-                let unpaidLeaveDays = 0;
-                for (const key in allLeaves) {
-                    const l = allLeaves[key];
-                    if(l.userId === u.id && l.status === 'معتمدة' && l.deductSalary) {
-                        const start = new Date(l.startDate);
-                        const end = new Date(l.endDate);
-                        if(start.getMonth()+1 == m && start.getFullYear() == y) {
-                            unpaidLeaveDays += Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                        }
+                // 1. Calculate Actual Work Hours (from Daily Tasks)
+                let actualWorkHours = 0;
+                const userDailyTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] ? allDailyTasks[u.id][monthYear] : {};
+                Object.values(userDailyTasks).forEach(dayTasks => {
+                    Object.values(dayTasks).forEach(t => {
+                        const [sh, sm] = t.startTime.split(':').map(Number);
+                        const [eh, em] = t.endTime.split(':').map(Number);
+                        actualWorkHours += ((eh + em/60) - (sh + sm/60));
+                    });
+                });
+                
+                // 2. Calculate Attendance Score (40%)
+                let lateDays = 0, absentDays = 0;
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dayDate = new Date(y, m-1, d);
+                    if(dayDate.getDay() === 5 || dayDate.getDay() === 6) continue;
+                    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    if(allYearHolidays[dateStr]) continue;
+                    
+                    const attDay = monthlyAtt[d];
+                    if(!attDay || !attDay.sessions) { absentDays++; continue; }
+                    const firstSession = Object.values(attDay.sessions)[0];
+                    if(firstSession && firstSession.checkIn) {
+                        const [h, min] = firstSession.checkIn.split(':').map(Number);
+                        if(h > 10 || (h === 10 && min > 0)) lateDays++;
                     }
                 }
+                const attendanceScore = Math.max(0, 100 - (lateDays * 2) - (absentDays * 10));
                 
-                const missingHours = Math.max(0, expectedHours - totalHours) + (unpaidLeaveDays * 8);
-                const hourlyRate = u.salary / expectedHours;
-                const deduction = missingHours * hourlyRate;
-                const netSalary = u.salary - deduction;
+                // 3. Calculate KPI Score (60%)
+                let completedTasks = 0, rejectedTasks = 0;
+                Object.values(allTasksData).forEach(t => {
+                    if(t.userId === u.id) {
+                        if(t.status === 'مكتملة') completedTasks++;
+                        else if(t.status === 'مرفوضة') rejectedTasks++;
+                    }
+                });
+                const productionRatio = Math.min(1, actualWorkHours / expectedHours);
+                const taskRatio = completedTasks > 0 ? (completedTasks - rejectedTasks) / completedTasks : 0;
+                const kpiScore = (productionRatio * 70) + (taskRatio * 30);
                 
-                html += `<tr><td>${u.name}</td><td>${u.salary}</td><td>${totalHours.toFixed(1)}</td><td>${missingHours.toFixed(1)}</td><td>${deduction.toFixed(2)}</td><td class="fw-bold text-success">${netSalary.toFixed(2)}</td></tr>`;
+                // 4. Net Salary
+                const baseSalary = parseFloat(u.salary);
+                const fixedPart = baseSalary * 0.40 * (attendanceScore / 100);
+                const variablePart = baseSalary * 0.60 * (kpiScore / 100);
+                const netSalary = fixedPart + variablePart;
+                
+                html += `<tr><td>${u.name}</td><td>${baseSalary}</td><td>${actualWorkHours.toFixed(1)} / ${expectedHours}</td><td>${attendanceScore.toFixed(0)}%</td><td>${kpiScore.toFixed(0)}%</td><td class="fw-bold text-success">${netSalary.toFixed(2)}</td></tr>`;
             }
             html += '</tbody></table>';
-            document.getElementById('detailsModalTitle').innerText = 'كشف الرواتب';
+            document.getElementById('detailsModalTitle').innerText = 'كشف الرواتب والـ KPI';
             document.getElementById('detailsModalBody').innerHTML = html;
             document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
