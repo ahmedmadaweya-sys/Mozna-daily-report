@@ -44,8 +44,9 @@
         .calendar-table td.weekend { background-color: #d1e7dd; color: #0f5132; }
         .calendar-table td.official-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; }
         .calendar-table td.empty { background-color: #f8f9fa; cursor: default; }
-        .hr-card { transition: 0.2s; cursor: pointer; }
+        .hr-card { transition: 0.2s; cursor: pointer; position: relative; }
         .hr-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+        .hr-checkbox { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; }
         select option { color: #000 !important; background-color: #fff !important; }
     </style>
 </head>
@@ -323,6 +324,8 @@
                 document.getElementById('leaveBalanceCard').classList.add('d-none');
             }
         }
+        
+        function openEditMyProfileModal() { openEditModal('user', currentUserData.id); }
 
         // HR MODULE
         async function renderHRCards() {
@@ -336,7 +339,7 @@
                 return;
             }
 
-            actions.innerHTML = `<button onclick="calculateMassPayroll()" class="btn btn-danger btn-sm"><i class="fas fa-calculator"></i> حساب رواتب الشهر (ALL)</button>`;
+            actions.innerHTML = `<button onclick="calculateMassPayroll()" class="btn btn-danger btn-sm"><i class="fas fa-calculator"></i> حساب رواتب المحددين</button>`;
             
             const attSnap = await db.ref('attendance').once('value');
             const allAtt = attSnap.val() || {};
@@ -364,7 +367,7 @@
                     if(taskHours < 5.6) prodFlag = '<span class="badge bg-danger mt-2">إنتاجية منخفضة</span>';
                 }
 
-                html += `<div class="col-md-3 mb-3"><div class="card hr-card h-100" onclick="openHRProfile('${u.id}')"><div class="card-body text-center"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle || 'موظف'}</p><p class="small text-muted">الراتب: ${u.salary || '-'} جنيه</p>${prodFlag}</div></div></div>`;
+                html += `<div class="col-md-3 mb-3"><div class="card hr-card h-100" onclick="openHRProfile('${u.id}')"><input type="checkbox" class="form-check-input hr-checkbox" value="${u.id}" onclick="event.stopPropagation()"><div class="card-body text-center"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle || 'موظف'}</p><p class="small text-muted">الراتب: ${u.salary || '-'} جنيه</p>${prodFlag}</div></div></div>`;
             });
             container.innerHTML = html || '<p class="text-muted">لا يوجد موظفين</p>';
         }
@@ -502,10 +505,10 @@
                     <div class="card-body">
                         <table class="table table-bordered">
                             <tr><th>الراتب الأساسي</th><td>${result.baseSalary} جنيه</td></tr>
-                            <tr><th>ساعات الإنتاج المطلوبة</th><td>${result.expectedHours} ساعة</td></tr>
+                            <tr><th>سعر ساعة العمل الفعلي</th><td>${result.hourlyRate.toFixed(2)} جنيه/ساعة</td></tr>
+                            <tr><th>ساعات الإنتاج المطلوبة (7س/يوم)</th><td>${result.expectedHours} ساعة</td></tr>
                             <tr><th>ساعات الإنتاج الفعلية (من المهام)</th><td>${result.actualWorkHours.toFixed(1)} ساعة</td></tr>
-                            <tr><th>أيام التأخير</th><td>${result.lateDays} يوم</td></tr>
-                            <tr><th>أيام الغياب</th><td>${result.absentDays} يوم</td></tr>
+                            <tr><th>قاعدة الـ 80%</th><td>${result.passed80Rule ? '<span class="text-success">محققة (يستحق راتبه كاملاً في الجزء الثابت)</span>' : '<span class="text-danger">غير محققة (سيتم خصم من الثابت)</span>'}</td></tr>
                             <tr><th>نسبة الانضباط (40%)</th><td>${result.attendanceScore.toFixed(0)}%</td></tr>
                             <tr><th>نسبة الأداء KPI (60%)</th><td>${result.kpiScore.toFixed(0)}%</td></tr>
                             <tr class="table-success"><th>الصافي المستحق</th><td><h4 class="mb-0">${result.netSalary.toFixed(2)} جنيه</h4></td></tr>
@@ -533,7 +536,8 @@
             const allYearHolidays = holidaysSnap.val() || {};
             const holidaysCount = Object.keys(allYearHolidays).filter(k => k.startsWith(`${y}-${String(m).padStart(2,'0')}-`)).length;
             const actualWorkingDays = workingDays - holidaysCount;
-            const expectedHours = actualWorkingDays * 7; 
+            const expectedHours = actualWorkingDays * 7; // 7 hours work (8 - 1 break)
+            const hourlyRate = baseSalary / expectedHours; // To show employee how much 1 hour is worth
 
             const monthYearStr = `${y}-${String(m).padStart(2,'0')}`;
             const attSnap = await db.ref(`attendance/${userId}/${monthYearStr}`).once('value');
@@ -551,6 +555,10 @@
                 });
             });
 
+            // 80% Rule
+            const ratio = expectedHours > 0 ? actualWorkHours / expectedHours : 0;
+            const passed80Rule = ratio >= 0.8;
+            
             let lateDays = 0, absentDays = 0;
             for(let d=1; d<=daysInMonth; d++) {
                 const dayDate = new Date(y, m-1, d);
@@ -567,34 +575,51 @@
                 }
             }
             
-            const attendanceScore = Math.max(0, 100 - (lateDays * 2) - (absentDays * 10));
-            const productionRatio = Math.min(1, actualWorkHours / expectedHours);
-            const kpiScore = productionRatio * 100; 
+            // 40% Fixed Part Logic
+            let attendanceScore = 100;
+            if(!passed80Rule) {
+                attendanceScore = ratio * 100; // Reduce fixed part if < 80%
+            }
+            attendanceScore = Math.max(0, attendanceScore - (lateDays * 2) - (absentDays * 10));
+            
+            // 60% Variable Part Logic
+            const kpiScore = Math.min(1, ratio) * 100; // Cap at 100%
             
             const fixedPart = baseSalary * 0.40 * (attendanceScore / 100);
             const variablePart = baseSalary * 0.60 * (kpiScore / 100);
             const netSalary = fixedPart + variablePart;
 
-            return { baseSalary, expectedHours, actualWorkHours, lateDays, absentDays, attendanceScore, kpiScore, netSalary };
+            return { baseSalary, hourlyRate, expectedHours, actualWorkHours, passed80Rule, lateDays, absentDays, attendanceScore, kpiScore, netSalary };
         }
 
         async function calculateMassPayroll() {
+            const selectedBoxes = document.querySelectorAll('.hr-checkbox:checked');
+            if(selectedBoxes.length === 0) return toastr.warning('من فضلك حدد موظف واحد على الأقل');
+            
             const monthYear = prompt("أدخل شهر وسنة الحساب (مثال: 2024-05):", new Date().toLocaleDateString('en-CA').substring(0,7));
             if (!monthYear) return;
             const [y, m] = monthYear.split('-').map(Number);
+            
             let data = [];
-            for (const u of allUsers) {
-                if (!u.salary || u.role === 'admin') continue;
-                const res = await getPayrollData(u.id, m, y);
+            toastr.info('جاري حساب الرواتب...');
+            
+            for (const box of selectedBoxes) {
+                const userId = box.value;
+                const user = allUsers.find(u => u.id === userId);
+                if (!user.salary) continue;
+                const res = await getPayrollData(userId, m, y);
                 data.push({
-                    "الموظف": u.name,
+                    "الموظف": user.name,
                     "الراتب الأساسي": res.baseSalary,
+                    "سعر الساعة": res.hourlyRate.toFixed(2),
                     "ساعات الإنتاج": res.actualWorkHours.toFixed(1),
+                    "محقق 80%": res.passed80Rule ? "نعم" : "لا",
                     "نسبة الانضباط": res.attendanceScore.toFixed(0) + '%',
                     "نسبة الأداء": res.kpiScore.toFixed(0) + '%',
                     "الصافي": res.netSalary.toFixed(2)
                 });
             }
+            
             if(data.length === 0) return toastr.warning("لا يوجد موظفين برواتب مسجلة");
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
@@ -616,7 +641,10 @@
                     <p><b>الشهر:</b> ${monthYear}</p>
                     <table style="width:100%; border-collapse:collapse; margin:20px 0;">
                         <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">الراتب الأساسي</th><td style="border:1px solid #ddd; padding:8px;">${res.baseSalary} جنيه</td></tr>
-                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">ساعات الإنتاج الفعلية</th><td style="border:1px solid #ddd; padding:8px;">${res.actualWorkHours.toFixed(1)} / ${res.expectedHours} ساعة</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">سعر ساعة العمل الفعلي</th><td style="border:1px solid #ddd; padding:8px;">${res.hourlyRate.toFixed(2)} جنيه</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">ساعات الإنتاج المطلوبة</th><td style="border:1px solid #ddd; padding:8px;">${res.expectedHours} ساعة</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">ساعات الإنتاج الفعلية</th><td style="border:1px solid #ddd; padding:8px;">${res.actualWorkHours.toFixed(1)} ساعة</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">تطبيق قاعدة 80%</th><td style="border:1px solid #ddd; padding:8px;">${res.passed80Rule ? 'محققة' : 'غير محققة'}</td></tr>
                         <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">أيام التأخير</th><td style="border:1px solid #ddd; padding:8px;">${res.lateDays} يوم</td></tr>
                         <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">أيام الغياب</th><td style="border:1px solid #ddd; padding:8px;">${res.absentDays} يوم</td></tr>
                         <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">نسبة الانضباط (40%)</th><td style="border:1px solid #ddd; padding:8px;">${res.attendanceScore.toFixed(0)}%</td></tr>
@@ -635,7 +663,9 @@
                 "الموظف": user.name,
                 "الشهر": monthYear,
                 "الراتب الأساسي": res.baseSalary,
+                "سعر الساعة": res.hourlyRate.toFixed(2),
                 "ساعات الإنتاج": res.actualWorkHours.toFixed(1),
+                "محقق 80%": res.passed80Rule ? "نعم" : "لا",
                 "نسبة الانضباط": res.attendanceScore.toFixed(0) + '%',
                 "نسبة الأداء": res.kpiScore.toFixed(0) + '%',
                 "الصافي": res.netSalary.toFixed(2)
