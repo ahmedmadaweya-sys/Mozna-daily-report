@@ -151,7 +151,7 @@
     <div class="modal fade" id="manageAnnouncementsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title">إدارة الإعلانات النشطة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="manageAnnBody"></div></div></div></div>
 
     <!-- Daily Tasks Report Modal -->
-    <div class="modal fade" id="dtReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">تقرير المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="dtSelectAll" onchange="toggleAllDtUsers(this)"><label class="form-check-label" for="dtSelectAll">تحديد الكل</label></div><hr><div id="dtUsersList" style="max-height: 300px; overflow-y: auto;"></div></div><div class="modal-footer"><button class="btn btn-success" onclick="exportMultiUserDailyTasks()"><i class="fas fa-file-excel"></i> تصدير المحدد</button></div></div></div></div>
+    <div class="modal fade" id="dtReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">تقرير المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>اختر الشهر</label><input type="month" id="dtReportMonth" class="form-control" value="${new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-')}"></div><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="dtSelectAll" onchange="toggleAllDtUsers(this)"><label class="form-check-label" for="dtSelectAll">تحديد الكل</label></div><hr><div id="dtUsersList" style="max-height: 300px; overflow-y: auto;"></div></div><div class="modal-footer"><button class="btn btn-success" onclick="exportMultiUserDailyTasks()"><i class="fas fa-file-excel"></i> تصدير المحدد</button></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -729,43 +729,51 @@
             toastr.success('تم التصدير');
         }
 
-        // DAILY TASKS EXPORT FUNCTIONS
+        // DAILY TASKS EXPORT FUNCTIONS (FIXED)
         async function exportUserDailyTasksExcel(userId) {
             const user = allUsers.find(u => u.id === userId);
-            const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const monthYear = prompt("أدخل الشهر والسنة (مثال: 2024-05):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
+            if(!monthYear) return;
+            
+            const [y, m] = monthYear.split('-').map(Number);
+            const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
             const userDT = dtSnap.val() || {};
+            
             let data = [];
-            Object.keys(userDT).sort().forEach(month => {
-                Object.keys(userDT[month]).sort().forEach(day => {
-                    Object.values(userDT[month][day]).forEach(t => {
-                        data.push({ "الموظف": user.name, "التاريخ": `${day}-${month}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
-                    });
+            Object.keys(userDT).sort().forEach(day => {
+                Object.values(userDT[day]).forEach(t => {
+                    data.push({ "الموظف": user.name, "التاريخ": `${day}-${monthYear}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
                 });
             });
-            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة");
+            
+            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة في هذا الشهر");
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks");
-            XLSX.writeFile(wb, `Daily_Tasks_${user.name}.xlsx`);
+            XLSX.writeFile(wb, `Daily_Tasks_${user.name}_${monthYear}.xlsx`);
             toastr.success('تم التصدير');
         }
 
         async function exportUserDailyTasksPDF(userId) {
             const user = allUsers.find(u => u.id === userId);
-            const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const monthYear = prompt("أدخل الشهر والسنة (مثال: 2024-05):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
+            if(!monthYear) return;
+            
+            const [y, m] = monthYear.split('-').map(Number);
+            const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
             const userDT = dtSnap.val() || {};
+            
             let html = `<h2 style="text-align:center;">تقرير المهام اليومية - ${user.name}</h2><hr><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th style="border:1px solid #ddd; padding:8px;">التاريخ</th><th style="border:1px solid #ddd; padding:8px;">من</th><th style="border:1px solid #ddd; padding:8px;">إلى</th><th style="border:1px solid #ddd; padding:8px;">التفاصيل</th></tr></thead><tbody>`;
-            Object.keys(userDT).sort().forEach(month => {
-                Object.keys(userDT[month]).sort().forEach(day => {
-                    Object.values(userDT[month][day]).forEach(t => {
-                        html += `<tr><td style="border:1px solid #ddd; padding:8px;">${day}-${month}</td><td style="border:1px solid #ddd; padding:8px;">${t.startTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.endTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.details}</td></tr>`;
-                    });
+            Object.keys(userDT).sort().forEach(day => {
+                Object.values(userDT[day]).forEach(t => {
+                    html += `<tr><td style="border:1px solid #ddd; padding:8px;">${day}-${monthYear}</td><td style="border:1px solid #ddd; padding:8px;">${t.startTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.endTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.details}</td></tr>`;
                 });
             });
             html += '</tbody></table>';
+            
             const element = document.createElement('div');
             element.innerHTML = `<div style="direction:rtl; padding:20px; font-family:Arial;">${html}</div>`;
-            html2pdf().from(element).save(`Daily_Tasks_${user.name}.pdf`);
+            html2pdf().from(element).save(`Daily_Tasks_${user.name}_${monthYear}.pdf`);
         }
 
         function openDailyTasksReportModal() {
@@ -787,25 +795,29 @@
             const selectedBoxes = document.querySelectorAll('.dt-user-check:checked');
             if(selectedBoxes.length === 0) return toastr.warning('من فضلك حدد موظف واحد على الأقل');
             
+            const monthYear = document.getElementById('dtReportMonth').value;
+            if(!monthYear) return toastr.warning('اختر الشهر');
+            
+            const [y, m] = monthYear.split('-').map(Number);
             let data = [];
+            
             for (const box of selectedBoxes) {
                 const userId = box.value;
                 const user = allUsers.find(u => u.id === userId);
-                const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+                const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
                 const userDT = dtSnap.val() || {};
-                Object.keys(userDT).sort().forEach(month => {
-                    Object.keys(userDT[month]).sort().forEach(day => {
-                        Object.values(userDT[month][day]).forEach(t => {
-                            data.push({ "الموظف": user.name, "التاريخ": `${day}-${month}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
-                        });
+                Object.keys(userDT).sort().forEach(day => {
+                    Object.values(userDT[day]).forEach(t => {
+                        data.push({ "الموظف": user.name, "التاريخ": `${day}-${monthYear}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
                     });
                 });
             }
-            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة للموظفين المحددين");
+            
+            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة للموظفين المحددين في هذا الشهر");
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks Report");
-            XLSX.writeFile(wb, `Multi_User_Daily_Tasks.xlsx`);
+            XLSX.writeFile(wb, `Multi_User_Daily_Tasks_${monthYear}.xlsx`);
             toastr.success('تم التصدير');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('dtReportModal')).hide();
         }
