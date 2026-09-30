@@ -90,7 +90,8 @@
                 <div class="top-bar d-flex justify-content-end mb-4">
                     <button onclick="openEditMyProfileModal()" class="btn btn-outline-primary btn-sm ms-2"><i class="fas fa-user-circle"></i> ملفي</button>
                     <button id="installAppBtn" class="btn btn-success btn-sm ms-2 d-none"><i class="fas fa-download"></i> تثبيت</button>
-                    <button id="postAnnouncementBtn" onclick="postAnnouncement()" class="btn btn-warning btn-sm ms-2 d-none"><i class="fas fa-bullhorn"></i> إعلان</button>
+                    <button id="manageAnnouncementsBtn" onclick="openManageAnnouncementsModal()" class="btn btn-info btn-sm ms-2 d-none text-white"><i class="fas fa-tasks"></i> إدارة الإعلانات</button>
+                    <button id="postAnnouncementBtn" onclick="openAnnouncementModal()" class="btn btn-warning btn-sm ms-2 d-none"><i class="fas fa-bullhorn"></i> إعلان جديد</button>
                     <div class="dropdown">
                         <button class="btn btn-light position-relative shadow-sm" id="notifBell" data-bs-toggle="dropdown" data-bs-auto-close="outside">
                             <i class="fas fa-bell fa-lg"></i>
@@ -145,6 +146,13 @@
     <!-- HR Employee Profile Modal -->
     <div class="modal fade" id="hrProfileModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title" id="hrProfileTitle">ملف الموظف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="hrProfileBody"></div></div></div></div>
 
+    <!-- Announcement Modals -->
+    <div class="modal fade" id="announcementModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-bullhorn"></i> إنشاء إعلان جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>نص الإعلان</label><textarea id="annText" class="form-control" rows="3"></textarea></div><div class="mb-3"><label>تاريخ انتهاء الإعلان (اختياري)</label><input type="date" id="annExpire" class="form-control"></div><div class="mb-3"><label>الجمهور المستهدف</label><select id="annTarget" class="form-control"><option value="all">الجميع</option><option value="admin">المديرين فقط</option><option value="manager">مدراء الأقسام فقط</option><option value="user">الموظفين العاديين فقط</option></select></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="postAnnouncement()">نشر الإعلان</button></div></div></div></div>
+    <div class="modal fade" id="manageAnnouncementsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title">إدارة الإعلانات النشطة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="manageAnnBody"></div></div></div></div>
+
+    <!-- Daily Tasks Report Modal -->
+    <div class="modal fade" id="dtReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">تقرير المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="dtSelectAll" onchange="toggleAllDtUsers(this)"><label class="form-check-label" for="dtSelectAll">تحديد الكل</label></div><hr><div id="dtUsersList" style="max-height: 300px; overflow-y: auto;"></div></div><div class="modal-footer"><button class="btn btn-success" onclick="exportMultiUserDailyTasks()"><i class="fas fa-file-excel"></i> تصدير المحدد</button></div></div></div></div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -193,6 +201,7 @@
             document.getElementById('navVisits').style.display = 'block';
             document.getElementById('navHR').style.display = 'block';
             document.getElementById('postAnnouncementBtn').classList.toggle('d-none', !isAdmin);
+            document.getElementById('manageAnnouncementsBtn').classList.toggle('d-none', !isAdmin);
             
             if (isAdmin) ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Products', 'RawMaterials', 'LabSettings', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
             else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
@@ -206,7 +215,9 @@
                     <div class="col-md-3 mb-3"><div class="card text-white bg-success shadow-sm h-100"><div class="card-body"><h6>مبيعات اليوم</h6><h2 id="statTodaySales" class="display-6 mb-0">0</h2><small>جنيه</small></div></div></div>
                     <div class="col-md-3 mb-3"><div class="card text-white bg-warning shadow-sm h-100"><div class="card-body"><h6>فواتير معلقة</h6><h2 id="statPendingInvoices" class="display-6 mb-0">0</h2><small>فاتورة</small></div></div></div>
                     <div class="col-md-3 mb-3"><div class="card text-white bg-info shadow-sm h-100"><div class="card-body"><h6>إجمالي العملاء</h6><h2 id="statTotalCustomers" class="display-6 mb-0">0</h2><small>عميل</small></div></div></div>
-                    <div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body"><h6>طلبات إنتاج</h6><h2 id="statProduction" class="display-6 mb-0">0</h2><small>طلب</small></div></div></div>`;
+                    <div class="col-md-3 mb-3"><div class="card text-white bg-primary shadow-sm h-100"><div class="card-body"><h6>طلبات إنتاج</h6><h2 id="statProduction" class="display-6 mb-0">0</h2><small>طلب</small></div></div></div>
+                    <div class="col-md-3 mb-3"><div class="card text-white bg-danger shadow-sm h-100"><div class="card-body"><h6>نقص مخزون</h6><h2 id="statLowStock" class="display-6 mb-0">0</h2><small>صنف</small></div></div></div>
+                    <div class="col-md-3 mb-3"><div class="card text-white bg-secondary shadow-sm h-100"><div class="card-body"><h6>مهام مفتوحة</h6><h2 id="statOpenTasks" class="display-6 mb-0">0</h2><small>مهمة</small></div></div></div>`;
             } else {
                 adminCards.classList.add('d-none');
             }
@@ -247,9 +258,55 @@
             db.ref('notifications/' + currentUserData.id).limitToLast(1).on('child_added', snap => { if (isInitialNotifLoad) return; const n = snap.val(); if (n) { playBeep(); toastr.info(n.text); } });
         }
         function markNotifRead(id) { db.ref('notifications/' + currentUserData.id + '/' + id).update({ read: true }); }
-        function loadAnnouncements() { db.ref('announcements').limitToLast(1).on('value', snap => { const data = snap.val(); if (data) { const key = Object.keys(data)[0]; if (localStorage.getItem('dismissedAnn_' + key) !== 'true') { document.getElementById('announcementBar').innerHTML = `<strong><i class="fas fa-bullhorn"></i> إعلان: </strong> ${data[key].text} <button type="button" class="btn-close float-start" onclick="dismissAnnouncement()"></button>`; document.getElementById('announcementBar').classList.remove('d-none'); } } }); }
-        function dismissAnnouncement() { db.ref('announcements').limitToLast(1).once('value').then(snap => { const key = Object.keys(snap.val())[0]; localStorage.setItem('dismissedAnn_' + key, 'true'); document.getElementById('announcementBar').classList.add('d-none'); }); }
-        function postAnnouncement() { let text = prompt("اكتب نص الإعلان:"); if(text) db.ref('announcements').push({ text: text, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => toastr.success('تم النشر')); }
+
+        // ANNOUNCEMENTS SYSTEM
+        function loadAnnouncements() {
+            db.ref('settings/announcements').limitToLast(1).on('value', snap => {
+                const data = snap.val();
+                if (data) {
+                    const key = Object.keys(data)[0]; const ann = data[key];
+                    // Check Expiration
+                    if(ann.expire && new Date(ann.expire) < new Date()) {
+                        db.ref('settings/announcements/' + key).remove();
+                        document.getElementById('announcementBar').classList.add('d-none');
+                        return;
+                    }
+                    // Check Target
+                    if(ann.target && ann.target !== 'all' && currentUserData.role !== ann.target) {
+                        document.getElementById('announcementBar').classList.add('d-none');
+                        return;
+                    }
+                    if (localStorage.getItem('dismissedAnn_' + key) !== 'true') {
+                        document.getElementById('announcementBar').innerHTML = `<strong><i class="fas fa-bullhorn"></i> إعلان: </strong> ${ann.text} <button type="button" class="btn-close float-start" onclick="dismissAnnouncement()"></button>`;
+                        document.getElementById('announcementBar').classList.remove('d-none');
+                    }
+                } else {
+                    document.getElementById('announcementBar').classList.add('d-none');
+                }
+            });
+        }
+        function dismissAnnouncement() { db.ref('settings/announcements').limitToLast(1).once('value').then(snap => { const key = Object.keys(snap.val())[0]; localStorage.setItem('dismissedAnn_' + key, 'true'); document.getElementById('announcementBar').classList.add('d-none'); }); }
+        function openAnnouncementModal() { document.getElementById('annText').value=''; document.getElementById('annExpire').value=''; document.getElementById('annTarget').value='all'; new bootstrap.Modal(document.getElementById('announcementModal')).show(); }
+        function postAnnouncement() {
+            const text = document.getElementById('annText').value;
+            if(!text.trim()) return toastr.warning('أدخل نص الإعلان');
+            const target = document.getElementById('annTarget').value;
+            const expire = document.getElementById('annExpire').value || null;
+            db.ref('settings/announcements').push({ text, target, expire, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => { toastr.success('تم نشر الإعلان'); bootstrap.Modal.getOrCreateInstance(document.getElementById('announcementModal')).hide(); });
+        }
+        function openManageAnnouncementsModal() {
+            db.ref('settings/announcements').once('value').then(snap => {
+                const data = snap.val() || {};
+                let html = '<ul class="list-group">';
+                Object.keys(data).forEach(key => {
+                    html += `<li class="list-group-item d-flex justify-content-between align-items-center">${data[key].text} <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement('${key}')"><i class="fas fa-trash"></i> حذف</button></li>`;
+                });
+                html += '</ul>';
+                document.getElementById('manageAnnBody').innerHTML = html || '<p class="text-muted">لا توجد إعلانات نشطة</p>';
+                new bootstrap.Modal(document.getElementById('manageAnnouncementsModal')).show();
+            });
+        }
+        function deleteAnnouncement(key) { db.ref('settings/announcements/' + key).remove().then(() => { toastr.success('تم الحذف'); openManageAnnouncementsModal(); }); }
 
         function calculateDistance(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c; }
         async function getSecureLocation() {
@@ -299,7 +356,7 @@
                 let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
                 let diffHrs = (new Date() - checkInDate) / (1000 * 60 * 60); let deduction = data.breakDeduction || 0;
                 if (deduction > 0) { diffHrs -= (deduction / 60); currentDayRef.update({ breakDeduction: 0 }); }
-                currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, duration: diffHrs.toFixed(2) }).then(() => {
+                currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: locData.loc, checkOutSuspicious: locData.suspicious, duration: diffHrs.toFixed(2) }).then(() => {
                     const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
                     currentDayRef.update({ activeSession: null, totalHours: newTotal }); toastr.info('تم تسجيل الانصراف');
                 });
@@ -324,7 +381,6 @@
                 document.getElementById('leaveBalanceCard').classList.add('d-none');
             }
         }
-        
         function openEditMyProfileModal() { openEditModal('user', currentUserData.id); }
 
         // HR MODULE
@@ -354,7 +410,6 @@
                 const statusColor = (isCheckedIn || u.role === 'admin') ? 'success' : 'warning';
                 const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
                 
-                // Productivity Flag
                 let prodFlag = '';
                 if (u.role !== 'admin' && isCheckedIn) {
                     const todayTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] && allDailyTasks[u.id][monthYear][day] ? allDailyTasks[u.id][monthYear][day] : {};
@@ -382,7 +437,7 @@
                 <ul class="nav nav-tabs mb-3">
                     <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#hrBasic">البيانات الأساسية</a></li>
                     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrPayroll">الأداء والرواتب</a></li>
-                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrAttendance">الحضور</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrAttendance">الحضور والانصراف</a></li>
                     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrDailyTasks">المهام اليومية</a></li>
                     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrAdminTasks">المهام الإدارية</a></li>
                     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrLeaves">الإجازات</a></li>
@@ -427,13 +482,13 @@
             // Attendance Tab
             const attSnap = await db.ref(`attendance/${userId}`).once('value');
             const userAtt = attSnap.val() || {};
-            let attHtml = '<table class="table table-bordered"><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الموقع</th></tr></thead><tbody>';
+            let attHtml = '<table class="table table-bordered"><thead><tr><th>التاريخ</th><th>الحضور</th><th>موقع الحضور</th><th>الانصراف</th><th>موقع الانصراف</th></tr></thead><tbody>';
             Object.keys(userAtt).sort().reverse().forEach(month => {
                 Object.keys(userAtt[month]).sort().reverse().forEach(day => {
                     const dData = userAtt[month][day];
                     if(dData.sessions) {
                         Object.values(dData.sessions).forEach(s => {
-                            attHtml += `<tr><td>${day}-${month}</td><td>${s.checkIn || '--'} ${s.checkInSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td>${s.checkOut || '--'}</td><td><a href="${s.checkInLoc || '#'}" target="_blank">خريطة</a></td></tr>`;
+                            attHtml += `<tr><td>${day}-${month}</td><td>${s.checkIn || '--'} ${s.checkInSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td><a href="${s.checkInLoc || '#'}" target="_blank">خريطة</a></td><td>${s.checkOut || '--'} ${s.checkOutSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td><a href="${s.checkOutLoc || '#'}" target="_blank">خريطة</a></td></tr>`;
                         });
                     }
                 });
@@ -444,7 +499,7 @@
             // Daily Tasks Tab
             const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
             const userDT = dtSnap.val() || {};
-            let dtHtml = '<table class="table table-bordered"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>التفاصيل</th></tr></thead><tbody>';
+            let dtHtml = `<div class="d-flex justify-content-end mb-2"><button class="btn btn-success btn-sm me-2" onclick="exportUserDailyTasksExcel('${userId}')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn btn-danger btn-sm" onclick="exportUserDailyTasksPDF('${userId}')"><i class="fas fa-file-pdf"></i> PDF</button></div><table class="table table-bordered"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>التفاصيل</th></tr></thead><tbody>`;
             Object.keys(userDT).sort().reverse().forEach(month => {
                 Object.keys(userDT[month]).sort().reverse().forEach(day => {
                     Object.values(userDT[month][day]).forEach(t => {
@@ -536,8 +591,8 @@
             const allYearHolidays = holidaysSnap.val() || {};
             const holidaysCount = Object.keys(allYearHolidays).filter(k => k.startsWith(`${y}-${String(m).padStart(2,'0')}-`)).length;
             const actualWorkingDays = workingDays - holidaysCount;
-            const expectedHours = actualWorkingDays * 7; // 7 hours work (8 - 1 break)
-            const hourlyRate = baseSalary / expectedHours; // To show employee how much 1 hour is worth
+            const expectedHours = actualWorkingDays * 7; 
+            const hourlyRate = baseSalary / expectedHours; 
 
             const monthYearStr = `${y}-${String(m).padStart(2,'0')}`;
             const attSnap = await db.ref(`attendance/${userId}/${monthYearStr}`).once('value');
@@ -555,7 +610,6 @@
                 });
             });
 
-            // 80% Rule
             const ratio = expectedHours > 0 ? actualWorkHours / expectedHours : 0;
             const passed80Rule = ratio >= 0.8;
             
@@ -575,15 +629,13 @@
                 }
             }
             
-            // 40% Fixed Part Logic
             let attendanceScore = 100;
             if(!passed80Rule) {
-                attendanceScore = ratio * 100; // Reduce fixed part if < 80%
+                attendanceScore = ratio * 100; 
             }
             attendanceScore = Math.max(0, attendanceScore - (lateDays * 2) - (absentDays * 10));
             
-            // 60% Variable Part Logic
-            const kpiScore = Math.min(1, ratio) * 100; // Cap at 100%
+            const kpiScore = Math.min(1, ratio) * 100; 
             
             const fixedPart = baseSalary * 0.40 * (attendanceScore / 100);
             const variablePart = baseSalary * 0.60 * (kpiScore / 100);
@@ -675,6 +727,87 @@
             XLSX.utils.book_append_sheet(wb, ws, "Payslip");
             XLSX.writeFile(wb, `Payslip_${user.name}_${monthYear}.xlsx`);
             toastr.success('تم التصدير');
+        }
+
+        // DAILY TASKS EXPORT FUNCTIONS
+        async function exportUserDailyTasksExcel(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const userDT = dtSnap.val() || {};
+            let data = [];
+            Object.keys(userDT).sort().forEach(month => {
+                Object.keys(userDT[month]).sort().forEach(day => {
+                    Object.values(userDT[month][day]).forEach(t => {
+                        data.push({ "الموظف": user.name, "التاريخ": `${day}-${month}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
+                    });
+                });
+            });
+            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks");
+            XLSX.writeFile(wb, `Daily_Tasks_${user.name}.xlsx`);
+            toastr.success('تم التصدير');
+        }
+
+        async function exportUserDailyTasksPDF(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const userDT = dtSnap.val() || {};
+            let html = `<h2 style="text-align:center;">تقرير المهام اليومية - ${user.name}</h2><hr><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th style="border:1px solid #ddd; padding:8px;">التاريخ</th><th style="border:1px solid #ddd; padding:8px;">من</th><th style="border:1px solid #ddd; padding:8px;">إلى</th><th style="border:1px solid #ddd; padding:8px;">التفاصيل</th></tr></thead><tbody>`;
+            Object.keys(userDT).sort().forEach(month => {
+                Object.keys(userDT[month]).sort().forEach(day => {
+                    Object.values(userDT[month][day]).forEach(t => {
+                        html += `<tr><td style="border:1px solid #ddd; padding:8px;">${day}-${month}</td><td style="border:1px solid #ddd; padding:8px;">${t.startTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.endTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.details}</td></tr>`;
+                    });
+                });
+            });
+            html += '</tbody></table>';
+            const element = document.createElement('div');
+            element.innerHTML = `<div style="direction:rtl; padding:20px; font-family:Arial;">${html}</div>`;
+            html2pdf().from(element).save(`Daily_Tasks_${user.name}.pdf`);
+        }
+
+        function openDailyTasksReportModal() {
+            const list = document.getElementById('dtUsersList');
+            let html = '';
+            allUsers.forEach(u => {
+                html += `<div class="form-check"><input class="form-check-input dt-user-check" type="checkbox" value="${u.id}" id="dt_${u.id}"><label class="form-check-label" for="dt_${u.id}">${u.name}</label></div>`;
+            });
+            list.innerHTML = html || '<p class="text-muted">لا يوجد موظفين</p>';
+            document.getElementById('dtSelectAll').checked = false;
+            new bootstrap.Modal(document.getElementById('dtReportModal')).show();
+        }
+        
+        function toggleAllDtUsers(masterCheckbox) {
+            document.querySelectorAll('.dt-user-check').forEach(cb => cb.checked = masterCheckbox.checked);
+        }
+
+        async function exportMultiUserDailyTasks() {
+            const selectedBoxes = document.querySelectorAll('.dt-user-check:checked');
+            if(selectedBoxes.length === 0) return toastr.warning('من فضلك حدد موظف واحد على الأقل');
+            
+            let data = [];
+            for (const box of selectedBoxes) {
+                const userId = box.value;
+                const user = allUsers.find(u => u.id === userId);
+                const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+                const userDT = dtSnap.val() || {};
+                Object.keys(userDT).sort().forEach(month => {
+                    Object.keys(userDT[month]).sort().forEach(day => {
+                        Object.values(userDT[month][day]).forEach(t => {
+                            data.push({ "الموظف": user.name, "التاريخ": `${day}-${month}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
+                        });
+                    });
+                });
+            }
+            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة للموظفين المحددين");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks Report");
+            XLSX.writeFile(wb, `Multi_User_Daily_Tasks.xlsx`);
+            toastr.success('تم التصدير');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('dtReportModal')).hide();
         }
 
         function loadProductsSettings() {
@@ -906,7 +1039,7 @@
             db.ref('missions').on('value', snap => { allMissions = []; snap.forEach(child => { const m = child.val(); m.id = child.key; allMissions.push(m); }); renderMissions(); });
             db.ref('leaves').on('value', snap => { allLeaves = []; snap.forEach(child => { const l = child.val(); l.id = child.key; allLeaves.push(l); }); renderLeaves(); });
             db.ref('customers').on('value', snap => { allCustomers = []; snap.forEach(child => { const c = child.val(); c.id = child.key; allCustomers.push(c); }); renderCustomers(); loadAdminStats(); });
-            db.ref('inventory').on('value', snap => { allInventory = []; snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); }); renderInventory(); });
+            db.ref('inventory').on('value', snap => { allInventory = []; snap.forEach(child => { const i = child.val(); i.id = child.key; allInventory.push(i); }); renderInventory(); loadAdminStats(); });
             db.ref('production').on('value', snap => { allProduction = []; snap.forEach(child => { const p = child.val(); p.id = child.key; allProduction.push(p); }); renderProduction(); loadAdminStats(); });
             db.ref('visits').on('value', snap => { allVisits = []; snap.forEach(child => { const v = child.val(); v.id = child.key; allVisits.push(v); }); renderVisits(); loadAdminStats(); });
         }
@@ -920,11 +1053,15 @@
             const pendingInvoices = allVisits.filter(v => v.status === 'pending_approval').length;
             const totalCustomers = allCustomers.length;
             const pendingProduction = allProduction.filter(p => p.status === 'جديد').length;
+            const lowStock = allInventory.filter(i => parseFloat(i.qty) < 10).length;
+            const openTasks = allTasks.filter(t => t.status !== 'مكتملة' && t.status !== 'مرفوضة').length;
             
             if(document.getElementById('statTodaySales')) document.getElementById('statTodaySales').innerText = todaySales.toFixed(0);
             if(document.getElementById('statPendingInvoices')) document.getElementById('statPendingInvoices').innerText = pendingInvoices;
             if(document.getElementById('statTotalCustomers')) document.getElementById('statTotalCustomers').innerText = totalCustomers;
             if(document.getElementById('statProduction')) document.getElementById('statProduction').innerText = pendingProduction;
+            if(document.getElementById('statLowStock')) document.getElementById('statLowStock').innerText = lowStock;
+            if(document.getElementById('statOpenTasks')) document.getElementById('statOpenTasks').innerText = openTasks;
         }
         
         function renderVisits() {
@@ -1429,6 +1566,7 @@
                 <div class="col-md-4 mb-3"><div class="card text-white bg-primary shadow-sm h-100 quick-link" onclick="exportToExcel('productionTable', 'تقرير_الإنتاج')"><div class="card-body text-center"><i class="fas fa-industry fa-3x mb-2"></i><h5>تقرير الإنتاج</h5></div></div></div>
                 <div class="col-md-4 mb-3"><div class="card text-white bg-secondary shadow-sm h-100 quick-link" onclick="exportToExcel('requestsTable', 'تقرير_المشتريات')"><div class="card-body text-center"><i class="fas fa-cart-plus fa-3x mb-2"></i><h5>تقرير المشتريات</h5></div></div></div>
                 <div class="col-md-4 mb-3"><div class="card text-white bg-danger shadow-sm h-100 quick-link" onclick="exportToExcel('missionsTable', 'تقرير_المأموريات')"><div class="card-body text-center"><i class="fas fa-plane-departure fa-3x mb-2"></i><h5>تقرير المأموريات</h5></div></div></div>
+                <div class="col-md-4 mb-3"><div class="card text-white bg-dark shadow-sm h-100 quick-link" onclick="openDailyTasksReportModal()"><div class="card-body text-center"><i class="fas fa-list-check fa-3x mb-2"></i><h5>تقرير المهام اليومية</h5></div></div></div>
             `;
             document.getElementById('reportsList').innerHTML = html;
         }
