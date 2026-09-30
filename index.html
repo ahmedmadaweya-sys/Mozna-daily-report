@@ -44,6 +44,8 @@
         .calendar-table td.weekend { background-color: #d1e7dd; color: #0f5132; }
         .calendar-table td.official-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; }
         .calendar-table td.empty { background-color: #f8f9fa; cursor: default; }
+        .hr-card { transition: 0.2s; cursor: pointer; }
+        .hr-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
         select option { color: #000 !important; background-color: #fff !important; }
     </style>
 </head>
@@ -64,7 +66,7 @@
                 <h5 class="p-3 text-center border-bottom">لوحة التحكم</h5>
                 <a href="#" id="navDashboard" onclick="showSection('dashboard', event)" class="active"><i class="fas fa-tachometer-alt"></i> الرئيسية</a>
                 <a href="#" id="navVisits" onclick="showSection('visits', event)"><i class="fas fa-map-marked-alt"></i> الزيارات والمبيعات</a>
-                <a href="#" id="navTeam" onclick="showSection('team', event)"><i class="fas fa-users-cog"></i> الفريق والرواتب</a>
+                <a href="#" id="navHR" onclick="showSection('hr', event)"><i class="fas fa-users-cog"></i> الموارد البشرية (HR)</a>
                 <a href="#" id="navUsers" onclick="showSection('users', event)"><i class="fas fa-users"></i> المستخدمين</a>
                 <a href="#" id="navDepartments" onclick="showSection('departments', event)"><i class="fas fa-building"></i> الأقسام</a>
                 <a href="#" id="navTasks" onclick="showSection('tasks', event)"><i class="fas fa-tasks"></i> المهام</a>
@@ -105,8 +107,15 @@
                     <div class="row mb-4" id="adminDashboardCards"></div>
                 </div>
 
+                <div id="hrSection" style="display: none;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h2>الموارد البشرية (HR)</h2>
+                        <div id="hrActions"></div>
+                    </div>
+                    <div class="row" id="hrCardsContainer"></div>
+                </div>
+
                 <div id="visitsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الزيارات والمبيعات</h2><div id="visitsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="visitsTable"><thead><tr><th>المندوب</th><th>العميل</th><th>تليفون العميل</th><th>الحالة</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th></tr></thead><tbody id="visitsTbody"></tbody></table></div></div></div>
-                <div id="teamSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الفريق والرواتب</h2><div id="teamActions"></div></div><div class="row" id="teamList"></div></div>
                 <div id="usersSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المستخدمين</h2><div id="usersActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="usersTable"><thead><tr><th>الاسم</th><th>البريد</th><th>القسم</th><th>الراتب</th><th>إجراءات</th></tr></thead><tbody id="usersTbody"></tbody></table></div></div></div>
                 <div id="departmentsSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>الأقسام</h2><div id="departmentsActions"></div></div><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover" id="departmentsTable"><thead><tr><th>الاسم</th><th>المدير</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="departmentsTbody"></tbody></table></div></div></div>
                 <div id="tasksSection" style="display: none;"><div class="d-flex justify-content-between mb-3"><h2>المهام</h2><div id="tasksActions"></div></div><ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tasksActive">نشطة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksLate">متأخرة</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tasksDone">منتهية</a></li></ul><div class="tab-content"><div class="tab-pane fade show active" id="tasksActive"><div class="row mt-3" id="tasksListActive"></div></div><div class="tab-pane fade" id="tasksLate"><div class="row mt-3" id="tasksListLate"></div></div><div class="tab-pane fade" id="tasksDone"><div class="row mt-3" id="tasksListDone"></div></div></div></div>
@@ -131,6 +140,9 @@
     <div class="modal fade" id="taskChatModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title" id="taskChatTitle">تفاصيل المهمة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="taskChatInfo" class="mb-3"></div><hr><h6>التعليقات</h6><div class="chat-box mb-3" id="taskChatHistory"></div><textarea id="taskChatInput" class="form-control mb-2" placeholder="تحديث جديد..."></textarea></div><div class="modal-footer" id="taskChatFooter"></div></div></div></div>
     <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="detailsModalTitle">التفاصيل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailsModalBody"></div><div class="modal-footer" id="detailsModalFooter"></div></div></div></div>
     <div class="modal fade" id="dailyTasksModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-list-check"></i> مهام يومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>تاريخ اليوم</label><input type="text" id="dtDate" class="form-control" readonly></div><div class="row mb-2"><div class="col-6"><label>من الساعة</label><input type="time" id="dtStart" class="form-control"></div><div class="col-6"><label>إلى الساعة</label><input type="time" id="dtEnd" class="form-control"></div></div><div class="mb-3"><label>تفاصيل المهمة</label><textarea id="dtDetails" class="form-control" rows="2"></textarea></div><button onclick="saveDailyTask()" class="btn btn-success w-100 mb-3"><i class="fas fa-plus"></i> إضافة المهمة</button><hr><h6>المهام المسجلة اليوم:</h6><div id="todayTasksList" class="text-start"></div></div></div></div></div>
+    
+    <!-- HR Employee Profile Modal -->
+    <div class="modal fade" id="hrProfileModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title" id="hrProfileTitle">ملف الموظف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="hrProfileBody"></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -148,6 +160,7 @@
         let currentUserData = null, currentDayRef = null, currentTaskChatId = null, userPermissions = {}, currentDailyTasksRef = null, breakInterval = null, isInitialNotifLoad = true;
         let currentVisitCart = [], currentGpsLoc = null;
         let currentCalendarYear = new Date().getFullYear();
+        let currentHRUserId = null;
         const LAB_CATEGORIES = ['المياه', 'النبات', 'الأعلاف', 'الأسمدة', 'الميكروبيولوجي', 'الباقات والعروض'];
 
         function doLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(() => toastr.success('تم تسجيل الدخول')).catch(err => toastr.error(err.message)); }
@@ -169,7 +182,7 @@
 
         function can(action, section) {
             if (currentUserData?.role === 'admin') return true;
-            if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'visits', 'customers'].includes(section);
+            if (currentUserData?.role === 'manager') return ['tasks', 'requests', 'missions', 'leaves', 'production', 'visits', 'customers', 'hr'].includes(section);
             return userPermissions[section] && userPermissions[section][action];
         }
 
@@ -177,9 +190,10 @@
             const isAdmin = currentUserData.role === 'admin', isManager = currentUserData.role === 'manager';
             ['Users', 'Departments', 'Inventory', 'Reports', 'Permissions', 'LabSettings', 'Products', 'RawMaterials', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'none');
             document.getElementById('navVisits').style.display = 'block';
+            document.getElementById('navHR').style.display = 'block';
             document.getElementById('postAnnouncementBtn').classList.toggle('d-none', !isAdmin);
             
-            if (isAdmin) ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Team', 'Products', 'RawMaterials', 'LabSettings', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
+            if (isAdmin) ['Users', 'Departments', 'Tasks', 'Requests', 'Production', 'Missions', 'Leaves', 'Inventory', 'Reports', 'Permissions', 'Products', 'RawMaterials', 'LabSettings', 'Calendar'].forEach(nav => document.getElementById('nav'+nav).style.display = 'block');
             else if (isManager) { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             else { document.getElementById('navTasks').style.display = 'block'; document.getElementById('navRequests').style.display = 'block'; }
             
@@ -199,7 +213,7 @@
         }
 
         function showSection(section, evt) {
-            ['dashboard', 'team', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'inventory', 'visits', 'products', 'rawMaterials', 'labSettings', 'calendar', 'reports', 'permissions'].forEach(s => {
+            ['dashboard', 'hr', 'users', 'departments', 'tasks', 'requests', 'production', 'missions', 'leaves', 'inventory', 'visits', 'products', 'rawMaterials', 'labSettings', 'calendar', 'reports', 'permissions'].forEach(s => {
                 const el = document.getElementById(s + 'Section');
                 if (el) el.style.display = 'none';
             });
@@ -212,6 +226,7 @@
             if (section === 'permissions') loadPermissionsUI();
             if (section === 'calendar') loadCalendar();
             if (section === 'reports') loadReports();
+            if (section === 'hr') renderHRCards();
         }
 
         function formatTime(t) { if (!t) return '--:--'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'م' : 'ص'}`; }
@@ -269,7 +284,6 @@
                     document.getElementById('checkInTime').innerText = '--:--'; document.getElementById('checkOutTime').innerText = '--:--';
                 }
             });
-            db.ref(`attendance/${currentUserData.id}/${monthYear}`).once('value').then(snap => { let t = 0; snap.forEach(d => { if(d.val().totalHours) t += parseFloat(d.val().totalHours); }); document.getElementById('monthlyHours').innerText = `${t.toFixed(1)} ساعة`; });
         }
         async function toggleAttendance() {
             if (!currentDayRef) return;
@@ -308,6 +322,329 @@
             } else {
                 document.getElementById('leaveBalanceCard').classList.add('d-none');
             }
+        }
+
+        // HR MODULE
+        async function renderHRCards() {
+            const isAdmin = currentUserData.role === 'admin' || currentUserData.role === 'manager';
+            const container = document.getElementById('hrCardsContainer');
+            const actions = document.getElementById('hrActions');
+            
+            if(!isAdmin) {
+                container.innerHTML = '<div class="col-12 text-center text-muted">لا توجد صلاحيات لعرض الموارد البشرية</div>';
+                actions.innerHTML = '';
+                return;
+            }
+
+            actions.innerHTML = `<button onclick="calculateMassPayroll()" class="btn btn-danger btn-sm"><i class="fas fa-calculator"></i> حساب رواتب الشهر (ALL)</button>`;
+            
+            const attSnap = await db.ref('attendance').once('value');
+            const allAtt = attSnap.val() || {};
+            const dailyTasksSnap = await db.ref('dailyTasks').once('value');
+            const allDailyTasks = dailyTasksSnap.val() || {};
+            const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+
+            let html = '';
+            allUsers.forEach(u => {
+                const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
+                const isCheckedIn = userAtt && userAtt.activeSession;
+                const statusColor = (isCheckedIn || u.role === 'admin') ? 'success' : 'warning';
+                const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
+                
+                // Productivity Flag
+                let prodFlag = '';
+                if (u.role !== 'admin' && isCheckedIn) {
+                    const todayTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] && allDailyTasks[u.id][monthYear][day] ? allDailyTasks[u.id][monthYear][day] : {};
+                    let taskHours = 0;
+                    Object.values(todayTasks).forEach(t => {
+                        const [sh, sm] = t.startTime.split(':').map(Number);
+                        const [eh, em] = t.endTime.split(':').map(Number);
+                        taskHours += ((eh + em/60) - (sh + sm/60));
+                    });
+                    if(taskHours < 5.6) prodFlag = '<span class="badge bg-danger mt-2">إنتاجية منخفضة</span>';
+                }
+
+                html += `<div class="col-md-3 mb-3"><div class="card hr-card h-100" onclick="openHRProfile('${u.id}')"><div class="card-body text-center"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle || 'موظف'}</p><p class="small text-muted">الراتب: ${u.salary || '-'} جنيه</p>${prodFlag}</div></div></div>`;
+            });
+            container.innerHTML = html || '<p class="text-muted">لا يوجد موظفين</p>';
+        }
+
+        async function openHRProfile(userId) {
+            currentHRUserId = userId;
+            const user = allUsers.find(u => u.id === userId); if(!user) return;
+            document.getElementById('hrProfileTitle').innerText = `ملف الموظف: ${user.name}`;
+            
+            const body = document.getElementById('hrProfileBody');
+            body.innerHTML = `
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#hrBasic">البيانات الأساسية</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrPayroll">الأداء والرواتب</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrAttendance">الحضور</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrDailyTasks">المهام اليومية</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrAdminTasks">المهام الإدارية</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#hrLeaves">الإجازات</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="hrBasic"></div>
+                    <div class="tab-pane fade" id="hrPayroll"></div>
+                    <div class="tab-pane fade" id="hrAttendance"></div>
+                    <div class="tab-pane fade" id="hrDailyTasks"></div>
+                    <div class="tab-pane fade" id="hrAdminTasks"></div>
+                    <div class="tab-pane fade" id="hrLeaves"></div>
+                </div>
+            `;
+            
+            // Basic Info
+            const deps = (await db.ref('departments').once('value')).val() || {};
+            let depCheckboxes = '';
+            Object.values(deps).forEach(d => { depCheckboxes += `<div class="form-check"><input class="form-check-input dept-check-hr" type="checkbox" value="${d.name}" ${user.departments && user.departments.includes(d.name) ? 'checked' : ''}><label class="form-check-label">${d.name}</label></div>`; });
+            document.getElementById('hrBasic').innerHTML = `
+                <div class="row">
+                    <div class="col-md-4 text-center"><img src="${user.photoURL || 'https://via.placeholder.com/150'}" class="profile-pic mb-3"><br><input type="file" id="hrPhoto" accept="image/*"></div>
+                    <div class="col-md-8">
+                        <div class="mb-2"><label>الاسم</label><input type="text" id="hrName" class="form-control" value="${user.name}"></div>
+                        <div class="mb-2"><label>المسمى الوظيفي</label><input type="text" id="hrJobTitle" class="form-control" value="${user.jobTitle || ''}"></div>
+                        <div class="mb-2"><label>الراتب الأساسي</label><input type="number" id="hrSalary" class="form-control" value="${user.salary || 0}"></div>
+                        <div class="mb-2"><label>تاريخ التعيين</label><input type="date" id="hrHireDate" class="form-control" value="${user.hireDate || ''}"></div>
+                        <label>الأقسام</label><div class="border p-2 rounded mb-3">${depCheckboxes}</div>
+                        <button class="btn btn-success" onclick="saveHRProfile('${userId}')">حفظ التعديلات</button>
+                    </div>
+                </div>
+            `;
+
+            // Payroll Tab
+            document.getElementById('hrPayroll').innerHTML = `
+                <div class="d-flex justify-content-between mb-3">
+                    <input type="month" id="hrPayrollMonth" class="form-control w-50" value="${new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-')}">
+                    <button class="btn btn-primary" onclick="calculateHRPayroll('${userId}')">حساب الراتب</button>
+                </div>
+                <div id="hrPayrollResult"></div>
+            `;
+
+            // Attendance Tab
+            const attSnap = await db.ref(`attendance/${userId}`).once('value');
+            const userAtt = attSnap.val() || {};
+            let attHtml = '<table class="table table-bordered"><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الموقع</th></tr></thead><tbody>';
+            Object.keys(userAtt).sort().reverse().forEach(month => {
+                Object.keys(userAtt[month]).sort().reverse().forEach(day => {
+                    const dData = userAtt[month][day];
+                    if(dData.sessions) {
+                        Object.values(dData.sessions).forEach(s => {
+                            attHtml += `<tr><td>${day}-${month}</td><td>${s.checkIn || '--'} ${s.checkInSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td>${s.checkOut || '--'}</td><td><a href="${s.checkInLoc || '#'}" target="_blank">خريطة</a></td></tr>`;
+                        });
+                    }
+                });
+            });
+            attHtml += '</tbody></table>';
+            document.getElementById('hrAttendance').innerHTML = attHtml;
+
+            // Daily Tasks Tab
+            const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const userDT = dtSnap.val() || {};
+            let dtHtml = '<table class="table table-bordered"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>التفاصيل</th></tr></thead><tbody>';
+            Object.keys(userDT).sort().reverse().forEach(month => {
+                Object.keys(userDT[month]).sort().reverse().forEach(day => {
+                    Object.values(userDT[month][day]).forEach(t => {
+                        dtHtml += `<tr><td>${day}-${month}</td><td>${t.startTime}</td><td>${t.endTime}</td><td>${t.details}</td></tr>`;
+                    });
+                });
+            });
+            dtHtml += '</tbody></table>';
+            document.getElementById('hrDailyTasks').innerHTML = dtHtml;
+
+            // Admin Tasks Tab
+            const userTasks = allTasks.filter(t => t.userId === userId || t.createdById === userId);
+            let tHtml = '<ul class="list-group">';
+            userTasks.forEach(t => {
+                tHtml += `<li class="list-group-item"><b>${t.title}</b> <small class="text-muted">(${t.status})</small><br><small>${t.startDate || ''} إلى ${t.endDate || ''}</small></li>`;
+            });
+            tHtml += '</ul>';
+            document.getElementById('hrAdminTasks').innerHTML = tHtml;
+
+            // Leaves Tab
+            const userLeaves = allLeaves.filter(l => l.userId === userId);
+            const bal = calculateLeaveBalance(user.hireDate);
+            let lHtml = `<div class="alert alert-info">رصيد الإجازات المتاح: ${bal} يوم</div><table class="table table-bordered"><thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الحالة</th></tr></thead><tbody>`;
+            userLeaves.forEach(l => {
+                lHtml += `<tr><td>${l.type}</td><td>${l.startDate}</td><td>${l.endDate}</td><td>${l.status}</td></tr>`;
+            });
+            lHtml += '</tbody></table>';
+            document.getElementById('hrLeaves').innerHTML = lHtml;
+
+            new bootstrap.Modal(document.getElementById('hrProfileModal')).show();
+        }
+
+        async function saveHRProfile(userId) {
+            const updates = {
+                name: document.getElementById('hrName').value,
+                jobTitle: document.getElementById('hrJobTitle').value,
+                salary: parseFloat(document.getElementById('hrSalary').value),
+                hireDate: document.getElementById('hrHireDate').value,
+                departments: Array.from(document.querySelectorAll('.dept-check-hr:checked')).map(cb => cb.value)
+            };
+            const fileInput = document.getElementById('hrPhoto');
+            if (fileInput.files[0]) {
+                toastr.info('جاري رفع الصورة...');
+                updates.photoURL = await uploadFile(fileInput.files[0]);
+            }
+            db.ref('users/' + userId).update(updates).then(() => toastr.success('تم حفظ البيانات'));
+        }
+
+        async function calculateHRPayroll(userId) {
+            const monthYear = document.getElementById('hrPayrollMonth').value;
+            if(!monthYear) return toastr.warning('اختر الشهر');
+            const [y, m] = monthYear.split('-').map(Number);
+            const result = await getPayrollData(userId, m, y);
+            
+            const html = `
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">تفاصيل الراتب لشهر ${monthYear}</div>
+                    <div class="card-body">
+                        <table class="table table-bordered">
+                            <tr><th>الراتب الأساسي</th><td>${result.baseSalary} جنيه</td></tr>
+                            <tr><th>ساعات الإنتاج المطلوبة</th><td>${result.expectedHours} ساعة</td></tr>
+                            <tr><th>ساعات الإنتاج الفعلية (من المهام)</th><td>${result.actualWorkHours.toFixed(1)} ساعة</td></tr>
+                            <tr><th>أيام التأخير</th><td>${result.lateDays} يوم</td></tr>
+                            <tr><th>أيام الغياب</th><td>${result.absentDays} يوم</td></tr>
+                            <tr><th>نسبة الانضباط (40%)</th><td>${result.attendanceScore.toFixed(0)}%</td></tr>
+                            <tr><th>نسبة الأداء KPI (60%)</th><td>${result.kpiScore.toFixed(0)}%</td></tr>
+                            <tr class="table-success"><th>الصافي المستحق</th><td><h4 class="mb-0">${result.netSalary.toFixed(2)} جنيه</h4></td></tr>
+                        </table>
+                        <button class="btn btn-danger" onclick="exportPayslipPDF('${userId}', '${monthYear}')"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
+                        <button class="btn btn-success" onclick="exportPayslipExcel('${userId}', '${monthYear}')"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('hrPayrollResult').innerHTML = html;
+        }
+
+        async function getPayrollData(userId, m, y) {
+            const user = allUsers.find(u => u.id === userId);
+            const baseSalary = parseFloat(user.salary || 0);
+            
+            const daysInMonth = new Date(y, m, 0).getDate();
+            let workingDays = 0;
+            for(let i=1; i<=daysInMonth; i++) {
+                const dayOfWeek = new Date(y, m-1, i).getDay();
+                if(dayOfWeek !== 5 && dayOfWeek !== 6) workingDays++;
+            }
+            
+            const holidaysSnap = await db.ref(`settings/calendar/${y}`).once('value');
+            const allYearHolidays = holidaysSnap.val() || {};
+            const holidaysCount = Object.keys(allYearHolidays).filter(k => k.startsWith(`${y}-${String(m).padStart(2,'0')}-`)).length;
+            const actualWorkingDays = workingDays - holidaysCount;
+            const expectedHours = actualWorkingDays * 7; 
+
+            const monthYearStr = `${y}-${String(m).padStart(2,'0')}`;
+            const attSnap = await db.ref(`attendance/${userId}/${monthYearStr}`).once('value');
+            const monthlyAtt = attSnap.val() || {};
+            
+            const dtSnap = await db.ref(`dailyTasks/${userId}/${monthYearStr}`).once('value');
+            const userDT = dtSnap.val() || {};
+            
+            let actualWorkHours = 0;
+            Object.values(userDT).forEach(dayTasks => {
+                Object.values(dayTasks).forEach(t => {
+                    const [sh, sm] = t.startTime.split(':').map(Number);
+                    const [eh, em] = t.endTime.split(':').map(Number);
+                    actualWorkHours += ((eh + em/60) - (sh + sm/60));
+                });
+            });
+
+            let lateDays = 0, absentDays = 0;
+            for(let d=1; d<=daysInMonth; d++) {
+                const dayDate = new Date(y, m-1, d);
+                if(dayDate.getDay() === 5 || dayDate.getDay() === 6) continue;
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                if(allYearHolidays[dateStr]) continue;
+                
+                const attDay = monthlyAtt[d];
+                if(!attDay || !attDay.sessions) { absentDays++; continue; }
+                const firstSession = Object.values(attDay.sessions)[0];
+                if(firstSession && firstSession.checkIn) {
+                    const [h, min] = firstSession.checkIn.split(':').map(Number);
+                    if(h > 10 || (h === 10 && min > 0)) lateDays++;
+                }
+            }
+            
+            const attendanceScore = Math.max(0, 100 - (lateDays * 2) - (absentDays * 10));
+            const productionRatio = Math.min(1, actualWorkHours / expectedHours);
+            const kpiScore = productionRatio * 100; 
+            
+            const fixedPart = baseSalary * 0.40 * (attendanceScore / 100);
+            const variablePart = baseSalary * 0.60 * (kpiScore / 100);
+            const netSalary = fixedPart + variablePart;
+
+            return { baseSalary, expectedHours, actualWorkHours, lateDays, absentDays, attendanceScore, kpiScore, netSalary };
+        }
+
+        async function calculateMassPayroll() {
+            const monthYear = prompt("أدخل شهر وسنة الحساب (مثال: 2024-05):", new Date().toLocaleDateString('en-CA').substring(0,7));
+            if (!monthYear) return;
+            const [y, m] = monthYear.split('-').map(Number);
+            let data = [];
+            for (const u of allUsers) {
+                if (!u.salary || u.role === 'admin') continue;
+                const res = await getPayrollData(u.id, m, y);
+                data.push({
+                    "الموظف": u.name,
+                    "الراتب الأساسي": res.baseSalary,
+                    "ساعات الإنتاج": res.actualWorkHours.toFixed(1),
+                    "نسبة الانضباط": res.attendanceScore.toFixed(0) + '%',
+                    "نسبة الأداء": res.kpiScore.toFixed(0) + '%',
+                    "الصافي": res.netSalary.toFixed(2)
+                });
+            }
+            if(data.length === 0) return toastr.warning("لا يوجد موظفين برواتب مسجلة");
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+            XLSX.writeFile(wb, `Payroll_${monthYear}.xlsx`);
+            toastr.success('تم تصدير كشف الرواتب');
+        }
+
+        async function exportPayslipPDF(userId, monthYear) {
+            const [y, m] = monthYear.split('-').map(Number);
+            const user = allUsers.find(u => u.id === userId);
+            const res = await getPayrollData(userId, m, y);
+            
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="direction:rtl; padding:20px; font-family:Arial;">
+                    <h2 style="text-align:center;">مسير راتب - ${user.name}</h2>
+                    <hr>
+                    <p><b>الشهر:</b> ${monthYear}</p>
+                    <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">الراتب الأساسي</th><td style="border:1px solid #ddd; padding:8px;">${res.baseSalary} جنيه</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">ساعات الإنتاج الفعلية</th><td style="border:1px solid #ddd; padding:8px;">${res.actualWorkHours.toFixed(1)} / ${res.expectedHours} ساعة</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">أيام التأخير</th><td style="border:1px solid #ddd; padding:8px;">${res.lateDays} يوم</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">أيام الغياب</th><td style="border:1px solid #ddd; padding:8px;">${res.absentDays} يوم</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">نسبة الانضباط (40%)</th><td style="border:1px solid #ddd; padding:8px;">${res.attendanceScore.toFixed(0)}%</td></tr>
+                        <tr><th style="border:1px solid #ddd; padding:8px; text-align:right;">نسبة الأداء KPI (60%)</th><td style="border:1px solid #ddd; padding:8px;">${res.kpiScore.toFixed(0)}%</td></tr>
+                        <tr style="background:#e8f5e9;"><th style="border:1px solid #ddd; padding:8px; text-align:right;">الصافي المستحق</th><td style="border:1px solid #ddd; padding:8px; font-size:1.5rem; font-weight:bold;">${res.netSalary.toFixed(2)} جنيه</td></tr>
+                    </table>
+                </div>`;
+            html2pdf().from(element).save(`Payslip_${user.name}_${monthYear}.pdf`);
+        }
+
+        async function exportPayslipExcel(userId, monthYear) {
+            const [y, m] = monthYear.split('-').map(Number);
+            const user = allUsers.find(u => u.id === userId);
+            const res = await getPayrollData(userId, m, y);
+            const data = [{
+                "الموظف": user.name,
+                "الشهر": monthYear,
+                "الراتب الأساسي": res.baseSalary,
+                "ساعات الإنتاج": res.actualWorkHours.toFixed(1),
+                "نسبة الانضباط": res.attendanceScore.toFixed(0) + '%',
+                "نسبة الأداء": res.kpiScore.toFixed(0) + '%',
+                "الصافي": res.netSalary.toFixed(2)
+            }];
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Payslip");
+            XLSX.writeFile(wb, `Payslip_${user.name}_${monthYear}.xlsx`);
+            toastr.success('تم التصدير');
         }
 
         function loadProductsSettings() {
@@ -532,7 +869,7 @@
         }
 
         function loadData() {
-            db.ref('users').on('value', snap => { allUsers = []; snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); }); renderUsers(); renderTeam(); loadAdminStats(); });
+            db.ref('users').on('value', snap => { allUsers = []; snap.forEach(child => { const u = child.val(); u.id = child.key; allUsers.push(u); }); renderUsers(); loadAdminStats(); });
             db.ref('departments').on('value', snap => { allDepartments = []; snap.forEach(child => { const d = child.val(); d.id = child.key; allDepartments.push(d); }); renderDepartments(); });
             db.ref('tasks').on('value', snap => { allTasks = []; snap.forEach(child => { const t = child.val(); t.id = child.key; allTasks.push(t); }); renderTasks(); loadAdminStats(); });
             db.ref('requests').on('value', snap => { allRequests = []; snap.forEach(child => { const r = child.val(); r.id = child.key; allRequests.push(r); }); renderRequests(); });
@@ -750,111 +1087,6 @@
             document.getElementById('productionTbody').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted">لا توجد طلبات إنتاج</td></tr>';
             const isAdmin = currentUserData.role === 'admin';
             document.getElementById('productionActions').innerHTML = `${isAdmin ? `<button onclick="exportToExcel('productionTable', 'الإنتاج')" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i></button>` : ''} <button onclick="openAddModal('production')" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> طلب إنتاج</button>`;
-        }
-
-        function renderTeam() {
-            db.ref('attendance').once('value').then(attSnap => {
-                const allAtt = attSnap.val() || {}; let html = '';
-                const isAdmin = currentUserData.role === 'admin';
-                document.getElementById('teamActions').innerHTML = isAdmin ? `<button onclick="calculateSalaries()" class="btn btn-danger btn-sm">حساب الرواتب والـ KPI</button>` : '';
-                const now = new Date(); const day = now.getDate(); const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
-                allUsers.forEach(u => {
-                    const userAtt = allAtt[u.id] && allAtt[u.id][monthYear] && allAtt[u.id][monthYear][day];
-                    const isCheckedIn = userAtt && userAtt.activeSession;
-                    const statusColor = (isCheckedIn || u.role === 'admin') ? 'success' : 'warning';
-                    const imgSrc = u.photoURL ? u.photoURL : 'https://via.placeholder.com/100/343a40/ffffff?text=M';
-                    html += `<div class="col-md-4 mb-3"><div class="card shadow-sm text-center h-100"><div class="card-body"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle}</p>${isAdmin ? `<button onclick="openEditModal('user','${u.id}')" class="btn btn-sm btn-primary mt-2"><i class="fas fa-user-edit"></i> تعديل الملف والراتب</button>` : ''}</div></div></div>`;
-                });
-                document.getElementById('teamList').innerHTML = html;
-            });
-        }
-        async function calculateSalaries() {
-            const monthYear = prompt("أدخل شهر وسنة الحساب (مثال: 05-2024):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
-            if (!monthYear) return;
-            const [m, y] = monthYear.split('-').map(Number);
-            
-            const daysInMonth = new Date(y, m, 0).getDate();
-            let workingDays = 0;
-            for(let i=1; i<=daysInMonth; i++) {
-                const dayOfWeek = new Date(y, m-1, i).getDay();
-                if(dayOfWeek !== 5 && dayOfWeek !== 6) workingDays++;
-            }
-            
-            const holidaysSnap = await db.ref(`settings/calendar/${y}`).once('value');
-            const allYearHolidays = holidaysSnap.val() || {};
-            const holidaysCount = Object.keys(allYearHolidays).filter(k => k.startsWith(`${y}-${String(m).padStart(2,'0')}-`)).length;
-            const actualWorkingDays = workingDays - holidaysCount;
-            const expectedHours = actualWorkingDays * 7; // 7 hours after 1 hour break
-
-            const attSnap = await db.ref('attendance').once('value');
-            const allAtt = attSnap.val() || {};
-            const leavesSnap = await db.ref('leaves').once('value');
-            const allLeaves = leavesSnap.val() || {};
-            const tasksSnap = await db.ref('tasks').once('value');
-            const allTasksData = tasksSnap.val() || {};
-            const dailyTasksSnap = await db.ref('dailyTasks').once('value');
-            const allDailyTasks = dailyTasksSnap.val() || {};
-            
-            let html = `<h5>رواتب: ${monthYear}</h5><p>أيام العمل المتوقعة: ${actualWorkingDays} يوم (${expectedHours} ساعة إنتاج مطلوبة)</p><table class="table table-bordered"><thead><tr><th>الموظف</th><th>الأساسي</th><th>ساعات الإنتاج الفعلي</th><th>نسبة الانضباط (40%)</th><th>نسبة الأداء (60%)</th><th>الصافي</th></tr></thead><tbody>`;
-            
-            for (const u of allUsers) {
-                if (!u.salary || u.role === 'admin') continue;
-                const monthlyAtt = allAtt[u.id] && allAtt[u.id][monthYear] ? allAtt[u.id][monthYear] : {};
-                
-                // 1. Calculate Actual Work Hours (from Daily Tasks)
-                let actualWorkHours = 0;
-                const userDailyTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] ? allDailyTasks[u.id][monthYear] : {};
-                Object.values(userDailyTasks).forEach(dayTasks => {
-                    Object.values(dayTasks).forEach(t => {
-                        const [sh, sm] = t.startTime.split(':').map(Number);
-                        const [eh, em] = t.endTime.split(':').map(Number);
-                        actualWorkHours += ((eh + em/60) - (sh + sm/60));
-                    });
-                });
-                
-                // 2. Calculate Attendance Score (40%)
-                let lateDays = 0, absentDays = 0;
-                for(let d=1; d<=daysInMonth; d++) {
-                    const dayDate = new Date(y, m-1, d);
-                    if(dayDate.getDay() === 5 || dayDate.getDay() === 6) continue;
-                    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                    if(allYearHolidays[dateStr]) continue;
-                    
-                    const attDay = monthlyAtt[d];
-                    if(!attDay || !attDay.sessions) { absentDays++; continue; }
-                    const firstSession = Object.values(attDay.sessions)[0];
-                    if(firstSession && firstSession.checkIn) {
-                        const [h, min] = firstSession.checkIn.split(':').map(Number);
-                        if(h > 10 || (h === 10 && min > 0)) lateDays++;
-                    }
-                }
-                const attendanceScore = Math.max(0, 100 - (lateDays * 2) - (absentDays * 10));
-                
-                // 3. Calculate KPI Score (60%)
-                let completedTasks = 0, rejectedTasks = 0;
-                Object.values(allTasksData).forEach(t => {
-                    if(t.userId === u.id) {
-                        if(t.status === 'مكتملة') completedTasks++;
-                        else if(t.status === 'مرفوضة') rejectedTasks++;
-                    }
-                });
-                const productionRatio = Math.min(1, actualWorkHours / expectedHours);
-                const taskRatio = completedTasks > 0 ? (completedTasks - rejectedTasks) / completedTasks : 0;
-                const kpiScore = (productionRatio * 70) + (taskRatio * 30);
-                
-                // 4. Net Salary
-                const baseSalary = parseFloat(u.salary);
-                const fixedPart = baseSalary * 0.40 * (attendanceScore / 100);
-                const variablePart = baseSalary * 0.60 * (kpiScore / 100);
-                const netSalary = fixedPart + variablePart;
-                
-                html += `<tr><td>${u.name}</td><td>${baseSalary}</td><td>${actualWorkHours.toFixed(1)} / ${expectedHours}</td><td>${attendanceScore.toFixed(0)}%</td><td>${kpiScore.toFixed(0)}%</td><td class="fw-bold text-success">${netSalary.toFixed(2)}</td></tr>`;
-            }
-            html += '</tbody></table>';
-            document.getElementById('detailsModalTitle').innerText = 'كشف الرواتب والـ KPI';
-            document.getElementById('detailsModalBody').innerHTML = html;
-            document.getElementById('detailsModalFooter').innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>`;
-            new bootstrap.Modal(document.getElementById('detailsModal')).show();
         }
 
         async function loadPermissionsUI() {
