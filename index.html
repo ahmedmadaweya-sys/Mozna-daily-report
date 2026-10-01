@@ -418,18 +418,32 @@
             const now = new Date();
             const day = now.getDate();
             const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
-            // المسار الموحد: dailyTasks/{uid}/{YYYY-MM}/{day}  (متوافق مع HR والتقارير والرواتب)
+            const fullDateKey = `${monthYear}-${String(day).padStart(2,'0')}`;
+            // الحفظ دائماً على المسار الجديد
             currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${monthYear}/${day}`);
-            currentDailyTasksRef.on('value', snap => {
+            // العرض: دمج الشكل الجديد + القديم لليوم
+            const renderTodayTasks = (newTasks, oldTasks) => {
                 let html = '';
-                const tasks = snap.val() || {};
-                Object.values(tasks).forEach(t => {
-                    html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`;
+                const all = [];
+                Object.values(newTasks || {}).forEach(t => { if (t && t.startTime) all.push(t); });
+                Object.values(oldTasks || {}).forEach(t => { if (t && t.startTime) all.push(t); });
+                all.forEach(t => {
+                    html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details || ''}</p></div>`;
                 });
+                const emptyMsg = '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
                 const listEl = document.getElementById('dailyTasksList');
-                if (listEl) listEl.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
+                if (listEl) listEl.innerHTML = html || emptyMsg;
                 const modalList = document.getElementById('todayTasksList');
-                if (modalList) modalList.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
+                if (modalList) modalList.innerHTML = html || emptyMsg;
+            };
+            let cachedNew = {}, cachedOld = {};
+            currentDailyTasksRef.on('value', snap => {
+                cachedNew = snap.val() || {};
+                renderTodayTasks(cachedNew, cachedOld);
+            });
+            db.ref(`dailyTasks/${currentUserData.id}/${fullDateKey}`).on('value', snap => {
+                cachedOld = snap.val() || {};
+                renderTodayTasks(cachedNew, cachedOld);
             });
         }
         function openDailyTasksModal() {
@@ -437,17 +451,7 @@
             document.getElementById('dtStart').value = '';
             document.getElementById('dtEnd').value = '';
             document.getElementById('dtDetails').value = '';
-            // تحميل المهام الحالية داخل المودال
-            if (currentDailyTasksRef) {
-                currentDailyTasksRef.once('value').then(snap => {
-                    let html = '';
-                    const tasks = snap.val() || {};
-                    Object.values(tasks).forEach(t => {
-                        html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`;
-                    });
-                    document.getElementById('todayTasksList').innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
-                });
-            }
+            // المهام تُحدَّث تلقائياً عبر المستمع في loadDailyTasks
             new bootstrap.Modal(document.getElementById('dailyTasksModal')).show();
         }
         async function saveDailyTask() {
@@ -511,14 +515,22 @@
                 
                 let prodFlag = '';
                 if (u.role !== 'admin' && isCheckedIn) {
-                    const todayTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] && allDailyTasks[u.id][monthYear][day] ? allDailyTasks[u.id][monthYear][day] : {};
+                    // شكل جديد: uid/YYYY-MM/day
+                    let todayTasks = allDailyTasks[u.id] && allDailyTasks[u.id][monthYear] && allDailyTasks[u.id][monthYear][day]
+                        ? allDailyTasks[u.id][monthYear][day] : {};
+                    // شكل قديم: uid/YYYY-MM-DD
+                    const fullDateKey = `${monthYear}-${String(day).padStart(2,'0')}`;
+                    if (Object.keys(todayTasks).length === 0 && allDailyTasks[u.id] && allDailyTasks[u.id][fullDateKey]) {
+                        todayTasks = allDailyTasks[u.id][fullDateKey];
+                    }
                     let taskHours = 0;
                     Object.values(todayTasks).forEach(t => {
+                        if (!t || !t.startTime || !t.endTime) return;
                         const [sh, sm] = t.startTime.split(':').map(Number);
                         const [eh, em] = t.endTime.split(':').map(Number);
                         taskHours += ((eh + em/60) - (sh + sm/60));
                     });
-                    if(taskHours < 5.6) prodFlag = '<span class="badge bg-danger mt-2">إنتاجية منخفضة</span>';
+                    if (taskHours < 5.6) prodFlag = '<span class="badge bg-danger mt-2">إنتاجية منخفضة</span>';
                 }
 
                 html += `<div class="col-md-3 mb-3"><div class="card hr-card h-100" onclick="openHRProfile('${u.id}')"><input type="checkbox" class="form-check-input hr-checkbox" value="${u.id}" onclick="event.stopPropagation()"><div class="card-body text-center"><img src="${imgSrc}" class="profile-pic mb-2"><h5>${u.name} <span class="status-dot bg-${statusColor}"></span></h5><p class="small text-muted">${u.jobTitle || 'موظف'}</p><p class="small text-muted">الراتب: ${u.salary || '-'} جنيه</p>${prodFlag}</div></div></div>`;
@@ -595,17 +607,35 @@
             attHtml += '</tbody></table>';
             document.getElementById('hrAttendance').innerHTML = attHtml;
 
-            // Daily Tasks Tab
+            // Daily Tasks Tab — يدعم الشكل القديم والجديد
             const dtSnap = await db.ref(`dailyTasks/${userId}`).once('value');
-            const userDT = dtSnap.val() || {};
-            let dtHtml = `<div class="d-flex justify-content-end mb-2"><button class="btn btn-success btn-sm me-2" onclick="exportUserDailyTasksExcel('${userId}')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn btn-danger btn-sm" onclick="exportUserDailyTasksPDF('${userId}')"><i class="fas fa-file-pdf"></i> PDF</button></div><table class="table table-bordered"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>التفاصيل</th></tr></thead><tbody>`;
-            Object.keys(userDT).sort().reverse().forEach(month => {
-                Object.keys(userDT[month]).sort().reverse().forEach(day => {
-                    Object.values(userDT[month][day]).forEach(t => {
-                        dtHtml += `<tr><td>${day}-${month}</td><td>${t.startTime}</td><td>${t.endTime}</td><td>${t.details}</td></tr>`;
+            const rawDT = dtSnap.val() || {};
+            let allRows = []; // { dateStr, startTime, endTime, details }
+            Object.keys(rawDT).forEach(key => {
+                // شكل قديم: مفتاح YYYY-MM-DD
+                if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+                    Object.values(rawDT[key] || {}).forEach(t => {
+                        if (t && t.startTime) allRows.push({ dateStr: key, startTime: t.startTime, endTime: t.endTime, details: t.details });
                     });
-                });
+                }
+                // شكل جديد: مفتاح YYYY-MM ثم أيام
+                else if (/^\d{4}-\d{2}$/.test(key)) {
+                    Object.keys(rawDT[key] || {}).forEach(dayKey => {
+                        const dayNum = parseInt(dayKey, 10);
+                        if (isNaN(dayNum)) return;
+                        const dateStr = `${key}-${String(dayNum).padStart(2,'0')}`;
+                        Object.values(rawDT[key][dayKey] || {}).forEach(t => {
+                            if (t && t.startTime) allRows.push({ dateStr, startTime: t.startTime, endTime: t.endTime, details: t.details });
+                        });
+                    });
+                }
             });
+            allRows.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+            let dtHtml = `<div class="d-flex justify-content-end mb-2"><button class="btn btn-success btn-sm me-2" onclick="exportUserDailyTasksExcel('${userId}')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn btn-danger btn-sm" onclick="exportUserDailyTasksPDF('${userId}')"><i class="fas fa-file-pdf"></i> PDF</button></div><table class="table table-bordered"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>التفاصيل</th></tr></thead><tbody>`;
+            allRows.forEach(r => {
+                dtHtml += `<tr><td>${r.dateStr}</td><td>${r.startTime}</td><td>${r.endTime}</td><td>${r.details || ''}</td></tr>`;
+            });
+            if (allRows.length === 0) dtHtml += `<tr><td colspan="4" class="text-center text-muted">لا توجد مهام مسجلة</td></tr>`;
             dtHtml += '</tbody></table>';
             document.getElementById('hrDailyTasks').innerHTML = dtHtml;
 
@@ -697,12 +727,13 @@
             const attSnap = await db.ref(`attendance/${userId}/${monthYearStr}`).once('value');
             const monthlyAtt = attSnap.val() || {};
             
-            const dtSnap = await db.ref(`dailyTasks/${userId}/${monthYearStr}`).once('value');
-            const userDT = dtSnap.val() || {};
+            // يدعم الشكل القديم والجديد للمهام اليومية
+            const userDT = await loadUserDailyTasksForMonth(userId, y, m);
             
             let actualWorkHours = 0;
-            Object.values(userDT).forEach(dayTasks => {
-                Object.values(dayTasks).forEach(t => {
+            Object.values(userDT).forEach(dayTasksArr => {
+                (dayTasksArr || []).forEach(t => {
+                    if (!t.startTime || !t.endTime) return;
                     const [sh, sm] = t.startTime.split(':').map(Number);
                     const [eh, em] = t.endTime.split(':').map(Number);
                     actualWorkHours += ((eh + em/60) - (sh + sm/60));
@@ -828,24 +859,67 @@
             toastr.success('تم التصدير');
         }
 
-        // DAILY TASKS EXPORT FUNCTIONS (FIXED)
+        // ========== مساعد قراءة المهام اليومية (يدعم الشكل القديم والجديد) ==========
+        // الشكل الجديد: dailyTasks/{uid}/{YYYY-MM}/{day}/{taskId}
+        // الشكل القديم: dailyTasks/{uid}/{YYYY-MM-DD}/{taskId}
+        async function loadUserDailyTasksForMonth(userId, year, month) {
+            const monthStr = String(month).padStart(2, '0');
+            const monthYear = `${year}-${monthStr}`;
+            const result = {}; // { dayNum: [ {startTime, endTime, details}, ... ] }
+
+            // 1) الشكل الجديد
+            const newSnap = await db.ref(`dailyTasks/${userId}/${monthYear}`).once('value');
+            const newData = newSnap.val() || {};
+            Object.keys(newData).forEach(dayKey => {
+                const dayNum = parseInt(dayKey, 10);
+                if (isNaN(dayNum)) return;
+                const dayTasks = newData[dayKey];
+                if (!dayTasks || typeof dayTasks !== 'object') return;
+                // قد تكون المهام مباشرة أو تحت push keys
+                const tasksArr = [];
+                Object.values(dayTasks).forEach(t => {
+                    if (t && t.startTime && t.endTime) tasksArr.push(t);
+                });
+                if (tasksArr.length) result[dayNum] = (result[dayNum] || []).concat(tasksArr);
+            });
+
+            // 2) الشكل القديم: مفاتيح كاملة YYYY-MM-DD تحت المستخدم
+            const allSnap = await db.ref(`dailyTasks/${userId}`).once('value');
+            const allData = allSnap.val() || {};
+            Object.keys(allData).forEach(key => {
+                // مفتاح تاريخ كامل مثل 2025-09-15
+                if (/^\d{4}-\d{2}-\d{2}$/.test(key) && key.startsWith(monthYear + '-')) {
+                    const dayNum = parseInt(key.split('-')[2], 10);
+                    const dayTasks = allData[key];
+                    if (!dayTasks || typeof dayTasks !== 'object') return;
+                    const tasksArr = [];
+                    Object.values(dayTasks).forEach(t => {
+                        if (t && t.startTime && t.endTime) tasksArr.push(t);
+                    });
+                    if (tasksArr.length) result[dayNum] = (result[dayNum] || []).concat(tasksArr);
+                }
+            });
+
+            return result;
+        }
+
+        // DAILY TASKS EXPORT FUNCTIONS
         async function exportUserDailyTasksExcel(userId) {
             const user = allUsers.find(u => u.id === userId);
             const monthYear = prompt("أدخل الشهر والسنة (مثال: 2024-05):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
-            if(!monthYear) return;
+            if (!monthYear) return;
             
             const [y, m] = monthYear.split('-').map(Number);
-            const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
-            const userDT = dtSnap.val() || {};
+            const userDT = await loadUserDailyTasksForMonth(userId, y, m);
             
             let data = [];
-            Object.keys(userDT).sort().forEach(day => {
-                Object.values(userDT[day]).forEach(t => {
+            Object.keys(userDT).map(Number).sort((a,b)=>a-b).forEach(day => {
+                (userDT[day] || []).forEach(t => {
                     data.push({ "الموظف": user.name, "التاريخ": `${day}-${monthYear}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
                 });
             });
             
-            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة في هذا الشهر");
+            if (data.length === 0) return toastr.warning("لا توجد مهام مسجلة في هذا الشهر");
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks");
@@ -856,20 +930,20 @@
         async function exportUserDailyTasksPDF(userId) {
             const user = allUsers.find(u => u.id === userId);
             const monthYear = prompt("أدخل الشهر والسنة (مثال: 2024-05):", new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-'));
-            if(!monthYear) return;
+            if (!monthYear) return;
             
             const [y, m] = monthYear.split('-').map(Number);
-            const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
-            const userDT = dtSnap.val() || {};
+            const userDT = await loadUserDailyTasksForMonth(userId, y, m);
             
             let html = `<h2 style="text-align:center;">تقرير المهام اليومية - ${user.name}</h2><hr><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th style="border:1px solid #ddd; padding:8px;">التاريخ</th><th style="border:1px solid #ddd; padding:8px;">من</th><th style="border:1px solid #ddd; padding:8px;">إلى</th><th style="border:1px solid #ddd; padding:8px;">التفاصيل</th></tr></thead><tbody>`;
-            Object.keys(userDT).sort().forEach(day => {
-                Object.values(userDT[day]).forEach(t => {
+            Object.keys(userDT).map(Number).sort((a,b)=>a-b).forEach(day => {
+                (userDT[day] || []).forEach(t => {
                     html += `<tr><td style="border:1px solid #ddd; padding:8px;">${day}-${monthYear}</td><td style="border:1px solid #ddd; padding:8px;">${t.startTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.endTime}</td><td style="border:1px solid #ddd; padding:8px;">${t.details}</td></tr>`;
                 });
             });
             html += '</tbody></table>';
             
+            if (Object.keys(userDT).length === 0) return toastr.warning("لا توجد مهام مسجلة في هذا الشهر");
             const element = document.createElement('div');
             element.innerHTML = `<div style="direction:rtl; padding:20px; font-family:Arial;">${html}</div>`;
             html2pdf().from(element).save(`Daily_Tasks_${user.name}_${monthYear}.pdf`);
@@ -892,10 +966,10 @@
 
         async function exportMultiUserDailyTasks() {
             const selectedBoxes = document.querySelectorAll('.dt-user-check:checked');
-            if(selectedBoxes.length === 0) return toastr.warning('من فضلك حدد موظف واحد على الأقل');
+            if (selectedBoxes.length === 0) return toastr.warning('من فضلك حدد موظف واحد على الأقل');
             
             const monthYear = document.getElementById('dtReportMonth').value;
-            if(!monthYear) return toastr.warning('اختر الشهر');
+            if (!monthYear) return toastr.warning('اختر الشهر');
             
             const [y, m] = monthYear.split('-').map(Number);
             let data = [];
@@ -903,16 +977,15 @@
             for (const box of selectedBoxes) {
                 const userId = box.value;
                 const user = allUsers.find(u => u.id === userId);
-                const dtSnap = await db.ref(`dailyTasks/${userId}/${y}-${String(m).padStart(2,'0')}`).once('value');
-                const userDT = dtSnap.val() || {};
-                Object.keys(userDT).sort().forEach(day => {
-                    Object.values(userDT[day]).forEach(t => {
+                const userDT = await loadUserDailyTasksForMonth(userId, y, m);
+                Object.keys(userDT).map(Number).sort((a,b)=>a-b).forEach(day => {
+                    (userDT[day] || []).forEach(t => {
                         data.push({ "الموظف": user.name, "التاريخ": `${day}-${monthYear}`, "من": t.startTime, "إلى": t.endTime, "التفاصيل": t.details });
                     });
                 });
             }
             
-            if(data.length === 0) return toastr.warning("لا توجد مهام مسجلة للموظفين المحددين في هذا الشهر");
+            if (data.length === 0) return toastr.warning("لا توجد مهام مسجلة للموظفين المحددين في هذا الشهر");
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Daily Tasks Report");
