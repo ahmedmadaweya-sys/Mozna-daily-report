@@ -315,11 +315,58 @@
                 const startTime = Date.now(); let ipLoc = null;
                 try { const ipRes = await fetch('https://ipapi.co/json/'); const ipData = await ipRes.json(); if (ipData.latitude && ipData.longitude) ipLoc = { lat: ipData.latitude, lon: ipData.longitude }; } catch (e) {}
                 navigator.geolocation.getCurrentPosition(pos => {
-                    const endTime = Date.now(); const responseTime = endTime - startTime; const accuracy = pos.coords.accuracy; const lat = pos.coords.latitude; const lon = pos.coords.longitude; let suspicious = false; let reasons = [];
-                    if (accuracy < 5) { suspicious = true; reasons.push("دقة GPS غير واقعية"); }
-                    if (responseTime < 1000) { suspicious = true; reasons.push("استجابة سريعة جداً"); }
-                    if (ipLoc) { const dist = calculateDistance(lat, lon, ipLoc.lat, ipLoc.lon); if (dist > 50) { suspicious = true; reasons.push("تباين كبير بين GPS و IP"); } }
-                    resolve({ loc: `https://maps.google.com/?q=${lat},${lon}`, suspicious, reason: suspicious ? reasons.join(' | ') : '' });
+                    const endTime = Date.now();
+                    const responseTime = endTime - startTime;
+                    const accuracy = pos.coords.accuracy;
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    let reasons = [];
+                    let strongFlags = 0;
+                    let weakFlags = 0;
+
+                    // إشارة قوية: دقة صفر أو شبه معدومة (شائعة في تطبيقات التلاعب)
+                    if (accuracy === 0 || accuracy < 1) {
+                        strongFlags++;
+                        reasons.push("دقة GPS معدومة/مثالية جداً (" + accuracy + "م)");
+                    }
+                    // إشارة ضعيفة: دقة عالية جداً لكن ليست معدومة
+                    else if (accuracy < 4) {
+                        weakFlags++;
+                        reasons.push("دقة GPS عالية جداً (" + Math.round(accuracy) + "م)");
+                    }
+
+                    // إشارة قوية: استجابة فورية جداً مع maximumAge=0
+                    if (responseTime < 300) {
+                        strongFlags++;
+                        reasons.push("استجابة فورية جداً (" + responseTime + "ms)");
+                    }
+                    // إشارة ضعيفة: استجابة سريعة
+                    else if (responseTime < 600) {
+                        weakFlags++;
+                        reasons.push("استجابة سريعة (" + responseTime + "ms)");
+                    }
+
+                    // إشارة قوية/ضعيفة حسب فرق المسافة بين GPS و IP
+                    if (ipLoc) {
+                        const dist = calculateDistance(lat, lon, ipLoc.lat, ipLoc.lon);
+                        if (dist > 100) {
+                            strongFlags++;
+                            reasons.push("تباين كبير بين GPS و IP (" + Math.round(dist) + " كم)");
+                        } else if (dist > 60) {
+                            weakFlags++;
+                            reasons.push("تباين متوسط بين GPS و IP (" + Math.round(dist) + " كم)");
+                        }
+                    }
+
+                    // يُعتبر مشبوهاً فقط إذا وُجدت إشارة قوية واحدة على الأقل، أو إشارتان ضعيفتان معاً
+                    const suspicious = strongFlags >= 1 || weakFlags >= 2;
+                    resolve({
+                        loc: `https://maps.google.com/?q=${lat},${lon}`,
+                        suspicious,
+                        reason: suspicious ? reasons.join(' | ') : '',
+                        accuracy: Math.round(accuracy),
+                        responseTime
+                    });
                 }, err => { resolve({ loc: 'مرفوض أو غير متاح', suspicious: true, reason: err.message }); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             });
         }
@@ -350,13 +397,13 @@
             const locData = await getSecureLocation();
             if (!data.activeSession) {
                 const newRef = currentDayRef.child('sessions').push();
-                newRef.set({ checkIn: timeStr, checkInLoc: locData.loc, checkInSuspicious: locData.suspicious }).then(() => { currentDayRef.update({ activeSession: newRef.key }); toastr.success('تم تسجيل حضورك'); });
+                newRef.set({ checkIn: timeStr, checkInLoc: locData.loc, checkInSuspicious: locData.suspicious, checkInReason: locData.reason || '' }).then(() => { currentDayRef.update({ activeSession: newRef.key }); toastr.success('تم تسجيل حضورك'); });
             } else {
                 const sesId = data.activeSession; const sesData = data.sessions[sesId]; const [h, m] = sesData.checkIn.split(':').map(Number);
                 let checkInDate = new Date(); checkInDate.setHours(h, m, 0, 0);
                 let diffHrs = (new Date() - checkInDate) / (1000 * 60 * 60); let deduction = data.breakDeduction || 0;
                 if (deduction > 0) { diffHrs -= (deduction / 60); currentDayRef.update({ breakDeduction: 0 }); }
-                currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: locData.loc, checkOutSuspicious: locData.suspicious, duration: diffHrs.toFixed(2) }).then(() => {
+                currentDayRef.child(`sessions/${sesId}`).update({ checkOut: timeStr, checkOutLoc: locData.loc, checkOutSuspicious: locData.suspicious, checkOutReason: locData.reason || '', duration: diffHrs.toFixed(2) }).then(() => {
                     const newTotal = (parseFloat(data.totalHours) || 0) + parseFloat(diffHrs.toFixed(2));
                     currentDayRef.update({ activeSession: null, totalHours: newTotal }); toastr.info('تم تسجيل الانصراف');
                 });
@@ -366,9 +413,61 @@
         function startBreakTimerUI(startTime) { const display = document.getElementById('breakTimerDisplay'); const btn = document.getElementById('breakBtn'); const attBtn = document.getElementById('attendanceBtn'); btn.className = 'btn btn-warning btn-lg text-white'; btn.innerText = 'إنهاء الاستراحة'; attBtn.disabled = true; display.classList.remove('d-none'); if (breakInterval) clearInterval(breakInterval); breakInterval = setInterval(() => { const elapsed = (Date.now() - startTime) / 1000; if (elapsed <= 3600) { const remaining = 3600 - elapsed; const m = Math.floor(remaining / 60).toString().padStart(2, '0'); const s = Math.floor(remaining % 60).toString().padStart(2, '0'); display.className = 'break-timer mb-3 text-primary'; display.innerText = `متبقي: ${m}:${s}`; } else { const exceeded = elapsed - 3600; const m = Math.floor(exceeded / 60).toString().padStart(2, '0'); const s = Math.floor(exceeded % 60).toString().padStart(2, '0'); display.className = 'break-timer mb-3 text-danger'; display.innerText = `زيادة: ${m}:${s}`; } }, 1000); }
         function stopBreakTimerUI() { if (breakInterval) clearInterval(breakInterval); breakInterval = null; const btn = document.getElementById('breakBtn'); const display = document.getElementById('breakTimerDisplay'); const attBtn = document.getElementById('attendanceBtn'); if (btn) { btn.className = 'btn btn-info btn-lg text-white'; btn.innerText = 'بدء استراحة'; } if (attBtn) attBtn.disabled = false; if (display) display.classList.add('d-none'); }
 
-        function loadDailyTasks() { if (!currentUserData || currentUserData.role === 'admin') return; const today = new Date().toISOString().split('T')[0]; currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${today}`); currentDailyTasksRef.on('value', snap => { let html = ''; const tasks = snap.val() || {}; Object.values(tasks).forEach(t => { html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`; }); const listEl = document.getElementById('dailyTasksList'); if(listEl) listEl.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>'; }); }
-        function openDailyTasksModal() { document.getElementById('dtDate').value = new Date().toLocaleDateString('ar-EG'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; new bootstrap.Modal(document.getElementById('dailyTasksModal')).show(); }
-        async function saveDailyTask() { const start = document.getElementById('dtStart').value; const end = document.getElementById('dtEnd').value; const details = document.getElementById('dtDetails').value; if(!start || !end || !details.trim()) return toastr.warning('من فضلك أدخل الوقت والتفاصيل'); currentDailyTasksRef.push({ startTime: start, endTime: end, details }).then(() => { toastr.success('تم إضافة المهمة'); document.getElementById('dtStart').value = ''; document.getElementById('dtEnd').value = ''; document.getElementById('dtDetails').value = ''; }); }
+        function loadDailyTasks() {
+            if (!currentUserData || currentUserData.role === 'admin') return;
+            const now = new Date();
+            const day = now.getDate();
+            const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+            // المسار الموحد: dailyTasks/{uid}/{YYYY-MM}/{day}  (متوافق مع HR والتقارير والرواتب)
+            currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${monthYear}/${day}`);
+            currentDailyTasksRef.on('value', snap => {
+                let html = '';
+                const tasks = snap.val() || {};
+                Object.values(tasks).forEach(t => {
+                    html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`;
+                });
+                const listEl = document.getElementById('dailyTasksList');
+                if (listEl) listEl.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
+                const modalList = document.getElementById('todayTasksList');
+                if (modalList) modalList.innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
+            });
+        }
+        function openDailyTasksModal() {
+            document.getElementById('dtDate').value = new Date().toLocaleDateString('ar-EG');
+            document.getElementById('dtStart').value = '';
+            document.getElementById('dtEnd').value = '';
+            document.getElementById('dtDetails').value = '';
+            // تحميل المهام الحالية داخل المودال
+            if (currentDailyTasksRef) {
+                currentDailyTasksRef.once('value').then(snap => {
+                    let html = '';
+                    const tasks = snap.val() || {};
+                    Object.values(tasks).forEach(t => {
+                        html += `<div class="card mb-2 p-2 bg-light"><b>${t.startTime} - ${t.endTime}</b><p class="mb-0 small">${t.details}</p></div>`;
+                    });
+                    document.getElementById('todayTasksList').innerHTML = html || '<p class="text-muted text-center small">لا توجد مهام مسجلة اليوم</p>';
+                });
+            }
+            new bootstrap.Modal(document.getElementById('dailyTasksModal')).show();
+        }
+        async function saveDailyTask() {
+            const start = document.getElementById('dtStart').value;
+            const end = document.getElementById('dtEnd').value;
+            const details = document.getElementById('dtDetails').value;
+            if (!start || !end || !details.trim()) return toastr.warning('من فضلك أدخل الوقت والتفاصيل');
+            if (!currentDailyTasksRef) {
+                const now = new Date();
+                const day = now.getDate();
+                const monthYear = now.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-');
+                currentDailyTasksRef = db.ref(`dailyTasks/${currentUserData.id}/${monthYear}/${day}`);
+            }
+            currentDailyTasksRef.push({ startTime: start, endTime: end, details }).then(() => {
+                toastr.success('تم إضافة المهمة');
+                document.getElementById('dtStart').value = '';
+                document.getElementById('dtEnd').value = '';
+                document.getElementById('dtDetails').value = '';
+            });
+        }
 
         function uploadFile(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = (err) => reject(err); reader.readAsDataURL(file); }); }
         function calculateLeaveBalance(hireDateStr) { if(!hireDateStr) return 0; const hireDate = new Date(hireDateStr); const today = new Date(); const monthsDiff = (today.getFullYear() - hireDate.getFullYear()) * 12 + (today.getMonth() - hireDate.getMonth()); const yearsDiff = monthsDiff / 12; if (yearsDiff >= 10) return 30; if (yearsDiff >= 1) return 21; let balance = Math.ceil((15 / 12) * monthsDiff); return Math.max(0, balance); }
@@ -488,7 +587,7 @@
                     const dData = userAtt[month][day];
                     if(dData.sessions) {
                         Object.values(dData.sessions).forEach(s => {
-                            attHtml += `<tr><td>${day}-${month}</td><td>${s.checkIn || '--'} ${s.checkInSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td><a href="${s.checkInLoc || '#'}" target="_blank">خريطة</a></td><td>${s.checkOut || '--'} ${s.checkOutSuspicious ? '<span class="badge bg-danger">مشبوه</span>' : ''}</td><td><a href="${s.checkOutLoc || '#'}" target="_blank">خريطة</a></td></tr>`;
+                            attHtml += `<tr><td>${day}-${month}</td><td>${s.checkIn || '--'} ${s.checkInSuspicious ? `<span class="badge bg-danger" title="${s.checkInReason || 'موقع مشبوه'}">مشبوه</span>` : ''}</td><td><a href="${s.checkInLoc || '#'}" target="_blank">خريطة</a></td><td>${s.checkOut || '--'} ${s.checkOutSuspicious ? `<span class="badge bg-danger" title="${s.checkOutReason || 'موقع مشبوه'}">مشبوه</span>` : ''}</td><td><a href="${s.checkOutLoc || '#'}" target="_blank">خريطة</a></td></tr>`;
                         });
                     }
                 });
@@ -1530,7 +1629,17 @@
             const snap = await db.ref(type + 's/' + id).once('value'); const data = snap.val(); if(!data) return;
             currentEdit = { id, type: type + 's' };
             const body = document.getElementById('addModalBody'); const title = document.getElementById('addModalTitle');
-            if (type === 'user') { title.innerText='تعديل مستخدم'; const imgSrc = data.photoURL || 'https://via.placeholder.com/100'; body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}"><input type="number" id="newSalary" class="form-control mb-2" value="${data.salary || 0}">`; document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); }); }
+            if (type === 'user') {
+                title.innerText = 'تعديل مستخدم';
+                const imgSrc = data.photoURL || 'https://via.placeholder.com/100';
+                const isAdminEditor = currentUserData.role === 'admin';
+                // الموظف يرى الراتب المسجل من الأدمن فقط ولا يستطيع تعديله
+                const salaryField = isAdminEditor
+                    ? `<label class="form-label small text-muted">الراتب الأساسي</label><input type="number" id="newSalary" class="form-control mb-2" value="${data.salary || 0}">`
+                    : `<label class="form-label small text-muted">الراتب الأساسي (يُعدّل من الإدارة فقط)</label><input type="number" id="newSalary" class="form-control mb-2" value="${data.salary || 0}" readonly disabled style="background:#e9ecef; cursor:not-allowed;">`;
+                body.innerHTML = `<div class="text-center mb-3"><img src="${imgSrc}" class="profile-pic mb-2" id="profileImgPreview"><br><input type="file" id="profilePhoto" accept="image/*"></div><input type="text" id="newName" class="form-control mb-2" value="${data.name}"><input type="email" id="newEmail" class="form-control mb-2" value="${data.email}" readonly><input type="text" id="newPhone" class="form-control mb-2" value="${data.phone || ''}"><input type="date" id="newHireDate" class="form-control mb-2" value="${data.hireDate || ''}"><input type="text" id="newJobTitle" class="form-control mb-2" value="${data.jobTitle || ''}">${salaryField}`;
+                document.getElementById('profilePhoto').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('profileImgPreview').src = URL.createObjectURL(e.target.files[0]); });
+            }
             else if (type === 'inventory') { title.innerText='تعديل صنف'; body.innerHTML = `<input type="text" id="invName" class="form-control mb-2" value="${data.name}"><select id="invCategory" class="form-control mb-2"><option ${data.category==='مواد خام'?'selected':''}>مواد خام</option><option ${data.category==='منتج نهائي'?'selected':''}>منتج نهائي</option></select><select id="invSize" class="form-control mb-2"><option ${data.size==='جركن 10لتر'?'selected':''}>جركن 10لتر</option><option ${data.size==='طن'?'selected':''}>طن</option><option ${data.size==='لتر'?'selected':''}>لتر</option></select><input type="number" id="invQty" class="form-control mb-2" value="${data.qty}">`; }
             else if (type === 'department') { title.innerText='تعديل قسم'; body.innerHTML = `<input type="text" id="depName" class="form-control mb-2" value="${data.name}"><input type="text" id="depManager" class="form-control mb-2" value="${data.managerName || ''}"><textarea id="depDesc" class="form-control">${data.desc || ''}</textarea>`; }
             else if (type === 'product') { title.innerText='تعديل منتج'; body.innerHTML = `<input type="text" id="prod_name_edit" class="form-control mb-2" value="${data.name}"><select id="prod_unit_edit" class="form-control mb-2"><option ${data.unit==='جركن 10لتر'?'selected':''}>جركن 10لتر</option><option ${data.unit==='طن'?'selected':''}>طن</option><option ${data.unit==='لتر'?'selected':''}>لتر</option></select><input type="number" id="prod_price_edit" class="form-control mb-2" value="${data.price}">`; }
@@ -1546,7 +1655,12 @@
         async function confirmEdit() {
             const t = currentEdit.type; const id = currentEdit.id; let upd = {};
             if (t === 'users') { 
-                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value, salary: document.getElementById('newSalary').value }; 
+                upd = { name: document.getElementById('newName').value, phone: document.getElementById('newPhone').value, hireDate: document.getElementById('newHireDate').value, jobTitle: document.getElementById('newJobTitle').value };
+                // الراتب يُحدَّث فقط من الأدمن
+                if (currentUserData.role === 'admin') {
+                    const salEl = document.getElementById('newSalary');
+                    if (salEl && !salEl.disabled) upd.salary = salEl.value;
+                }
                 const fileInput = document.getElementById('profilePhoto');
                 if (fileInput && fileInput.files[0]) { toastr.info('جاري رفع الصورة...'); upd.photoURL = await uploadFile(fileInput.files[0]); }
             }
