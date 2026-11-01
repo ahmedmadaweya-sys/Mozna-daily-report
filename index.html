@@ -159,6 +159,12 @@
     <!-- Lab Item Edit Modal -->
     <div class="modal fade" id="labEditModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="labEditTitle"><i class="fas fa-edit"></i> تعديل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="labEditBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="saveLabItemEdit()"><i class="fas fa-save"></i> حفظ التعديلات</button></div></div></div></div>
 
+    <!-- Lab Report Modal (Add/Edit) -->
+    <div class="modal fade" id="labReportModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="labReportTitle"><i class="fas fa-file-medical-alt"></i> تقرير تحليل جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="labReportBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="saveLabReport()"><i class="fas fa-save"></i> حفظ التقرير</button></div></div></div></div>
+
+    <!-- Lab Report View Modal -->
+    <div class="modal fade" id="labReportViewModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-file-alt"></i> عرض التقرير</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="labReportViewBody" style="max-height: 70vh; overflow-y: auto;"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button><button class="btn btn-danger" onclick="exportLabReportPDF()"><i class="fas fa-file-pdf"></i> تصدير PDF</button></div></div></div></div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -172,6 +178,9 @@
 
         let currentDelete = { id: '', type: '' }, currentAdd = { type: '' }, currentEdit = { id: '', type: '' };
         let allUsers = [], allTasks = [], allRequests = [], allMissions = [], allCustomers = [], allInventory = [], allLeaves = [], allProduction = [], allVisits = [], allDepartments = [], labSettings = {}, productsSettings = [], rawMaterials = [];
+        let labReports = [];
+        let currentLabReport = { id: null, isEdit: false, tests: [] };
+        let currentViewReportId = null;
         let currentUserData = null, currentDayRef = null, currentTaskChatId = null, userPermissions = {}, currentDailyTasksRef = null, breakInterval = null, isInitialNotifLoad = true;
         let currentVisitCart = [], currentGpsLoc = null;
         let currentCalendarYear = new Date().getFullYear();
@@ -191,7 +200,7 @@
                     userPermissions = permSnap.val() || {};
                     applyPermissions(); loadAttendanceStatus(); loadDailyTasks(); loadNotifications(); loadAnnouncements(); loadLeaveBalanceUI();
                 }
-                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadCalendar();
+                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadCalendar(); loadLabReports();
             } else { document.getElementById('loginSection').classList.remove('d-none'); document.getElementById('appSection').classList.add('d-none'); currentUserData = null; }
         });
 
@@ -1064,8 +1073,12 @@
                     else contentHtml += `<div class="col-md-2"><input type="text" id="lab_${catKey}_method" class="form-control" placeholder="الطريقة"></div><div class="col-md-2"><input type="text" id="lab_${catKey}_collection" class="form-control" placeholder="طريقة الجمع"></div>`;
                     contentHtml += `<div class="col-md-2"><input type="number" id="lab_${catKey}_price" class="form-control" placeholder="السعر"></div><div class="col-md-2"><input type="text" id="lab_${catKey}_notes" class="form-control" placeholder="ملاحظات"></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="addLabItem('${catKey}')"><i class="fas fa-plus"></i></button></div></div></div>${tableHtml}</div>`;
                 });
+                // إضافة tab التقارير
+                navHtml += `<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lab_reports"><i class="fas fa-file-medical-alt"></i> التقارير</a></li>`;
+                contentHtml += `<div class="tab-pane fade" id="lab_reports"><div class="card p-3 mt-3"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">تقارير التحاليل</h5><button class="btn btn-primary btn-sm" onclick="openAddLabReportModal()"><i class="fas fa-plus"></i> إنشاء تقرير جديد</button></div><div id="labReportsList"></div></div></div>`;
                 document.getElementById('labTabsNav').innerHTML = navHtml;
                 document.getElementById('labTabsContent').innerHTML = contentHtml;
+                renderLabReports();
             });
         }
         function addLabItem(catKey) {
@@ -1102,6 +1115,8 @@
         async function saveLabItemEdit() {
             const catKey = document.getElementById('labEditCatKey').value;
             const idx = parseInt(document.getElementById('labEditIdx').value, 10);
+            const oldItem = (labSettings[catKey] || [])[idx];
+            const oldName = oldItem ? oldItem.name : '';
             const isPackage = catKey === 'الباقاتوالعروض';
             const name = document.getElementById('labEdit_name').value.trim();
             const price = document.getElementById('labEdit_price').value;
@@ -1112,8 +1127,290 @@
             else { updated.method = document.getElementById('labEdit_method').value; updated.collection = document.getElementById('labEdit_collection').value; }
             toastr.info('جاري الحفظ...');
             await db.ref(`labSettings/${catKey}/${idx}`).set(updated);
+            // تحديث التقارير المرتبطة بهذا التحليل (لو الاسم أو أي بيانات اتغيرت)
+            await propagateLabEditToReports(catKey, oldName, updated);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('labEditModal')).hide();
             toastr.success('تم حفظ التعديلات');
+        }
+
+        // تحديث التقارير المرتبطة عند تعديل تحليل في الإعدادات
+        async function propagateLabEditToReports(catKey, oldName, updated) {
+            if (!oldName) return;
+            const reportsSnap = await db.ref('labReports').once('value');
+            const reports = reportsSnap.val() || {};
+            const updates = {};
+            Object.entries(reports).forEach(([reportId, report]) => {
+                if (!report.tests) return;
+                report.tests.forEach((test, i) => {
+                    if (test.catKey === catKey && test.name === oldName) {
+                        updates[`labReports/${reportId}/tests/${i}/name`] = updated.name;
+                        updates[`labReports/${reportId}/tests/${i}/price`] = updated.price;
+                        if (updated.method !== undefined) updates[`labReports/${reportId}/tests/${i}/method`] = updated.method;
+                        if (updated.collection !== undefined) updates[`labReports/${reportId}/tests/${i}/collection`] = updated.collection;
+                        if (updated.contents !== undefined) updates[`labReports/${reportId}/tests/${i}/contents`] = updated.contents;
+                    }
+                });
+            });
+            if (Object.keys(updates).length) {
+                await db.ref().update(updates);
+            }
+        }
+
+        // ==================== نظام تقارير التحاليل ====================
+        function loadLabReports() {
+            db.ref('labReports').on('value', snap => {
+                labReports = [];
+                snap.forEach(child => { const r = child.val(); r.id = child.key; labReports.push(r); });
+                renderLabReports();
+            });
+        }
+
+        function renderLabReports() {
+            const container = document.getElementById('labReportsList');
+            if (!container) return;
+            let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead><tr><th>رقم التقرير</th><th>العميل</th><th>نوع العينة</th><th>تاريخ السحب</th><th>تاريخ التقرير</th><th>عدد التحاليل</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
+            labReports.forEach(r => {
+                let badge = r.status === 'final' ? '<span class="badge bg-success">نهائي</span>' : '<span class="badge bg-warning">مسودة</span>';
+                html += `<tr><td class="fw-bold">${r.reportNo || '-'}</td><td>${r.customerName || '-'}</td><td>${r.sampleType || '-'}</td><td>${r.sampleDate || '-'}</td><td>${r.reportDate || '-'}</td><td>${(r.tests || []).length}</td><td>${badge}</td><td class="text-nowrap"><button class="btn btn-sm btn-info text-white me-1" onclick="viewLabReport('${r.id}')" title="عرض"><i class="fas fa-eye"></i></button><button class="btn btn-sm btn-warning me-1" onclick="openEditLabReport('${r.id}')" title="تعديل"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger" onclick="deleteLabReport('${r.id}')" title="حذف"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+            if (labReports.length === 0) html += '<tr><td colspan="8" class="text-center text-muted">لا توجد تقارير بعد — اضغط "إنشاء تقرير جديد"</td></tr>';
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        function openAddLabReportModal() {
+            currentLabReport = { id: null, isEdit: false, tests: [] };
+            document.getElementById('labReportTitle').innerText = 'تقرير تحليل جديد';
+            document.getElementById('labReportBody').innerHTML = buildLabReportFormHTML(null);
+            renderReportTests();
+            new bootstrap.Modal(document.getElementById('labReportModal')).show();
+        }
+
+        function openEditLabReport(id) {
+            const r = labReports.find(rep => rep.id === id);
+            if (!r) return toastr.error('التقرير غير موجود');
+            currentLabReport = { id, isEdit: true, tests: JSON.parse(JSON.stringify(r.tests || [])) };
+            document.getElementById('labReportTitle').innerText = 'تعديل التقرير #' + (r.reportNo || '');
+            document.getElementById('labReportBody').innerHTML = buildLabReportFormHTML(r);
+            renderReportTests();
+            new bootstrap.Modal(document.getElementById('labReportModal')).show();
+        }
+
+        function buildLabReportFormHTML(r) {
+            const sampleTypes = ['مياه', 'تربة', 'نبات', 'أعلاف', 'أسمدة', 'ميكروبيولوجي'];
+            // تجهيز قائمة التحاليل المتاحة
+            let testSelect = '<select id="labReportTestSelect" class="form-select">';
+            LAB_CATEGORIES.forEach(cat => {
+                const catKey = cat.replace(/\s/g, '');
+                const items = labSettings[catKey] || [];
+                if (items.length === 0) return;
+                testSelect += `<optgroup label="${cat}">`;
+                items.forEach((item, i) => {
+                    testSelect += `<option value="${catKey}|${i}">${item.name} (${item.price} جنيه)</option>`;
+                });
+                testSelect += '</optgroup>';
+            });
+            testSelect += '</select>';
+
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            return `
+                <input type="hidden" id="lr_isEdit" value="${currentLabReport.isEdit}">
+                <input type="hidden" id="lr_id" value="${currentLabReport.id || ''}">
+
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-clipboard-list"></i> 1. البيانات التعريفية للعينة (Sample Identification)</h6>
+                <div class="row mb-2">
+                    <div class="col-md-6"><label class="form-label fw-bold">اسم العميل / الشركة</label><input type="text" id="lr_customerName" class="form-control" value="${r?.customerName || ''}" placeholder="مثال: مزرعة النيل للإنتاج الحيواني"></div>
+                    <div class="col-md-6"><label class="form-label fw-bold">موقع المزرعة / الرقم الكودي</label><input type="text" id="lr_farmLocation" class="form-control" value="${r?.farmLocation || ''}" placeholder="مثال: قرية كفر الشيخ — كود F12"></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4"><label class="form-label fw-bold">نوع العينة</label><select id="lr_sampleType" class="form-select">${sampleTypes.map(t => `<option ${r?.sampleType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+                    <div class="col-md-4"><label class="form-label fw-bold">عمق السحب (خاص بالتربة)</label><input type="text" id="lr_sampleDepth" class="form-control" value="${r?.sampleDepth || ''}" placeholder="مثال: 30 cm"></div>
+                    <div class="col-md-4"><label class="form-label fw-bold">الرقم الكودي للعينة</label><input type="text" id="lr_sampleCode" class="form-control" value="${r?.sampleCode || ''}" placeholder="مثال: S-2026-001"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label fw-bold">تاريخ السحب</label><input type="date" id="lr_sampleDate" class="form-control" value="${r?.sampleDate || todayStr}"></div>
+                    <div class="col-md-6"><label class="form-label fw-bold">تاريخ التقرير</label><input type="date" id="lr_reportDate" class="form-control" value="${r?.reportDate || todayStr}"></div>
+                </div>
+
+                <hr>
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-vial"></i> 2. نتائج القياسات الفيزيائية والكيميائية (Analytical Results)</h6>
+                <small class="text-muted d-block mb-2">اختر التحليل من القائمة، ثم اكتب النتيجة والوحدة. التحاليل دي مربوطة بإعدادات التحاليل — لو عدّلت أي تحليل هناك، هيتحدّث تلقائياً في كل التقارير.</small>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-9">${testSelect}</div>
+                    <div class="col-md-3"><button type="button" class="btn btn-success w-100" onclick="addTestToReport()"><i class="fas fa-plus"></i> إضافة التحليل</button></div>
+                </div>
+                <div id="lr_testsContainer"></div>
+
+                <hr>
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-comment-medical"></i> 3. التقييم والتفسير (Interpretation / Evaluation)</h6>
+                <textarea id="lr_interpretation" class="form-control mb-3" rows="4" placeholder="مثال: النتائج تدل على ارتفاع نسبة الأملاح في عينة التربة، مع انخفاض ملحوظ في محتوى النيتروجين...">${r?.interpretation || ''}</textarea>
+
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-seedling"></i> 4. التوصيات الزراعية (Recommendations)</h6>
+                <textarea id="lr_recommendations" class="form-control mb-3" rows="4" placeholder="مثال: يُنصح بإضافة سماد نيتروجيني بمعدل 50 كجم/فدان، مع تحسين الصرف لخفض الملوحة...">${r?.recommendations || ''}</textarea>
+
+                <div class="row">
+                    <div class="col-md-6"><label class="form-label fw-bold">حالة التقرير</label><select id="lr_status" class="form-select"><option value="draft" ${r?.status === 'draft' ? 'selected' : ''}>مسودة</option><option value="final" ${r?.status === 'final' ? 'selected' : ''}>نهائي</option></select></div>
+                </div>
+            `;
+        }
+
+        function addTestToReport() {
+            const sel = document.getElementById('labReportTestSelect');
+            if (!sel || !sel.value) return toastr.warning('اختر تحليلاً أولاً');
+            const parts = sel.value.split('|');
+            const catKey = parts[0];
+            const idx = parseInt(parts[1], 10);
+            const items = labSettings[catKey] || [];
+            const item = items[idx];
+            if (!item) return toastr.error('التحليل غير موجود');
+            // منع التكرار
+            if (currentLabReport.tests.some(t => t.catKey === catKey && t.idx === idx)) {
+                return toastr.warning('هذا التحليل مضاف بالفعل');
+            }
+            const isPackage = catKey === 'الباقاتوالعروض';
+            currentLabReport.tests.push({
+                catKey,
+                idx,
+                name: item.name,
+                price: item.price,
+                method: item.method || '',
+                collection: item.collection || '',
+                contents: item.contents || '',
+                result: '',
+                unit: '',
+                isPackage
+            });
+            renderReportTests();
+            toastr.success('تمت إضافة التحليل');
+        }
+
+        function removeTestFromReport(i) {
+            currentLabReport.tests.splice(i, 1);
+            renderReportTests();
+        }
+
+        function updateTestResult(i, field, value) {
+            if (currentLabReport.tests[i]) {
+                currentLabReport.tests[i][field] = value;
+            }
+        }
+
+        function renderReportTests() {
+            const container = document.getElementById('lr_testsContainer');
+            if (!container) return;
+            if (currentLabReport.tests.length === 0) {
+                container.innerHTML = '<div class="alert alert-light text-muted text-center small">لم تتم إضافة تحاليل بعد — اختر تحليلاً من القائمة فوق واضغط "إضافة"</div>';
+                return;
+            }
+            let html = '<table class="table table-bordered table-sm"><thead><tr><th>#</th><th>التحليل</th><th>الطريقة / المحتويات</th><th>النتيجة</th><th>الوحدة</th><th>السعر</th><th>حذف</th></tr></thead><tbody>';
+            currentLabReport.tests.forEach((t, i) => {
+                const extra = t.isPackage ? (t.contents || '') : (t.method || '');
+                html += `<tr><td>${i + 1}</td><td class="fw-bold">${t.name}</td><td><small class="text-muted">${extra}</small></td><td><input type="text" class="form-control form-control-sm" value="${t.result || ''}" onchange="updateTestResult(${i}, 'result', this.value)" placeholder="0.0"></td><td><input type="text" class="form-control form-control-sm" value="${t.unit || ''}" onchange="updateTestResult(${i}, 'unit', this.value)" placeholder="mg/L"></td><td>${t.price}</td><td><button class="btn btn-sm btn-danger" onclick="removeTestFromReport(${i})"><i class="fas fa-times"></i></button></td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function saveLabReport() {
+            const customerName = document.getElementById('lr_customerName').value.trim();
+            const sampleType = document.getElementById('lr_sampleType').value;
+            const sampleDate = document.getElementById('lr_sampleDate').value;
+            const reportDate = document.getElementById('lr_reportDate').value;
+            if (!customerName) return toastr.warning('أدخل اسم العميل');
+            if (!sampleDate) return toastr.warning('أدخل تاريخ السحب');
+            if (currentLabReport.tests.length === 0) return toastr.warning('أضف تحليلاً واحداً على الأقل');
+
+            const data = {
+                customerName,
+                farmLocation: document.getElementById('lr_farmLocation').value,
+                sampleType,
+                sampleDepth: document.getElementById('lr_sampleDepth').value,
+                sampleCode: document.getElementById('lr_sampleCode').value,
+                sampleDate,
+                reportDate,
+                tests: currentLabReport.tests,
+                interpretation: document.getElementById('lr_interpretation').value,
+                recommendations: document.getElementById('lr_recommendations').value,
+                status: document.getElementById('lr_status').value,
+                updatedAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            toastr.info('جاري الحفظ...');
+            if (currentLabReport.isEdit && currentLabReport.id) {
+                await db.ref('labReports/' + currentLabReport.id).update(data);
+                toastr.success('تم حفظ التعديلات');
+            } else {
+                const counterSnap = await db.ref('counters/labReports').transaction(c => (c || 0) + 1);
+                const newNum = counterSnap.snapshot.val();
+                data.reportNo = 'RPT-' + String(newNum).padStart(4, '0');
+                data.createdAt = firebase.database.ServerValue.TIMESTAMP;
+                await db.ref('labReports').push(data);
+                toastr.success('تم إنشاء التقرير ' + data.reportNo);
+            }
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('labReportModal')).hide();
+        }
+
+        async function deleteLabReport(id) {
+            if (!confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
+            await db.ref('labReports/' + id).remove();
+            toastr.success('تم الحذف');
+        }
+
+        function viewLabReport(id) {
+            const r = labReports.find(rep => rep.id === id);
+            if (!r) return toastr.error('التقرير غير موجود');
+            currentViewReportId = id;
+            document.getElementById('labReportViewBody').innerHTML = buildLabReportViewHTML(r);
+            new bootstrap.Modal(document.getElementById('labReportViewModal')).show();
+        }
+
+        function buildLabReportViewHTML(r) {
+            let testsHtml = '<table class="table table-bordered"><thead><tr><th>#</th><th>التحليل</th><th>الطريقة / المحتويات</th><th>النتيجة</th><th>الوحدة</th></tr></thead><tbody>';
+            (r.tests || []).forEach((t, i) => {
+                const extra = t.isPackage ? (t.contents || '-') : (t.method || '-');
+                testsHtml += `<tr><td>${i + 1}</td><td class="fw-bold">${t.name}</td><td><small>${extra}</small></td><td class="fw-bold text-primary">${t.result || '-'}</td><td>${t.unit || '-'}</td></tr>`;
+            });
+            if (!r.tests || r.tests.length === 0) testsHtml += '<tr><td colspan="5" class="text-center text-muted">لا توجد نتائج</td></tr>';
+            testsHtml += '</tbody></table>';
+
+            const statusBadge = r.status === 'final' ? '<span class="badge bg-success fs-6">تقرير نهائي</span>' : '<span class="badge bg-warning fs-6">مسودة</span>';
+
+            return `
+                <div class="text-center mb-3">
+                    <h3 class="text-primary">تقرير تحليل عينة</h3>
+                    <h5>رقم التقرير: <span class="fw-bold">${r.reportNo || '-'}</span></h5>
+                    ${statusBadge}
+                </div>
+
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-clipboard-list"></i> 1. البيانات التعريفية للعينة</h6>
+                <table class="table table-bordered mb-3">
+                    <tr><th width="35%">اسم العميل / الشركة</th><td>${r.customerName || '-'}</td></tr>
+                    <tr><th>موقع المزرعة / الرقم الكودي</th><td>${r.farmLocation || '-'}</td></tr>
+                    <tr><th>الرقم الكودي للعينة</th><td>${r.sampleCode || '-'}</td></tr>
+                    <tr><th>نوع العينة</th><td>${r.sampleType || '-'}</td></tr>
+                    <tr><th>عمق السحب (للتربة)</th><td>${r.sampleDepth || '-'}</td></tr>
+                    <tr><th>تاريخ السحب</th><td>${r.sampleDate || '-'}</td></tr>
+                    <tr><th>تاريخ التقرير</th><td>${r.reportDate || '-'}</td></tr>
+                </table>
+
+                <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-vial"></i> 2. نتائج القياسات الفيزيائية والكيميائية</h6>
+                ${testsHtml}
+
+                <h6 class="text-primary bg-light p-2 rounded mt-3"><i class="fas fa-comment-medical"></i> 3. التقييم والتفسير</h6>
+                <div style="white-space:pre-wrap; min-height:50px;" class="p-2 border rounded">${r.interpretation || '<span class=\"text-muted\">لم يتم إدخال تقييم</span>'}</div>
+
+                <h6 class="text-primary bg-light p-2 rounded mt-3"><i class="fas fa-seedling"></i> 4. التوصيات الزراعية</h6>
+                <div style="white-space:pre-wrap; min-height:50px;" class="p-2 border rounded">${r.recommendations || '<span class=\"text-muted\">لم يتم إدخال توصيات</span>'}</div>
+            `;
+        }
+
+        function exportLabReportPDF() {
+            if (!currentViewReportId) return toastr.warning('لا يوجد تقرير للتصدير');
+            const r = labReports.find(rep => rep.id === currentViewReportId);
+            if (!r) return;
+            const element = document.createElement('div');
+            element.innerHTML = `<div style="direction:rtl; padding:30px; font-family:Arial;">${buildLabReportViewHTML(r)}</div>`;
+            html2pdf().from(element).save(`Lab_Report_${r.reportNo || r.id}.pdf`);
         }
 
         function loadCalendar() {
