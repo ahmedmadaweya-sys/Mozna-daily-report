@@ -151,7 +151,10 @@
     <div class="modal fade" id="manageAnnouncementsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title">إدارة الإعلانات النشطة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="manageAnnBody"></div></div></div></div>
 
     <!-- Daily Tasks Report Modal -->
-    <div class="modal fade" id="dtReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">تقرير المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>اختر الشهر</label><input type="month" id="dtReportMonth" class="form-control" value="${new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }).split('/').reverse().join('-')}"></div><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="dtSelectAll" onchange="toggleAllDtUsers(this)"><label class="form-check-label" for="dtSelectAll">تحديد الكل</label></div><hr><div id="dtUsersList" style="max-height: 300px; overflow-y: auto;"></div></div><div class="modal-footer"><button class="btn btn-success" onclick="exportMultiUserDailyTasks()"><i class="fas fa-file-excel"></i> تصدير المحدد</button></div></div></div></div>
+    <div class="modal fade" id="dtReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">تقرير المهام اليومية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label>اختر الشهر</label><input type="month" id="dtReportMonth" class="form-control"></div><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="dtSelectAll" onchange="toggleAllDtUsers(this)"><label class="form-check-label" for="dtSelectAll">تحديد الكل</label></div><hr><div id="dtUsersList" style="max-height: 300px; overflow-y: auto;"></div></div><div class="modal-footer"><button class="btn btn-success" onclick="exportMultiUserDailyTasks()"><i class="fas fa-file-excel"></i> تصدير المحدد</button></div></div></div></div>
+
+    <!-- Attendance Report Modal -->
+    <div class="modal fade" id="attendanceReportModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-clock"></i> تقرير الحضور والانصراف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="fw-bold">اختر الموظفين:</label><select id="reportEmployees" class="form-select" multiple size="8" style="height:auto;"></select><small class="text-muted">اضغط Ctrl لاختيار أكثر من موظف</small></div><div class="mb-3"><label class="fw-bold">من تاريخ:</label><input type="date" id="reportStartDate" class="form-control"></div><div class="mb-3"><label class="fw-bold">إلى تاريخ:</label><input type="date" id="reportEndDate" class="form-control"></div><div class="form-check mb-3"><input class="form-check-input" type="radio" name="reportType" value="summary" checked id="rtSummary"><label class="form-check-label" for="rtSummary">ملخص شهري (إجمالي ساعات لكل موظف)</label></div><div class="form-check mb-3"><input class="form-check-input" type="radio" name="reportType" value="detailed" id="rtDetailed"><label class="form-check-label" for="rtDetailed">تفصيلي (كل جلسة حضور وانصراف)</label></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-success" onclick="generateAttendanceReport()"><i class="fas fa-file-excel"></i> تصدير Excel</button></div></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -957,6 +960,11 @@
             });
             list.innerHTML = html || '<p class="text-muted">لا يوجد موظفين</p>';
             document.getElementById('dtSelectAll').checked = false;
+            const monthEl = document.getElementById('dtReportMonth');
+            if (monthEl) {
+                const now = new Date();
+                monthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
             new bootstrap.Modal(document.getElementById('dtReportModal')).show();
         }
         
@@ -1817,6 +1825,123 @@
             reader.readAsArrayBuffer(file);
             event.target.value = '';
         }
+
+        // ============== تقرير الحضور والانصراف ==============
+        function openAttendanceReportModal() {
+            const sel = document.getElementById('reportEmployees');
+            if (!sel) return toastr.error('مودال التقرير غير موجود');
+            sel.innerHTML = '';
+            allUsers.forEach(u => {
+                if (u.role && u.role !== 'admin') {
+                    sel.appendChild(new Option(u.name + ' (' + (u.jobTitle || 'موظف') + ')', u.id));
+                }
+            });
+            // ضبط التواريخ افتراضياً (الشهر الحالي)
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const fmt = d => d.toLocaleDateString('en-CA');
+            const startEl = document.getElementById('reportStartDate');
+            const endEl = document.getElementById('reportEndDate');
+            if (startEl) startEl.value = fmt(firstDay);
+            if (endEl) endEl.value = fmt(lastDay);
+            new bootstrap.Modal(document.getElementById('attendanceReportModal')).show();
+        }
+
+        async function generateAttendanceReport() {
+            const sel = document.getElementById('reportEmployees');
+            if (!sel) return;
+            const users = Array.from(sel.selectedOptions).map(o => ({ id: o.value, name: o.text.split(' (')[0] }));
+            if (!users.length) return toastr.warning('اختر موظفاً واحداً على الأقل');
+
+            const startDateStr = document.getElementById('reportStartDate').value;
+            const endDateStr = document.getElementById('reportEndDate').value;
+            if (!startDateStr || !endDateStr) return toastr.warning('اختر التاريخ من وإلى');
+
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            if (endDate < startDate) return toastr.warning('تاريخ النهاية قبل تاريخ البداية');
+
+            const isSummary = document.querySelector('input[name="reportType"]:checked').value === 'summary';
+            toastr.info('جاري تجهيز التقرير...');
+
+            // جلب بيانات الحضور لكل موظف
+            const attSnap = await db.ref('attendance').once('value');
+            const allAtt = attSnap.val() || {};
+
+            const wb = XLSX.utils.book_new();
+
+            if (isSummary) {
+                // ملخص: صف لكل موظف×شهر بإجمالي الساعات
+                let rows = [];
+                users.forEach(u => {
+                    const userAtt = allAtt[u.id] || {};
+                    // المرور على كل الأشهر الموجودة في النطاق
+                    const monthsSet = new Set();
+                    let cur = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                    while (cur <= endDate) {
+                        monthsSet.add(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);
+                        cur.setMonth(cur.getMonth() + 1);
+                    }
+                    monthsSet.forEach(m => {
+                        let total = 0;
+                        const monthData = userAtt[m] || {};
+                        Object.keys(monthData).forEach(day => {
+                            const dData = monthData[day];
+                            if (!dData) return;
+                            // النطاق الزمني
+                            const dayNum = parseInt(day, 10);
+                            const dayDate = new Date(parseInt(m.split('-')[0], 10), parseInt(m.split('-')[1], 10) - 1, dayNum);
+                            if (dayDate < startDate || dayDate > endDate) return;
+                            if (dData.totalHours) total += parseFloat(dData.totalHours);
+                        });
+                        rows.push({ 'الموظف': u.name, 'الشهر': m, 'إجمالي الساعات': total.toFixed(2) });
+                    });
+                });
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, 'ملخص الحضور');
+            } else {
+                // تفصيلي: كل جلسة حضور وانصراف
+                users.forEach(u => {
+                    const userAtt = allAtt[u.id] || {};
+                    let rows = [];
+                    Object.keys(userAtt).sort().forEach(m => {
+                        const monthData = userAtt[m] || {};
+                        Object.keys(monthData).sort((a, b) => parseInt(a) - parseInt(b)).forEach(day => {
+                            const dData = monthData[day];
+                            if (!dData || !dData.sessions) return;
+                            const dayNum = parseInt(day, 10);
+                            const dayDate = new Date(parseInt(m.split('-')[0], 10), parseInt(m.split('-')[1], 10) - 1, dayNum);
+                            if (dayDate < startDate || dayDate > endDate) return;
+                            Object.values(dData.sessions).forEach(s => {
+                                rows.push({
+                                    'التاريخ': `${m}-${String(dayNum).padStart(2, '0')}`,
+                                    'الحضور': formatTime(s.checkIn),
+                                    'موقع الحضور': s.checkInLoc || '',
+                                    'تحذير الحضور': s.checkInSuspicious ? 'مشبوه: ' + (s.checkInReason || '') : '',
+                                    'الانصراف': s.checkOut ? formatTime(s.checkOut) : '--:--',
+                                    'موقع الانصراف': s.checkOutLoc || '',
+                                    'تحذير الانصراف': s.checkOutSuspicious ? 'مشبوه: ' + (s.checkOutReason || '') : '',
+                                    'المدة (ساعة)': s.duration || 0
+                                });
+                            });
+                        });
+                    });
+                    if (rows.length) {
+                        const ws = XLSX.utils.json_to_sheet(rows);
+                        const sheetName = (u.name.substring(0, 28) || 'موظف').replace(/[\\/?*\[\]:]/g, '_');
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    }
+                });
+                if (wb.SheetNames.length === 0) return toastr.warning('لا توجد بيانات حضور في النطاق المحدد');
+            }
+
+            XLSX.writeFile(wb, `Attendance_Report_${startDateStr}_to_${endDateStr}.xlsx`);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('attendanceReportModal')).hide();
+            toastr.success('تم تصدير التقرير');
+        }
+
+
     </script>
 </body>
 </html>
