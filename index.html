@@ -156,6 +156,9 @@
     <!-- Attendance Report Modal -->
     <div class="modal fade" id="attendanceReportModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-clock"></i> تقرير الحضور والانصراف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="fw-bold">اختر الموظفين:</label><select id="reportEmployees" class="form-select" multiple size="8" style="height:auto;"></select><small class="text-muted">اضغط Ctrl لاختيار أكثر من موظف</small></div><div class="mb-3"><label class="fw-bold">من تاريخ:</label><input type="date" id="reportStartDate" class="form-control"></div><div class="mb-3"><label class="fw-bold">إلى تاريخ:</label><input type="date" id="reportEndDate" class="form-control"></div><div class="form-check mb-3"><input class="form-check-input" type="radio" name="reportType" value="summary" checked id="rtSummary"><label class="form-check-label" for="rtSummary">ملخص شهري (إجمالي ساعات لكل موظف)</label></div><div class="form-check mb-3"><input class="form-check-input" type="radio" name="reportType" value="detailed" id="rtDetailed"><label class="form-check-label" for="rtDetailed">تفصيلي (كل جلسة حضور وانصراف)</label></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-success" onclick="generateAttendanceReport()"><i class="fas fa-file-excel"></i> تصدير Excel</button></div></div></div></div>
 
+    <!-- Lab Item Edit Modal -->
+    <div class="modal fade" id="labEditModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title" id="labEditTitle"><i class="fas fa-edit"></i> تعديل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="labEditBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="saveLabItemEdit()"><i class="fas fa-save"></i> حفظ التعديلات</button></div></div></div></div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -1051,9 +1054,9 @@
                     const items = labSettings[catKey] || [];
                     navHtml += `<li class="nav-item"><a class="nav-link ${idx === 0 ? 'active' : ''}" data-bs-toggle="tab" href="#lab_${catKey}">${cat}</a></li>`;
                     let isPackage = cat === 'الباقات والعروض';
-                    let tableHtml = `<div class="table-responsive mt-3"><table class="table table-bordered"><thead><tr><th>اسم التحليل/الباقة</th>${isPackage ? '<th>المحتويات</th>' : '<th>الطريقة</th><th>طريقة الجمع</th>'}<th>السعر</th><th>ملاحظات</th><th>حذف</th></tr></thead><tbody>`;
+                    let tableHtml = `<div class="table-responsive mt-3"><table class="table table-bordered"><thead><tr><th>اسم التحليل/الباقة</th>${isPackage ? '<th>المحتويات</th>' : '<th>الطريقة</th><th>طريقة الجمع</th>'}<th>السعر</th><th>ملاحظات</th><th>إجراءات</th></tr></thead><tbody>`;
                     items.forEach((item, i) => {
-                        tableHtml += `<tr><td>${item.name}</td>${isPackage ? `<td>${item.contents}</td>` : `<td>${item.method}</td><td>${item.collection}</td>`}<td>${item.price}</td><td>${item.notes}</td><td><button class="btn btn-sm btn-danger" onclick="deleteLabItem('${catKey}', ${i})"><i class="fas fa-trash"></i></button></td></tr>`;
+                        tableHtml += `<tr><td>${item.name}</td>${isPackage ? `<td>${item.contents || ''}</td>` : `<td>${item.method || ''}</td><td>${item.collection || ''}</td>`}<td>${item.price}</td><td>${item.notes || ''}</td><td class="text-nowrap"><button class="btn btn-sm btn-warning me-1" onclick="openEditLabItem('${catKey}', ${i})" title="تعديل"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger" onclick="deleteLabItem('${catKey}', ${i})" title="حذف"><i class="fas fa-trash"></i></button></td></tr>`;
                     });
                     tableHtml += `</tbody></table></div>`;
                     contentHtml += `<div class="tab-pane fade ${idx === 0 ? 'show active' : ''}" id="lab_${catKey}"><div class="card p-3 mt-3"><h6>إضافة جديد</h6><div class="row g-2"><div class="col-md-3"><input type="text" id="lab_${catKey}_name" class="form-control" placeholder="الاسم"></div>`;
@@ -1074,6 +1077,44 @@
             db.ref(`labSettings/${catKey}`).transaction(arr => { arr = arr || []; arr.push(item); return arr; }).then(() => toastr.success('تمت الإضافة'));
         }
         function deleteLabItem(catKey, idx) { db.ref(`labSettings/${catKey}`).transaction(arr => { arr.splice(idx, 1); return arr; }).then(() => toastr.success('تم الحذف')); }
+
+        // فتح مودال تعديل عنصر تحليل/باقة
+        function openEditLabItem(catKey, idx) {
+            const items = labSettings[catKey] || [];
+            const item = items[idx];
+            if (!item) return toastr.error('العنصر غير موجود');
+            const isPackage = catKey === 'الباقاتوالعروض';
+            document.getElementById('labEditTitle').innerText = isPackage ? 'تعديل باقة' : 'تعديل تحليل';
+            const body = document.getElementById('labEditBody');
+            let html = `<input type="hidden" id="labEditCatKey" value="${catKey}"><input type="hidden" id="labEditIdx" value="${idx}">
+                <div class="mb-2"><label class="form-label fw-bold">الاسم</label><input type="text" id="labEdit_name" class="form-control" value="${item.name || ''}"></div>`;
+            if (isPackage) {
+                html += `<div class="mb-2"><label class="form-label fw-bold">المحتويات</label><textarea id="labEdit_contents" class="form-control" rows="2">${item.contents || ''}</textarea></div>`;
+            } else {
+                html += `<div class="row mb-2"><div class="col-md-6"><label class="form-label fw-bold">الطريقة</label><input type="text" id="labEdit_method" class="form-control" value="${item.method || ''}"></div><div class="col-md-6"><label class="form-label fw-bold">طريقة الجمع</label><input type="text" id="labEdit_collection" class="form-control" value="${item.collection || ''}"></div></div>`;
+            }
+            html += `<div class="row mb-2"><div class="col-md-6"><label class="form-label fw-bold">السعر (جنيه)</label><input type="number" id="labEdit_price" class="form-control" value="${item.price || 0}"></div><div class="col-md-6"><label class="form-label fw-bold">ملاحظات</label><input type="text" id="labEdit_notes" class="form-control" value="${item.notes || ''}"></div></div>`;
+            body.innerHTML = html;
+            new bootstrap.Modal(document.getElementById('labEditModal')).show();
+        }
+
+        // حفظ تعديل عنصر تحليل/باقة
+        async function saveLabItemEdit() {
+            const catKey = document.getElementById('labEditCatKey').value;
+            const idx = parseInt(document.getElementById('labEditIdx').value, 10);
+            const isPackage = catKey === 'الباقاتوالعروض';
+            const name = document.getElementById('labEdit_name').value.trim();
+            const price = document.getElementById('labEdit_price').value;
+            if (!name || !price) return toastr.warning('أدخل الاسم والسعر');
+            const notes = document.getElementById('labEdit_notes').value;
+            let updated = { name, price, notes };
+            if (isPackage) updated.contents = document.getElementById('labEdit_contents').value;
+            else { updated.method = document.getElementById('labEdit_method').value; updated.collection = document.getElementById('labEdit_collection').value; }
+            toastr.info('جاري الحفظ...');
+            await db.ref(`labSettings/${catKey}/${idx}`).set(updated);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('labEditModal')).hide();
+            toastr.success('تم حفظ التعديلات');
+        }
 
         function loadCalendar() {
             const container = document.getElementById('calendarContainer');
