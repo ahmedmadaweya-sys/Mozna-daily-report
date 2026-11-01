@@ -181,6 +181,7 @@
         let labReports = [];
         let currentLabReport = { id: null, isEdit: false, tests: [] };
         let currentViewReportId = null;
+        let labLogo = null;
         let currentUserData = null, currentDayRef = null, currentTaskChatId = null, userPermissions = {}, currentDailyTasksRef = null, breakInterval = null, isInitialNotifLoad = true;
         let currentVisitCart = [], currentGpsLoc = null;
         let currentCalendarYear = new Date().getFullYear();
@@ -200,7 +201,7 @@
                     userPermissions = permSnap.val() || {};
                     applyPermissions(); loadAttendanceStatus(); loadDailyTasks(); loadNotifications(); loadAnnouncements(); loadLeaveBalanceUI();
                 }
-                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadCalendar(); loadLabReports();
+                loadData(); loadLabSettings(); loadProductsSettings(); loadRawMaterials(); loadCalendar(); loadLabReports(); loadLabLogo();
             } else { document.getElementById('loginSection').classList.remove('d-none'); document.getElementById('appSection').classList.add('d-none'); currentUserData = null; }
         });
 
@@ -1075,7 +1076,24 @@
                 });
                 // إضافة tab التقارير
                 navHtml += `<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lab_reports"><i class="fas fa-file-medical-alt"></i> التقارير</a></li>`;
-                contentHtml += `<div class="tab-pane fade" id="lab_reports"><div class="card p-3 mt-3"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">تقارير التحاليل</h5><button class="btn btn-primary btn-sm" onclick="openAddLabReportModal()"><i class="fas fa-plus"></i> إنشاء تقرير جديد</button></div><div id="labReportsList"></div></div></div>`;
+                contentHtml += `<div class="tab-pane fade" id="lab_reports"><div class="card p-3 mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">تقارير التحاليل</h5>
+                        <button class="btn btn-primary btn-sm" onclick="openAddLabReportModal()"><i class="fas fa-plus"></i> إنشاء تقرير جديد</button>
+                    </div>
+                    <div class="card bg-light p-3 mb-3">
+                        <h6 class="mb-2"><i class="fas fa-image"></i> شعار المعمل (يظهر أعلى كل تقرير)</h6>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <img id="labLogoPreview" src="${labLogo || ''}" style="max-height:80px; max-width:160px; ${labLogo ? '' : 'display:none;'}" class="border rounded p-1 bg-white">
+                            <div class="d-flex gap-2">
+                                <label class="btn btn-warning btn-sm mb-0"><i class="fas fa-upload"></i> رفع / تغيير الشعار<input type="file" accept="image/*" onchange="uploadLabLogo(event)" hidden></label>
+                                ${labLogo ? '<button class="btn btn-danger btn-sm" onclick="removeLabLogo()"><i class="fas fa-trash"></i> حذف الشعار</button>' : ''}
+                            </div>
+                            <small class="text-muted">يفضّل صورة بخلفية شفافة PNG، أقصى حجم 500KB</small>
+                        </div>
+                    </div>
+                    <div id="labReportsList"></div>
+                </div></div>`;
                 document.getElementById('labTabsNav').innerHTML = navHtml;
                 document.getElementById('labTabsContent').innerHTML = contentHtml;
                 renderLabReports();
@@ -1157,6 +1175,48 @@
         }
 
         // ==================== نظام تقارير التحاليل ====================
+        function loadLabLogo() {
+            db.ref('settings/labLogo').on('value', snap => {
+                labLogo = snap.val();
+                const preview = document.getElementById('labLogoPreview');
+                if (preview) {
+                    if (labLogo) {
+                        preview.src = labLogo;
+                        preview.style.display = 'inline';
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        async function uploadLabLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 500000) return toastr.warning('حجم الصورة كبير جداً (الحد الأقصى 500KB)');
+            if (!file.type.startsWith('image/')) return toastr.warning('اختر ملف صورة صحيح');
+            toastr.info('جاري رفع الشعار...');
+            try {
+                const base64 = await uploadFile(file);
+                await db.ref('settings/labLogo').set(base64);
+                toastr.success('تم حفظ شعار المعمل — سيظهر أعلى كل تقارير التحليل');
+                // إعادة بناء واجهة الإعدادات لإظهار زر الحذف
+                loadLabSettings();
+            } catch (err) {
+                toastr.error('فشل رفع الشعار');
+            }
+            event.target.value = '';
+        }
+
+        function removeLabLogo() {
+            if (!confirm('هل تريد حذف شعار المعمل؟')) return;
+            db.ref('settings/labLogo').remove().then(() => {
+                labLogo = null;
+                toastr.success('تم حذف الشعار');
+                loadLabSettings();
+            });
+        }
+
         function loadLabReports() {
             db.ref('labReports').on('value', snap => {
                 labReports = [];
@@ -1375,12 +1435,33 @@
 
             const statusBadge = r.status === 'final' ? '<span class="badge bg-success fs-6">تقرير نهائي</span>' : '<span class="badge bg-warning fs-6">مسودة</span>';
 
+            // شعار المعمل — يظهر أعلى التقرير على اليمين، وجنب رقم التقرير
+            const logoBlock = labLogo
+                ? `<div style="text-align:center; margin-bottom:15px;"><img src="${labLogo}" style="max-height:110px; max-width:180px;" alt="شعار المعمل"></div>`
+                : '';
+
+            const headerWithLogo = `
+                <div class="d-flex justify-content-between align-items-center mb-3" style="border-bottom:2px solid #007bff; padding-bottom:10px;">
+                    ${labLogo ? `<div><img src="${labLogo}" style="max-height:80px; max-width:140px;"></div>` : '<div></div>'}
+                    <div class="text-center flex-grow-1">
+                        <h3 class="text-primary mb-1">تقرير تحليل عينة</h3>
+                        <h5>رقم التقرير: <span class="fw-bold">${r.reportNo || '-'}</span></h5>
+                        ${statusBadge}
+                    </div>
+                    <div style="min-width:140px;"></div>
+                </div>`;
+
+            // التذييل (footer) - اسم المعمل وتاريخ الطباعة
+            const printDate = new Date().toLocaleString('ar-EG');
+            const footerBlock = `
+                <div style="margin-top:25px; border-top:1px solid #dee2e6; padding-top:10px; text-align:center; color:#6c757d; font-size:0.85rem;">
+                    <div>تم إنشاء هذا التقرير إلكترونياً بواسطة نظام الإدارة المتكامل — مزنة</div>
+                    <div>تاريخ الطباعة: ${printDate}</div>
+                </div>`;
+
             return `
-                <div class="text-center mb-3">
-                    <h3 class="text-primary">تقرير تحليل عينة</h3>
-                    <h5>رقم التقرير: <span class="fw-bold">${r.reportNo || '-'}</span></h5>
-                    ${statusBadge}
-                </div>
+                ${logoBlock}
+                ${headerWithLogo}
 
                 <h6 class="text-primary bg-light p-2 rounded"><i class="fas fa-clipboard-list"></i> 1. البيانات التعريفية للعينة</h6>
                 <table class="table table-bordered mb-3">
@@ -1401,6 +1482,8 @@
 
                 <h6 class="text-primary bg-light p-2 rounded mt-3"><i class="fas fa-seedling"></i> 4. التوصيات الزراعية</h6>
                 <div style="white-space:pre-wrap; min-height:50px;" class="p-2 border rounded">${r.recommendations || '<span class=\"text-muted\">لم يتم إدخال توصيات</span>'}</div>
+
+                ${footerBlock}
             `;
         }
 
